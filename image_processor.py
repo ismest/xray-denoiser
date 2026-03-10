@@ -7,7 +7,11 @@ import cv2
 import numpy as np
 import os
 from typing import Tuple, Optional, Dict, Any
-from denoise_algorithms import hybrid_denoise, adaptive_denoise, normalize_image, denormalize_image, safe_resize_for_display
+from denoise_algorithms import (
+    hybrid_denoise, adaptive_denoise, normalize_image, denormalize_image,
+    safe_resize_for_display, non_local_means_denoise, bilateral_filter_denoise,
+    wavelet_denoise, gaussian_denoise
+)
 from neural_denoise import NeuralDenoiser
 from metrics import evaluate_denoising_quality
 
@@ -84,57 +88,93 @@ class ImageProcessor:
     def process_image(self, method: str = 'hybrid', **kwargs) -> bool:
         """
         Apply denoising to the loaded image.
-        
+
         Args:
             method: Denoising method ('hybrid', 'nlm', 'bilateral', 'wavelet', 'neural', 'gaussian')
             **kwargs: Additional parameters for the denoising algorithm
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
         if self.original_image is None:
             print("No image loaded")
             return False
-        
+
         try:
-            print(f"Processing with method: {method}")
-            
+            print(f"Processing with method: {method}, params: {kwargs}")
+
+            # Store original dtype for verification
+            original_dtype = self.original_image.dtype
+
             if method == 'hybrid':
                 strength = kwargs.get('strength', 'medium')
                 self.denoised_image = hybrid_denoise(self.original_image, strength=strength)
-            
+
             elif method == 'neural':
                 patch_size = kwargs.get('patch_size', 256)
                 stride = kwargs.get('stride', 128)
                 self.denoised_image = self.neural_denoiser.denoise(
-                    self.original_image, 
-                    patch_size=patch_size, 
+                    self.original_image,
+                    patch_size=patch_size,
                     stride=stride
                 )
-            
-            elif method in ['nlm', 'bilateral', 'wavelet', 'gaussian']:
-                self.denoised_image = adaptive_denoise(self.original_image, method=method)
-            
+
+            elif method == 'nlm':
+                # Pass NLM parameters from UI
+                h = kwargs.get('h', 10)
+                patch_size = kwargs.get('patch_size', 7)
+                self.denoised_image = non_local_means_denoise(
+                    self.original_image,
+                    h=h,
+                    patch_size=patch_size
+                )
+
+            elif method == 'bilateral':
+                # Pass bilateral parameters from UI
+                d = kwargs.get('d', 9)
+                sigma_color = kwargs.get('sigma_color', 75)
+                sigma_space = kwargs.get('sigma_space', 75)
+                self.denoised_image = bilateral_filter_denoise(
+                    self.original_image,
+                    d=d,
+                    sigma_color=sigma_color,
+                    sigma_space=sigma_space
+                )
+
+            elif method == 'wavelet':
+                self.denoised_image = wavelet_denoise(self.original_image)
+
+            elif method == 'gaussian':
+                self.denoised_image = gaussian_denoise(self.original_image)
+
             else:
                 # Default to hybrid
                 self.denoised_image = hybrid_denoise(self.original_image)
-            
+
             # Verify output
             if self.denoised_image is None:
                 print("Denoising returned None")
                 return False
-            
+
+            # Handle shape mismatch with dtype preservation
             if self.denoised_image.shape != self.original_image.shape:
                 print(f"Warning: Output shape mismatch. Resizing...")
                 h, w = self.original_image.shape[:2]
-                if len(self.denoised_image.shape) == 2:
-                    self.denoised_image = cv2.resize(self.denoised_image, (w, h))
+                resized = cv2.resize(self.denoised_image, (w, h))
+
+                # Restore original dtype after resize
+                if original_dtype == np.uint8:
+                    self.denoised_image = np.clip(resized * 255.0, 0, 255).round().astype(np.uint8)
+                elif original_dtype == np.uint16:
+                    self.denoised_image = np.clip(resized * 65535.0, 0, 65535).round().astype(np.uint16)
                 else:
-                    self.denoised_image = cv2.resize(self.denoised_image, (w, h))
-            
+                    self.denoised_image = resized.astype(original_dtype)
+            else:
+                self.denoised_image = self.denoised_image
+
             print(f"Processing complete. Output dtype: {self.denoised_image.dtype}")
             return True
-            
+
         except Exception as e:
             print(f"Error processing image: {e}")
             import traceback

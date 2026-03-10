@@ -13,26 +13,41 @@ import numpy as np
 class ProcessingThread(QThread):
     """Background thread for image processing."""
     finished = pyqtSignal(bool, str)
-    progress = pyqtSignal(int)
-    
+    progress = pyqtSignal(int, str)  # Added stage message
+
     def __init__(self, processor, method, params):
         super().__init__()
         self.processor = processor
         self.method = method
         self.params = params
-    
+
     def run(self):
         try:
-            self.progress.emit(30)
+            # Stage 1: Initialize processing
+            self.progress.emit(10, "Initializing...")
+
+            # Stage 2: Start processing
+            self.progress.emit(30, f"Applying {self.method} denoising...")
+
+            # Stage 3: Processing in progress
+            self.progress.emit(50, "Processing image...")
+
+            # Stage 4: Finalizing
+            self.progress.emit(80, "Finalizing...")
+
             success = self.processor.process_image(self.method, **self.params)
-            self.progress.emit(100)
-            
+
+            # Stage 5: Complete
+            self.progress.emit(100, "Complete")
+
             if success:
                 self.finished.emit(True, "Processing completed successfully")
             else:
-                self.finished.emit(False, "Processing failed")
+                self.finished.emit(False, "Processing failed - no result returned")
         except Exception as e:
-            self.finished.emit(False, str(e))
+            import traceback
+            error_details = traceback.format_exc()
+            self.finished.emit(False, f"{str(e)}\n\n{error_details}")
 
 
 class DenoiseApp(QMainWindow):
@@ -256,67 +271,67 @@ class DenoiseApp(QMainWindow):
         layout = QGridLayout(tab)
         layout.setSpacing(15)
         layout.setContentsMargins(15, 15, 15, 15)
-        
+
         # NLM Parameters
-        nlm_group = QGroupBox("Non-Local Means Parameters")
+        self.nlm_group = QGroupBox("Non-Local Means Parameters")
         nlm_layout = QVBoxLayout()
         nlm_layout.setSpacing(8)
-        
+
         nlm_layout.addWidget(QLabel("Filter Strength (h):"))
         self.nlm_h_spin = QSpinBox()
         self.nlm_h_spin.setRange(1, 50)
         self.nlm_h_spin.setValue(10)
         nlm_layout.addWidget(self.nlm_h_spin)
-        
+
         nlm_layout.addWidget(QLabel("Patch Size:"))
         self.nlm_patch_spin = QSpinBox()
         self.nlm_patch_spin.setRange(3, 15)
         self.nlm_patch_spin.setValue(7)
         nlm_layout.addWidget(self.nlm_patch_spin)
-        
-        nlm_group.setLayout(nlm_layout)
-        layout.addWidget(nlm_group, 0, 0)
-        
+
+        self.nlm_group.setLayout(nlm_layout)
+        layout.addWidget(self.nlm_group, 0, 0)
+
         # Bilateral Parameters
-        bilateral_group = QGroupBox("Bilateral Filter Parameters")
+        self.bilateral_group = QGroupBox("Bilateral Filter Parameters")
         bilateral_layout = QVBoxLayout()
         bilateral_layout.setSpacing(8)
-        
+
         bilateral_layout.addWidget(QLabel("Diameter (d):"))
         self.bilateral_d_spin = QSpinBox()
         self.bilateral_d_spin.setRange(3, 25)
         self.bilateral_d_spin.setValue(9)
         bilateral_layout.addWidget(self.bilateral_d_spin)
-        
+
         bilateral_layout.addWidget(QLabel("Sigma Color:"))
         self.bilateral_color_spin = QSpinBox()
         self.bilateral_color_spin.setRange(10, 200)
         self.bilateral_color_spin.setValue(75)
         bilateral_layout.addWidget(self.bilateral_color_spin)
-        
-        bilateral_group.setLayout(bilateral_layout)
-        layout.addWidget(bilateral_group, 0, 1)
-        
+
+        self.bilateral_group.setLayout(bilateral_layout)
+        layout.addWidget(self.bilateral_group, 0, 1)
+
         # Neural Network Parameters
-        neural_group = QGroupBox("Neural Network Parameters")
+        self.neural_group = QGroupBox("Neural Network Parameters")
         neural_layout = QVBoxLayout()
         neural_layout.setSpacing(8)
-        
+
         neural_layout.addWidget(QLabel("Patch Size:"))
         self.neural_patch_spin = QSpinBox()
         self.neural_patch_spin.setRange(64, 512)
         self.neural_patch_spin.setValue(256)
         neural_layout.addWidget(self.neural_patch_spin)
-        
+
         neural_layout.addWidget(QLabel("Stride:"))
         self.neural_stride_spin = QSpinBox()
         self.neural_stride_spin.setRange(32, 256)
         self.neural_stride_spin.setValue(128)
         neural_layout.addWidget(self.neural_stride_spin)
-        
-        neural_group.setLayout(neural_layout)
-        layout.addWidget(neural_group, 0, 2)
-        
+
+        self.neural_group.setLayout(neural_layout)
+        layout.addWidget(self.neural_group, 0, 2)
+
         # Image Info
         info_group = QGroupBox("Image Information")
         info_layout = QVBoxLayout()
@@ -337,7 +352,10 @@ class DenoiseApp(QMainWindow):
         info_layout.addWidget(self.info_text)
         info_group.setLayout(info_layout)
         layout.addWidget(info_group, 1, 0, 1, 3)
-        
+
+        # Initialize parameter panel visibility
+        self.update_parameter_panel()
+
         return tab
         
     def create_image_display(self):
@@ -436,6 +454,26 @@ class DenoiseApp(QMainWindow):
         methods = self.processor.get_supported_methods()
         for key, name in methods:
             self.algorithm_combo.addItem(name, key)
+
+        # Connect algorithm change to parameter panel update
+        self.algorithm_combo.currentIndexChanged.connect(self.update_parameter_panel)
+
+    def update_parameter_panel(self):
+        """Update parameter panel visibility based on selected algorithm."""
+        method = self.algorithm_combo.currentData()
+
+        # Hide all parameter groups first
+        for group in [self.nlm_group, self.bilateral_group, self.neural_group]:
+            group.setVisible(False)
+
+        # Show only relevant parameters
+        if method == 'nlm':
+            self.nlm_group.setVisible(True)
+        elif method == 'bilateral':
+            self.bilateral_group.setVisible(True)
+        elif method == 'neural':
+            self.neural_group.setVisible(True)
+        # For hybrid and other methods, no specific parameters shown
         
     def load_image(self):
         """Load an image file."""
@@ -509,52 +547,89 @@ Size: {info.get('size_mb', 0):.2f} MB"""
         """Process the loaded image with selected algorithm."""
         # Get algorithm
         method = self.algorithm_combo.currentData()
-        
-        # Get strength
-        strength_map = {"Low": "low", "Medium": "medium", "High": "high"}
-        strength = strength_map.get(self.strength_combo.currentText(), "medium")
-        
-        # Collect parameters
-        params = {'strength': strength}
-        
-        if method == 'nlm':
+
+        # Collect parameters based on method
+        params = {}
+
+        if method == 'hybrid':
+            # Hybrid uses strength parameter
+            strength_map = {"Low": "low", "Medium": "medium", "High": "high"}
+            params['strength'] = strength_map.get(self.strength_combo.currentText(), "medium")
+
+        elif method == 'nlm':
+            # NLM uses h and patch_size
             params['h'] = self.nlm_h_spin.value()
             params['patch_size'] = self.nlm_patch_spin.value()
+
         elif method == 'bilateral':
+            # Bilateral uses d, sigma_color, sigma_space
             params['d'] = self.bilateral_d_spin.value()
             params['sigma_color'] = self.bilateral_color_spin.value()
+            params['sigma_space'] = self.bilateral_color_spin.value()
+
         elif method == 'neural':
+            # Neural uses patch_size and stride
             params['patch_size'] = self.neural_patch_spin.value()
             params['stride'] = self.neural_stride_spin.value()
-        
+
+        elif method in ['wavelet', 'gaussian', 'nlm', 'bilateral']:
+            # These methods don't need additional parameters from UI
+            pass
+
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.status_bar.showMessage(f'Processing with {method} algorithm...')
         self.process_btn.setEnabled(False)
-        
+
         # Run processing in background thread
         self.processing_thread = ProcessingThread(self.processor, method, params)
         self.processing_thread.progress.connect(self.update_progress)
         self.processing_thread.finished.connect(self.processing_finished)
         self.processing_thread.start()
     
-    def update_progress(self, value):
-        """Update progress bar."""
+    def update_progress(self, value, stage_message=""):
+        """Update progress bar with stage information."""
         self.progress_bar.setValue(value)
+        if stage_message:
+            self.status_bar.showMessage(stage_message)
     
     def processing_finished(self, success, message):
         """Handle processing completion."""
         self.progress_bar.setVisible(False)
         self.process_btn.setEnabled(True)
-        
+
         if success:
             self.display_denoised_image()
             self.calculate_and_display_metrics()
             self.save_btn.setEnabled(True)
             self.status_bar.showMessage('Image processed successfully')
         else:
-            QMessageBox.critical(self, "Error", f"Processing failed: {message}")
-            self.status_bar.showMessage('Processing failed')
+            # Show detailed error in a scrollable dialog
+            error_box = QMessageBox(self)
+            error_box.setIcon(QMessageBox.Critical)
+            error_box.setWindowTitle("Processing Error")
+            error_box.setText("Processing failed with the following error:")
+            error_box.setInformativeText(message)
+            error_box.setDetailedText(message)
+            error_box.setStandardButtons(QMessageBox.Ok)
+            error_box.setSizeGripEnabled(True)
+            error_box.setStyleSheet("""
+                QMessageBox {
+                    background-color: #fafafa;
+                }
+                QLabel {
+                    color: #333333;
+                    min-width: 400px;
+                }
+                QTextEdit {
+                    min-width: 600px;
+                    min-height: 300px;
+                    font-family: 'Consolas', 'Courier New', monospace;
+                    font-size: 11px;
+                }
+            """)
+            error_box.exec_()
+            self.status_bar.showMessage('Processing failed - see error dialog for details')
             
     def display_denoised_image(self):
         """Display the denoised image in the GUI."""

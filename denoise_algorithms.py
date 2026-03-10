@@ -297,20 +297,23 @@ def gaussian_denoise(image, kernel_size=5, sigma=1.0):
 def adaptive_denoise(image, method='auto', noise_estimate=None):
     """
     Adaptive denoising that selects the best method based on image characteristics.
-    
+
     Args:
         image: Input image (any depth)
         method: 'auto', 'nlm', 'bilateral', 'wavelet', 'gaussian'
         noise_estimate: Estimated noise level (optional)
-    
+
     Returns:
         Denoised image in original depth
     """
     try:
+        # Store original dtype for later restoration
+        original_dtype = image.dtype
+
         if method == 'auto':
             # Auto-select based on image size and characteristics
             h, w = image.shape[:2]
-            
+
             if h < 50 or w < 50:
                 # Very small image - use bilateral
                 return bilateral_filter_denoise(image)
@@ -323,20 +326,31 @@ def adaptive_denoise(image, method='auto', noise_estimate=None):
                 else:
                     scale = max_size / w
                     new_h, new_w = int(h * scale), max_size
-                
+
                 # Ensure minimum dimensions
                 new_h = max(new_h, 100)
                 new_w = max(new_w, 100)
-                
+
+                # Resize with proper dtype handling
                 resized = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
                 denoised_resized = non_local_means_denoise(resized, h=8)
-                # Resize back with proper interpolation
-                denoised = cv2.resize(denoised_resized, (w, h), interpolation=cv2.INTER_CUBIC)
+
+                # Resize back with proper dtype preservation
+                denoised_float = cv2.resize(denoised_resized, (w, h), interpolation=cv2.INTER_CUBIC)
+
+                # Ensure output dtype matches input dtype
+                if original_dtype == np.uint8:
+                    denoised = np.clip(denoised_float * 255.0, 0, 255).round().astype(np.uint8)
+                elif original_dtype == np.uint16:
+                    denoised = np.clip(denoised_float * 65535.0, 0, 65535).round().astype(np.uint16)
+                else:
+                    denoised = denoised_float.astype(original_dtype)
+
                 return denoised
             else:
                 # Normal size - use NLM
                 return non_local_means_denoise(image)
-        
+
         elif method == 'nlm':
             return non_local_means_denoise(image)
         elif method == 'bilateral':
@@ -347,7 +361,7 @@ def adaptive_denoise(image, method='auto', noise_estimate=None):
             return gaussian_denoise(image)
         else:
             return non_local_means_denoise(image)
-            
+
     except Exception as e:
         print(f"Adaptive denoising failed: {e}")
         return gaussian_denoise(image)
