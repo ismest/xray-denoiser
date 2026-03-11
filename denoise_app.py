@@ -1,9 +1,9 @@
 import sys
 import os
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QFileDialog, QProgressBar, QGroupBox,
-                             QComboBox, QTextEdit, QMessageBox, QSlider, QSpinBox, 
-                             QDoubleSpinBox, QTabWidget, QCheckBox, QGridLayout)
+                             QComboBox, QTextEdit, QMessageBox, QSlider, QSpinBox,
+                             QDoubleSpinBox, QTabWidget, QCheckBox, QGridLayout, QFormLayout)
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from image_processor import ImageProcessor
@@ -68,60 +68,66 @@ class DenoiseApp(QMainWindow):
         self.setGeometry(100, 100, 1400, 900)
         self.setWindowIcon(self.style().standardIcon(self.style().SP_ComputerIcon))
         
-        # Apply modern stylesheet
+        # Apply modern stylesheet with optimized fonts and spacing
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #f8f9fa;
             }
             QWidget {
                 font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-                font-size: 12px;
+                font-size: 14px;
             }
             QTabWidget::pane {
                 border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                border-radius: 8px;
                 background: white;
                 margin: 0px;
             }
             QTabBar::tab {
                 background: #f5f5f5;
                 border: 1px solid #e0e0e0;
-                padding: 8px 16px;
+                padding: 10px 20px;
                 margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                font-size: 14px;
+                font-weight: bold;
             }
             QTabBar::tab:selected {
                 background: white;
                 border-bottom-color: white;
-                font-weight: bold;
                 color: #1976d2;
             }
             QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                margin-top: 1ex;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                margin-top: 1.2ex;
                 font-weight: bold;
+                font-size: 15px;
                 color: #333333;
-                padding: 10px;
+                padding: 15px;
+                background-color: #fafafa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 8px;
-                top: -8px;
-                padding: 0 4px;
+                left: 10px;
+                top: -10px;
+                padding: 0 8px;
+                color: #1976d2;
             }
             QLabel {
                 color: #333333;
+                font-size: 14px;
             }
             QPushButton {
                 background-color: #2196F3;
                 color: white;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
+                padding: 10px 20px;
+                border-radius: 6px;
                 font-weight: bold;
-                min-height: 30px;
+                font-size: 14px;
+                min-height: 36px;
             }
             QPushButton:hover {
                 background-color: #1976D2;
@@ -146,39 +152,45 @@ class DenoiseApp(QMainWindow):
                 background-color: #388E3C;
             }
             QComboBox {
-                padding: 6px;
+                padding: 8px;
                 border: 1px solid #bdbdbd;
-                border-radius: 4px;
+                border-radius: 6px;
                 background-color: white;
-                min-height: 28px;
+                min-height: 36px;
+                font-size: 14px;
             }
             QSpinBox, QDoubleSpinBox {
-                padding: 6px;
+                padding: 8px;
                 border: 1px solid #bdbdbd;
-                border-radius: 4px;
+                border-radius: 6px;
                 background-color: white;
-                min-height: 28px;
+                min-height: 36px;
+                font-size: 14px;
             }
             QTextEdit {
                 border: 1px solid #e0e0e0;
-                border-radius: 4px;
+                border-radius: 6px;
                 background-color: white;
-                padding: 8px;
+                padding: 12px;
+                font-size: 13px;
             }
             QProgressBar {
                 border: 1px solid #e0e0e0;
-                border-radius: 4px;
+                border-radius: 6px;
                 text-align: center;
-                height: 20px;
+                height: 24px;
+                font-weight: bold;
+                font-size: 14px;
             }
             QProgressBar::chunk {
                 background-color: #4CAF50;
-                border-radius: 3px;
+                border-radius: 5px;
             }
             QStatusBar {
                 background-color: #f5f5f5;
                 color: #666666;
                 border-top: 1px solid #e0e0e0;
+                font-size: 13px;
             }
         """)
         
@@ -212,146 +224,171 @@ class DenoiseApp(QMainWindow):
         self.status_bar.showMessage('Ready - Load an image to begin')
         
     def create_basic_tab(self):
-        """Create the basic controls tab."""
+        """Create the basic controls tab with optimized layout."""
         tab = QWidget()
-        layout = QHBoxLayout(tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
-        
-        control_group = QGroupBox("Quick Controls")
-        control_layout = QHBoxLayout()
-        control_layout.setSpacing(12)
-        
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # File operations group
+        file_group = QGroupBox("File Operations")
+        file_layout = QHBoxLayout()
+        file_layout.setSpacing(15)
+
         # Load image button
         self.load_btn = QPushButton("Load X-ray Image")
         self.load_btn.setObjectName("loadButton")
         self.load_btn.clicked.connect(self.load_image)
-        control_layout.addWidget(self.load_btn)
-        
-        # Algorithm selection
-        algorithm_label = QLabel("Algorithm:")
-        algorithm_label.setStyleSheet("font-weight: bold;")
-        control_layout.addWidget(algorithm_label)
-        self.algorithm_combo = QComboBox()
-        self.update_algorithm_list()
-        control_layout.addWidget(self.algorithm_combo)
-        
-        # Strength selection
-        strength_label = QLabel("Strength:")
-        strength_label.setStyleSheet("font-weight: bold;")
-        control_layout.addWidget(strength_label)
-        self.strength_combo = QComboBox()
-        self.strength_combo.addItems(["Low", "Medium", "High"])
-        self.strength_combo.setCurrentIndex(1)
-        control_layout.addWidget(self.strength_combo)
-        
-        # Process button
-        self.process_btn = QPushButton("Denoise Image")
-        self.process_btn.setObjectName("processButton")
-        self.process_btn.clicked.connect(self.process_image)
-        self.process_btn.setEnabled(False)
-        control_layout.addWidget(self.process_btn)
-        
+        file_layout.addWidget(self.load_btn)
+
         # Save button
         self.save_btn = QPushButton("Save Result")
         self.save_btn.setObjectName("saveButton")
         self.save_btn.clicked.connect(self.save_result)
         self.save_btn.setEnabled(False)
-        control_layout.addWidget(self.save_btn)
-        
-        control_layout.addStretch()  # Add stretch to push controls to left
-        control_group.setLayout(control_layout)
-        layout.addWidget(control_group)
-        
+        file_layout.addWidget(self.save_btn)
+
+        file_layout.addStretch()
+        file_group.setLayout(file_layout)
+        layout.addWidget(file_group)
+
+        # Algorithm selection group
+        algorithm_group = QGroupBox("Denoising Algorithm")
+        algorithm_layout = QHBoxLayout()
+        algorithm_layout.setSpacing(15)
+
+        # Algorithm selection
+        algorithm_label = QLabel("Algorithm:")
+        algorithm_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        algorithm_layout.addWidget(algorithm_label)
+        self.algorithm_combo = QComboBox()
+        self.update_algorithm_list()
+        self.algorithm_combo.setMinimumWidth(200)
+        algorithm_layout.addWidget(self.algorithm_combo)
+
+        # Strength selection
+        strength_label = QLabel("Strength:")
+        strength_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        strength_layout = QHBoxLayout()
+        strength_layout.setSpacing(10)
+        strength_layout.addWidget(strength_label)
+        self.strength_combo = QComboBox()
+        self.strength_combo.addItems(["Low", "Medium", "High"])
+        self.strength_combo.setCurrentIndex(1)
+        self.strength_combo.setMinimumWidth(120)
+        strength_layout.addWidget(self.strength_combo)
+        strength_layout.addStretch()
+        algorithm_layout.addLayout(strength_layout)
+
+        algorithm_group.setLayout(algorithm_layout)
+        layout.addWidget(algorithm_group)
+
+        # Process button group
+        process_group = QGroupBox("Processing")
+        process_layout = QHBoxLayout()
+        process_layout.setSpacing(15)
+
+        # Process button
+        self.process_btn = QPushButton("Denoise Image")
+        self.process_btn.setObjectName("processButton")
+        self.process_btn.clicked.connect(self.process_image)
+        self.process_btn.setEnabled(False)
+        self.process_btn.setMinimumHeight(45)
+        process_layout.addWidget(self.process_btn)
+
+        process_group.setLayout(process_layout)
+        layout.addWidget(process_group)
+
+        layout.addStretch()
         return tab
     
     def create_advanced_tab(self):
-        """Create the advanced controls tab."""
+        """Create the advanced controls tab with optimized layout."""
         tab = QWidget()
-        layout = QGridLayout(tab)
-        layout.setSpacing(15)
-        layout.setContentsMargins(15, 15, 15, 15)
+        layout = QVBoxLayout(tab)
+        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        # Parameters container
+        params_container = QHBoxLayout()
+        params_container.setSpacing(20)
 
         # NLM Parameters
         self.nlm_group = QGroupBox("Non-Local Means Parameters")
-        nlm_layout = QVBoxLayout()
-        nlm_layout.setSpacing(8)
+        nlm_layout = QFormLayout()
+        nlm_layout.setSpacing(12)
+        nlm_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
-        nlm_layout.addWidget(QLabel("Filter Strength (h):"))
         self.nlm_h_spin = QSpinBox()
         self.nlm_h_spin.setRange(1, 50)
         self.nlm_h_spin.setValue(10)
-        nlm_layout.addWidget(self.nlm_h_spin)
+        self.nlm_h_spin.setStyleSheet("padding: 8px;")
+        nlm_layout.addRow("Filter Strength (h):", self.nlm_h_spin)
 
-        nlm_layout.addWidget(QLabel("Patch Size:"))
         self.nlm_patch_spin = QSpinBox()
         self.nlm_patch_spin.setRange(3, 15)
         self.nlm_patch_spin.setValue(7)
-        nlm_layout.addWidget(self.nlm_patch_spin)
+        self.nlm_patch_spin.setStyleSheet("padding: 8px;")
+        nlm_layout.addRow("Patch Size:", self.nlm_patch_spin)
 
         self.nlm_group.setLayout(nlm_layout)
-        layout.addWidget(self.nlm_group, 0, 0)
+        params_container.addWidget(self.nlm_group)
 
         # Bilateral Parameters
         self.bilateral_group = QGroupBox("Bilateral Filter Parameters")
-        bilateral_layout = QVBoxLayout()
-        bilateral_layout.setSpacing(8)
+        bilateral_layout = QFormLayout()
+        bilateral_layout.setSpacing(12)
+        bilateral_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
-        bilateral_layout.addWidget(QLabel("Diameter (d):"))
         self.bilateral_d_spin = QSpinBox()
         self.bilateral_d_spin.setRange(3, 25)
         self.bilateral_d_spin.setValue(9)
-        bilateral_layout.addWidget(self.bilateral_d_spin)
+        self.bilateral_d_spin.setStyleSheet("padding: 8px;")
+        bilateral_layout.addRow("Diameter (d):", self.bilateral_d_spin)
 
-        bilateral_layout.addWidget(QLabel("Sigma Color:"))
         self.bilateral_color_spin = QSpinBox()
         self.bilateral_color_spin.setRange(10, 200)
         self.bilateral_color_spin.setValue(75)
-        bilateral_layout.addWidget(self.bilateral_color_spin)
+        self.bilateral_color_spin.setStyleSheet("padding: 8px;")
+        bilateral_layout.addRow("Sigma Color:", self.bilateral_color_spin)
 
         self.bilateral_group.setLayout(bilateral_layout)
-        layout.addWidget(self.bilateral_group, 0, 1)
+        params_container.addWidget(self.bilateral_group)
 
         # Neural Network Parameters
         self.neural_group = QGroupBox("Neural Network Parameters")
-        neural_layout = QVBoxLayout()
-        neural_layout.setSpacing(8)
+        neural_layout = QFormLayout()
+        neural_layout.setSpacing(12)
+        neural_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
-        neural_layout.addWidget(QLabel("Patch Size:"))
         self.neural_patch_spin = QSpinBox()
         self.neural_patch_spin.setRange(64, 512)
         self.neural_patch_spin.setValue(256)
-        neural_layout.addWidget(self.neural_patch_spin)
+        self.neural_patch_spin.setStyleSheet("padding: 8px;")
+        neural_layout.addRow("Patch Size:", self.neural_patch_spin)
 
-        neural_layout.addWidget(QLabel("Stride:"))
         self.neural_stride_spin = QSpinBox()
         self.neural_stride_spin.setRange(32, 256)
         self.neural_stride_spin.setValue(128)
-        neural_layout.addWidget(self.neural_stride_spin)
+        self.neural_stride_spin.setStyleSheet("padding: 8px;")
+        neural_layout.addRow("Stride:", self.neural_stride_spin)
 
         self.neural_group.setLayout(neural_layout)
-        layout.addWidget(self.neural_group, 0, 2)
+        params_container.addWidget(self.neural_group)
+
+        layout.addLayout(params_container)
 
         # Image Info
         info_group = QGroupBox("Image Information")
         info_layout = QVBoxLayout()
-        info_layout.setSpacing(8)
+        info_layout.setSpacing(12)
         self.info_text = QTextEdit()
         self.info_text.setReadOnly(True)
-        self.info_text.setMaximumHeight(180)
-        self.info_text.setStyleSheet("""
-            QTextEdit {
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                background-color: #f9f9f9;
-                padding: 10px;
-                font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 11px;
-            }
-        """)
+        self.info_text.setMaximumHeight(200)
+        self.info_text.setMinimumHeight(150)
         info_layout.addWidget(self.info_text)
         info_group.setLayout(info_layout)
-        layout.addWidget(info_group, 1, 0, 1, 3)
+        layout.addWidget(info_group)
 
         # Initialize parameter panel visibility
         self.update_parameter_panel()
@@ -359,78 +396,86 @@ class DenoiseApp(QMainWindow):
         return tab
         
     def create_image_display(self):
-        """Create the image display area."""
+        """Create the image display area with optimized layout."""
         display_group = QGroupBox("Image Preview")
         display_layout = QHBoxLayout()
-        
+        display_layout.setSpacing(20)
+
         # Original image label
         original_container = QVBoxLayout()
+        original_container.setSpacing(10)
         original_title = QLabel("Original Image")
-        original_title.setStyleSheet("font-weight: bold; font-size: 14px; color: #333333; padding: 8px;")
+        original_title.setStyleSheet("font-weight: bold; font-size: 16px; color: #333333; padding: 10px; qproperty-alignment: AlignCenter;")
         original_container.addWidget(original_title)
         self.original_label = QLabel("No image loaded")
         self.original_label.setAlignment(Qt.AlignCenter)
-        self.original_label.setMinimumHeight(400)
+        self.original_label.setMinimumHeight(500)
         self.original_label.setStyleSheet("""
             border: 2px dashed #bdbdbd;
             background-color: #fafafa;
             border-radius: 8px;
             color: #666666;
             font-style: italic;
+            font-size: 14px;
             padding: 20px;
         """)
         original_container.addWidget(self.original_label)
         display_layout.addLayout(original_container)
-        
+
         # Denoised image label
         denoised_container = QVBoxLayout()
+        denoised_container.setSpacing(10)
         denoised_title = QLabel("Denoised Image")
-        denoised_title.setStyleSheet("font-weight: bold; font-size: 14px; color: #333333; padding: 8px;")
+        denoised_title.setStyleSheet("font-weight: bold; font-size: 16px; color: #333333; padding: 10px; qproperty-alignment: AlignCenter;")
         denoised_container.addWidget(denoised_title)
         self.denoised_label = QLabel("Process an image to see result")
         self.denoised_label.setAlignment(Qt.AlignCenter)
-        self.denoised_label.setMinimumHeight(400)
+        self.denoised_label.setMinimumHeight(500)
         self.denoised_label.setStyleSheet("""
             border: 2px dashed #bdbdbd;
             background-color: #fafafa;
             border-radius: 8px;
             color: #666666;
             font-style: italic;
+            font-size: 14px;
             padding: 20px;
         """)
         denoised_container.addWidget(self.denoised_label)
         display_layout.addLayout(denoised_container)
-        
+
         display_group.setLayout(display_layout)
         return display_group
         
     def create_results_panel(self):
-        """Create the results panel for metrics display."""
+        """Create the results panel for metrics display with optimized layout."""
         results_group = QGroupBox("Denoising Results")
         results_layout = QVBoxLayout()
-        
+        results_layout.setSpacing(15)
+
         # Progress bar with better styling
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #e0e0e0;
-                border-radius: 4px;
+                border-radius: 6px;
                 text-align: center;
-                height: 24px;
+                height: 28px;
                 font-weight: bold;
+                font-size: 14px;
             }
             QProgressBar::chunk {
                 background-color: #4CAF50;
-                border-radius: 3px;
+                border-radius: 5px;
             }
         """)
         results_layout.addWidget(self.progress_bar)
-        
+
         # Metrics display with better styling
         self.metrics_text = QTextEdit()
         self.metrics_text.setReadOnly(True)
-        self.metrics_text.setMaximumHeight(120)
+        self.metrics_text.setMaximumHeight(180)
+        self.metrics_text.setMinimumHeight(150)
         self.metrics_text.setText("Metrics will appear here after processing")
         self.metrics_text.setStyleSheet("""
             QTextEdit {
@@ -439,12 +484,12 @@ class DenoiseApp(QMainWindow):
                 background-color: #f9f9f9;
                 padding: 12px;
                 font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 11px;
+                font-size: 13px;
                 color: #333333;
             }
         """)
         results_layout.addWidget(self.metrics_text)
-        
+
         results_group.setLayout(results_layout)
         return results_group
     
@@ -620,12 +665,13 @@ Size: {info.get('size_mb', 0):.2f} MB"""
                 QLabel {
                     color: #333333;
                     min-width: 400px;
+                    font-size: 14px;
                 }
                 QTextEdit {
                     min-width: 600px;
                     min-height: 300px;
                     font-family: 'Consolas', 'Courier New', monospace;
-                    font-size: 11px;
+                    font-size: 13px;
                 }
             """)
             error_box.exec_()
