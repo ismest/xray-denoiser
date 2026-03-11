@@ -24,26 +24,26 @@ class ProcessingThread(QThread):
     def run(self):
         try:
             # Stage 1: Initialize processing
-            self.progress.emit(10, "Initializing...")
+            self.progress.emit(10, "正在初始化...")
 
             # Stage 2: Start processing
-            self.progress.emit(30, f"Applying {self.method} denoising...")
+            self.progress.emit(30, f"正在应用 {self.method} 降噪...")
 
             # Stage 3: Processing in progress
-            self.progress.emit(50, "Processing image...")
+            self.progress.emit(50, "正在处理图像...")
 
             # Stage 4: Finalizing
-            self.progress.emit(80, "Finalizing...")
+            self.progress.emit(80, "正在完成...")
 
             success = self.processor.process_image(self.method, **self.params)
 
             # Stage 5: Complete
-            self.progress.emit(100, "Complete")
+            self.progress.emit(100, "完成")
 
             if success:
-                self.finished.emit(True, "Processing completed successfully")
+                self.finished.emit(True, "处理成功完成")
             else:
-                self.finished.emit(False, "Processing failed - no result returned")
+                self.finished.emit(False, "处理失败 - 未返回结果")
         except Exception as e:
             import traceback
             error_details = traceback.format_exc()
@@ -64,7 +64,7 @@ class DenoiseApp(QMainWindow):
         
     def init_ui(self):
         """Initialize the user interface."""
-        self.setWindowTitle('X-ray Image Denoiser - Enhanced')
+        self.setWindowTitle('X 射线图像降噪器 - 增强版')
         self.setGeometry(100, 100, 1400, 900)
         self.setWindowIcon(self.style().standardIcon(self.style().SP_ComputerIcon))
         
@@ -75,7 +75,7 @@ class DenoiseApp(QMainWindow):
             }
             QWidget {
                 font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-                font-size: 14px;
+                font-size: 28px;
             }
             QTabWidget::pane {
                 border: 1px solid #e0e0e0;
@@ -86,11 +86,11 @@ class DenoiseApp(QMainWindow):
             QTabBar::tab {
                 background: #f5f5f5;
                 border: 1px solid #e0e0e0;
-                padding: 10px 20px;
-                margin-right: 2px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-                font-size: 14px;
+                padding: 16px 32px;
+                margin-right: 4px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                font-size: 28px;
                 font-weight: bold;
             }
             QTabBar::tab:selected {
@@ -100,34 +100,37 @@ class DenoiseApp(QMainWindow):
             }
             QGroupBox {
                 border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 1.2ex;
+                border-radius: 12px;
+                margin-top: 15px;
                 font-weight: bold;
-                font-size: 15px;
+                font-size: 30px;
                 color: #333333;
-                padding: 15px;
+                padding-top: 30px;
+                padding-left: 15px;
+                padding-right: 15px;
+                padding-bottom: 15px;
                 background-color: #fafafa;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                top: -10px;
+                left: 15px;
+                top: 0px;
                 padding: 0 8px;
                 color: #1976d2;
             }
             QLabel {
                 color: #333333;
-                font-size: 14px;
+                font-size: 28px;
             }
             QPushButton {
                 background-color: #2196F3;
                 color: white;
                 border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
+                padding: 16px 32px;
+                border-radius: 8px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 36px;
+                font-size: 28px;
+                min-height: 56px;
             }
             QPushButton:hover {
                 background-color: #1976D2;
@@ -152,35 +155,35 @@ class DenoiseApp(QMainWindow):
                 background-color: #388E3C;
             }
             QComboBox {
-                padding: 8px;
+                padding: 12px;
                 border: 1px solid #bdbdbd;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: white;
-                min-height: 36px;
-                font-size: 14px;
+                min-height: 56px;
+                font-size: 28px;
             }
             QSpinBox, QDoubleSpinBox {
-                padding: 8px;
+                padding: 12px;
                 border: 1px solid #bdbdbd;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: white;
-                min-height: 36px;
-                font-size: 14px;
+                min-height: 56px;
+                font-size: 28px;
             }
             QTextEdit {
                 border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: white;
-                padding: 12px;
-                font-size: 13px;
+                padding: 16px;
+                font-size: 26px;
             }
             QProgressBar {
                 border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                border-radius: 8px;
                 text-align: center;
-                height: 24px;
+                height: 40px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 24px;
             }
             QProgressBar::chunk {
                 background-color: #4CAF50;
@@ -190,7 +193,7 @@ class DenoiseApp(QMainWindow):
                 background-color: #f5f5f5;
                 color: #666666;
                 border-top: 1px solid #e0e0e0;
-                font-size: 13px;
+                font-size: 24px;
             }
         """)
         
@@ -205,11 +208,11 @@ class DenoiseApp(QMainWindow):
         
         # Basic controls tab
         basic_tab = self.create_basic_tab()
-        self.tab_widget.addTab(basic_tab, "Basic")
+        self.tab_widget.addTab(basic_tab, "基本")
         
         # Advanced controls tab
         advanced_tab = self.create_advanced_tab()
-        self.tab_widget.addTab(advanced_tab, "Advanced")
+        self.tab_widget.addTab(advanced_tab, "高级")
         
         # Create image display area
         image_display = self.create_image_display()
@@ -221,7 +224,7 @@ class DenoiseApp(QMainWindow):
         
         # Create status bar
         self.status_bar = self.statusBar()
-        self.status_bar.showMessage('Ready - Load an image to begin')
+        self.status_bar.showMessage('就绪 - 加载图像开始')
         
     def create_basic_tab(self):
         """Create the basic controls tab with optimized layout."""
@@ -231,18 +234,18 @@ class DenoiseApp(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
 
         # File operations group
-        file_group = QGroupBox("File Operations")
+        file_group = QGroupBox("文件操作")
         file_layout = QHBoxLayout()
         file_layout.setSpacing(15)
 
         # Load image button
-        self.load_btn = QPushButton("Load X-ray Image")
+        self.load_btn = QPushButton("加载 X 光图像")
         self.load_btn.setObjectName("loadButton")
         self.load_btn.clicked.connect(self.load_image)
         file_layout.addWidget(self.load_btn)
 
         # Save button
-        self.save_btn = QPushButton("Save Result")
+        self.save_btn = QPushButton("保存结果")
         self.save_btn.setObjectName("saveButton")
         self.save_btn.clicked.connect(self.save_result)
         self.save_btn.setEnabled(False)
@@ -253,13 +256,13 @@ class DenoiseApp(QMainWindow):
         layout.addWidget(file_group)
 
         # Algorithm selection group
-        algorithm_group = QGroupBox("Denoising Algorithm")
+        algorithm_group = QGroupBox("降噪算法")
         algorithm_layout = QHBoxLayout()
         algorithm_layout.setSpacing(15)
 
         # Algorithm selection
-        algorithm_label = QLabel("Algorithm:")
-        algorithm_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        algorithm_label = QLabel("算法:")
+        algorithm_label.setStyleSheet("font-weight: bold; font-size: 28px;")
         algorithm_layout.addWidget(algorithm_label)
         self.algorithm_combo = QComboBox()
         self.update_algorithm_list()
@@ -267,13 +270,13 @@ class DenoiseApp(QMainWindow):
         algorithm_layout.addWidget(self.algorithm_combo)
 
         # Strength selection
-        strength_label = QLabel("Strength:")
-        strength_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        strength_label = QLabel("强度:")
+        strength_label.setStyleSheet("font-weight: bold; font-size: 28px;")
         strength_layout = QHBoxLayout()
         strength_layout.setSpacing(10)
         strength_layout.addWidget(strength_label)
         self.strength_combo = QComboBox()
-        self.strength_combo.addItems(["Low", "Medium", "High"])
+        self.strength_combo.addItems(["低", "中", "高"])
         self.strength_combo.setCurrentIndex(1)
         self.strength_combo.setMinimumWidth(120)
         strength_layout.addWidget(self.strength_combo)
@@ -284,16 +287,16 @@ class DenoiseApp(QMainWindow):
         layout.addWidget(algorithm_group)
 
         # Process button group
-        process_group = QGroupBox("Processing")
+        process_group = QGroupBox("处理")
         process_layout = QHBoxLayout()
         process_layout.setSpacing(15)
 
         # Process button
-        self.process_btn = QPushButton("Denoise Image")
+        self.process_btn = QPushButton("开始降噪")
         self.process_btn.setObjectName("processButton")
         self.process_btn.clicked.connect(self.process_image)
         self.process_btn.setEnabled(False)
-        self.process_btn.setMinimumHeight(45)
+        self.process_btn.setMinimumHeight(56)
         process_layout.addWidget(self.process_btn)
 
         process_group.setLayout(process_layout)
@@ -314,7 +317,7 @@ class DenoiseApp(QMainWindow):
         params_container.setSpacing(20)
 
         # NLM Parameters
-        self.nlm_group = QGroupBox("Non-Local Means Parameters")
+        self.nlm_group = QGroupBox("非局部均值参数")
         nlm_layout = QFormLayout()
         nlm_layout.setSpacing(12)
         nlm_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
@@ -322,20 +325,20 @@ class DenoiseApp(QMainWindow):
         self.nlm_h_spin = QSpinBox()
         self.nlm_h_spin.setRange(1, 50)
         self.nlm_h_spin.setValue(10)
-        self.nlm_h_spin.setStyleSheet("padding: 8px;")
-        nlm_layout.addRow("Filter Strength (h):", self.nlm_h_spin)
+        self.nlm_h_spin.setStyleSheet("padding: 12px;")
+        nlm_layout.addRow("滤波强度 (h):", self.nlm_h_spin)
 
         self.nlm_patch_spin = QSpinBox()
         self.nlm_patch_spin.setRange(3, 15)
         self.nlm_patch_spin.setValue(7)
-        self.nlm_patch_spin.setStyleSheet("padding: 8px;")
-        nlm_layout.addRow("Patch Size:", self.nlm_patch_spin)
+        self.nlm_patch_spin.setStyleSheet("padding: 12px;")
+        nlm_layout.addRow("块大小:", self.nlm_patch_spin)
 
         self.nlm_group.setLayout(nlm_layout)
         params_container.addWidget(self.nlm_group)
 
         # Bilateral Parameters
-        self.bilateral_group = QGroupBox("Bilateral Filter Parameters")
+        self.bilateral_group = QGroupBox("双边滤波参数")
         bilateral_layout = QFormLayout()
         bilateral_layout.setSpacing(12)
         bilateral_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
@@ -343,20 +346,20 @@ class DenoiseApp(QMainWindow):
         self.bilateral_d_spin = QSpinBox()
         self.bilateral_d_spin.setRange(3, 25)
         self.bilateral_d_spin.setValue(9)
-        self.bilateral_d_spin.setStyleSheet("padding: 8px;")
-        bilateral_layout.addRow("Diameter (d):", self.bilateral_d_spin)
+        self.bilateral_d_spin.setStyleSheet("padding: 12px;")
+        bilateral_layout.addRow("直径 (d):", self.bilateral_d_spin)
 
         self.bilateral_color_spin = QSpinBox()
         self.bilateral_color_spin.setRange(10, 200)
         self.bilateral_color_spin.setValue(75)
-        self.bilateral_color_spin.setStyleSheet("padding: 8px;")
-        bilateral_layout.addRow("Sigma Color:", self.bilateral_color_spin)
+        self.bilateral_color_spin.setStyleSheet("padding: 12px;")
+        bilateral_layout.addRow("颜色标准差:", self.bilateral_color_spin)
 
         self.bilateral_group.setLayout(bilateral_layout)
         params_container.addWidget(self.bilateral_group)
 
         # Neural Network Parameters
-        self.neural_group = QGroupBox("Neural Network Parameters")
+        self.neural_group = QGroupBox("神经网络参数")
         neural_layout = QFormLayout()
         neural_layout.setSpacing(12)
         neural_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
@@ -364,14 +367,14 @@ class DenoiseApp(QMainWindow):
         self.neural_patch_spin = QSpinBox()
         self.neural_patch_spin.setRange(64, 512)
         self.neural_patch_spin.setValue(256)
-        self.neural_patch_spin.setStyleSheet("padding: 8px;")
-        neural_layout.addRow("Patch Size:", self.neural_patch_spin)
+        self.neural_patch_spin.setStyleSheet("padding: 12px;")
+        neural_layout.addRow("块大小:", self.neural_patch_spin)
 
         self.neural_stride_spin = QSpinBox()
         self.neural_stride_spin.setRange(32, 256)
         self.neural_stride_spin.setValue(128)
-        self.neural_stride_spin.setStyleSheet("padding: 8px;")
-        neural_layout.addRow("Stride:", self.neural_stride_spin)
+        self.neural_stride_spin.setStyleSheet("padding: 12px;")
+        neural_layout.addRow("步长:", self.neural_stride_spin)
 
         self.neural_group.setLayout(neural_layout)
         params_container.addWidget(self.neural_group)
@@ -379,7 +382,7 @@ class DenoiseApp(QMainWindow):
         layout.addLayout(params_container)
 
         # Image Info
-        info_group = QGroupBox("Image Information")
+        info_group = QGroupBox("图像信息")
         info_layout = QVBoxLayout()
         info_layout.setSpacing(12)
         self.info_text = QTextEdit()
@@ -397,17 +400,17 @@ class DenoiseApp(QMainWindow):
         
     def create_image_display(self):
         """Create the image display area with optimized layout."""
-        display_group = QGroupBox("Image Preview")
+        display_group = QGroupBox("图像预览")
         display_layout = QHBoxLayout()
         display_layout.setSpacing(20)
 
         # Original image label
         original_container = QVBoxLayout()
         original_container.setSpacing(10)
-        original_title = QLabel("Original Image")
-        original_title.setStyleSheet("font-weight: bold; font-size: 16px; color: #333333; padding: 10px; qproperty-alignment: AlignCenter;")
+        original_title = QLabel("原始图像")
+        original_title.setStyleSheet("font-weight: bold; font-size: 32px; color: #333333; padding: 10px; qproperty-alignment: AlignCenter;")
         original_container.addWidget(original_title)
-        self.original_label = QLabel("No image loaded")
+        self.original_label = QLabel("未加载图像")
         self.original_label.setAlignment(Qt.AlignCenter)
         self.original_label.setMinimumHeight(500)
         self.original_label.setStyleSheet("""
@@ -416,7 +419,7 @@ class DenoiseApp(QMainWindow):
             border-radius: 8px;
             color: #666666;
             font-style: italic;
-            font-size: 14px;
+            font-size: 26px;
             padding: 20px;
         """)
         original_container.addWidget(self.original_label)
@@ -425,10 +428,10 @@ class DenoiseApp(QMainWindow):
         # Denoised image label
         denoised_container = QVBoxLayout()
         denoised_container.setSpacing(10)
-        denoised_title = QLabel("Denoised Image")
-        denoised_title.setStyleSheet("font-weight: bold; font-size: 16px; color: #333333; padding: 10px; qproperty-alignment: AlignCenter;")
+        denoised_title = QLabel("降噪后图像")
+        denoised_title.setStyleSheet("font-weight: bold; font-size: 32px; color: #333333; padding: 10px; qproperty-alignment: AlignCenter;")
         denoised_container.addWidget(denoised_title)
-        self.denoised_label = QLabel("Process an image to see result")
+        self.denoised_label = QLabel("处理图像以查看结果")
         self.denoised_label.setAlignment(Qt.AlignCenter)
         self.denoised_label.setMinimumHeight(500)
         self.denoised_label.setStyleSheet("""
@@ -437,7 +440,7 @@ class DenoiseApp(QMainWindow):
             border-radius: 8px;
             color: #666666;
             font-style: italic;
-            font-size: 14px;
+            font-size: 26px;
             padding: 20px;
         """)
         denoised_container.addWidget(self.denoised_label)
@@ -448,7 +451,7 @@ class DenoiseApp(QMainWindow):
         
     def create_results_panel(self):
         """Create the results panel for metrics display with optimized layout."""
-        results_group = QGroupBox("Denoising Results")
+        results_group = QGroupBox("降噪结果")
         results_layout = QVBoxLayout()
         results_layout.setSpacing(15)
 
@@ -458,11 +461,11 @@ class DenoiseApp(QMainWindow):
         self.progress_bar.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                border-radius: 8px;
                 text-align: center;
-                height: 28px;
+                height: 40px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 24px;
             }
             QProgressBar::chunk {
                 background-color: #4CAF50;
@@ -476,15 +479,15 @@ class DenoiseApp(QMainWindow):
         self.metrics_text.setReadOnly(True)
         self.metrics_text.setMaximumHeight(180)
         self.metrics_text.setMinimumHeight(150)
-        self.metrics_text.setText("Metrics will appear here after processing")
+        self.metrics_text.setText("处理后显示指标")
         self.metrics_text.setStyleSheet("""
             QTextEdit {
                 border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                border-radius: 8px;
                 background-color: #f9f9f9;
-                padding: 12px;
+                padding: 16px;
                 font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 13px;
+                font-size: 26px;
                 color: #333333;
             }
         """)
@@ -523,33 +526,33 @@ class DenoiseApp(QMainWindow):
     def load_image(self):
         """Load an image file."""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Open X-ray Image", "", 
-            "Image Files (*.png *.jpg *.jpeg *.bmp *.tiff *.tif);;All Files (*);;DICOM (*.dcm)"
+            self, "打开 X 光图像", "",
+            "图像文件 (*.png *.jpg *.jpeg *.bmp *.tiff *.tif);;所有文件 (*);;DICOM (*.dcm)"
         )
-        
+
         if file_path:
-            self.status_bar.showMessage(f'Loading {os.path.basename(file_path)}...')
+            self.status_bar.showMessage(f'正在加载 {os.path.basename(file_path)}...')
             success = self.processor.load_image(file_path)
             if success:
                 self.display_original_image()
                 self.process_btn.setEnabled(True)
                 self.save_btn.setEnabled(False)
                 self.metrics_text.clear()
-                self.denoised_label.setText("Process an image to see result")
+                self.denoised_label.setText("处理图像以查看结果")
                 self.denoised_label.setPixmap(QPixmap())
-                self.status_bar.showMessage('Image loaded successfully')
-                
+                self.status_bar.showMessage('图像加载成功')
+
                 # Update info display
                 info = self.processor.get_image_info()
-                info_text = f"""Filename: {info.get('filename', 'N/A')}
-Shape: {info.get('shape', 'N/A')}
-Data Type: {info.get('dtype', 'N/A')}
-Bit Depth: {info.get('depth', 'N/A')} bits
-Size: {info.get('size_mb', 0):.2f} MB"""
+                info_text = f"""文件名：{info.get('filename', 'N/A')}
+形状：{info.get('shape', 'N/A')}
+数据类型：{info.get('dtype', 'N/A')}
+位深度：{info.get('depth', 'N/A')} 位
+大小：{info.get('size_mb', 0):.2f} MB"""
                 self.info_text.setText(info_text)
             else:
-                QMessageBox.critical(self, "Error", "Failed to load image file.")
-                self.status_bar.showMessage('Failed to load image')
+                QMessageBox.critical(self, "错误", "加载图像文件失败。")
+                self.status_bar.showMessage('加载图像失败')
                 
     def display_original_image(self):
         """Display the original image in the GUI."""
@@ -623,7 +626,7 @@ Size: {info.get('size_mb', 0):.2f} MB"""
 
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
-        self.status_bar.showMessage(f'Processing with {method} algorithm...')
+        self.status_bar.showMessage(f'正在使用 {method} 算法处理...')
         self.process_btn.setEnabled(False)
 
         # Run processing in background thread
@@ -647,13 +650,13 @@ Size: {info.get('size_mb', 0):.2f} MB"""
             self.display_denoised_image()
             self.calculate_and_display_metrics()
             self.save_btn.setEnabled(True)
-            self.status_bar.showMessage('Image processed successfully')
+            self.status_bar.showMessage('图像处理成功')
         else:
             # Show detailed error in a scrollable dialog
             error_box = QMessageBox(self)
             error_box.setIcon(QMessageBox.Critical)
-            error_box.setWindowTitle("Processing Error")
-            error_box.setText("Processing failed with the following error:")
+            error_box.setWindowTitle("处理错误")
+            error_box.setText("处理失败，错误信息如下:")
             error_box.setInformativeText(message)
             error_box.setDetailedText(message)
             error_box.setStandardButtons(QMessageBox.Ok)
@@ -665,17 +668,17 @@ Size: {info.get('size_mb', 0):.2f} MB"""
                 QLabel {
                     color: #333333;
                     min-width: 400px;
-                    font-size: 14px;
+                    font-size: 28px;
                 }
                 QTextEdit {
                     min-width: 600px;
                     min-height: 300px;
                     font-family: 'Consolas', 'Courier New', monospace;
-                    font-size: 13px;
+                    font-size: 26px;
                 }
             """)
             error_box.exec_()
-            self.status_bar.showMessage('Processing failed - see error dialog for details')
+            self.status_bar.showMessage('处理失败 - 查看错误对话框了解详情')
             
     def display_denoised_image(self):
         """Display the denoised image in the GUI."""
@@ -727,19 +730,19 @@ Size: {info.get('size_mb', 0):.2f} MB"""
     def save_result(self):
         """Save the denoised image."""
         file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save Denoised Image", "", 
-            "PNG Files (*.png);;TIFF Files (*.tiff *.tif);;JPEG Files (*.jpg *.jpeg);;All Files (*)"
+            self, "保存降噪图像", "",
+            "PNG 文件 (*.png);;TIFF 文件 (*.tiff *.tif);;JPEG 文件 (*.jpg *.jpeg);;所有文件 (*)"
         )
-        
+
         if file_path:
-            self.status_bar.showMessage('Saving result...')
+            self.status_bar.showMessage('正在保存结果...')
             success = self.processor.save_result(file_path)
             if success:
-                self.status_bar.showMessage('Result saved successfully')
-                QMessageBox.information(self, "Success", "Denoised image saved successfully!")
+                self.status_bar.showMessage('结果保存成功')
+                QMessageBox.information(self, "成功", "降噪图像保存成功!")
             else:
-                QMessageBox.critical(self, "Error", "Failed to save image.")
-                self.status_bar.showMessage('Failed to save result')
+                QMessageBox.critical(self, "错误", "保存图像失败。")
+                self.status_bar.showMessage('保存结果失败')
     
     def closeEvent(self, event):
         """Handle window close event."""
