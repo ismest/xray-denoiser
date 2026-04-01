@@ -167,18 +167,36 @@ class DenoiseWidget(QWidget):
             }
         """)
 
-        main_layout = QHBoxLayout(self)
+        main_layout = QVBoxLayout(self)
         main_layout.setSpacing(16)
         main_layout.setContentsMargins(16, 16, 16, 16)
 
+        # 页面标题 - 与其他页面保持一致
+        title = QLabel("降噪与超分辨率 - 图像处理工作流")
+        title.setStyleSheet("""
+            font-size: 20px;
+            font-weight: 600;
+            color: #1e293b;
+            padding: 12px;
+            border-left: 4px solid #0ea5e9;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+            border-radius: 8px;
+        """)
+        main_layout.addWidget(title)
+
+        # 内容区域（水平布局）
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(16)
+
         # Left panel - Controls
         left_panel = self.create_control_panel()
-        main_layout.addWidget(left_panel, 1)
+        content_layout.addWidget(left_panel, 1)
 
         # Right panel - Image display
         right_panel = self.create_display_panel()
-        main_layout.addWidget(right_panel, 2)
+        content_layout.addWidget(right_panel, 2)
 
+        main_layout.addLayout(content_layout)
         self.update_parameter_panel()
 
     def create_control_panel(self):

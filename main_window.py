@@ -176,23 +176,7 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout(sidebar)
         layout.setSpacing(DesignTokens.SPACING_8)
-        layout.setContentsMargins(12, 20, 12, 12)
-
-        # 应用标题 - 简洁版本
-        title_label = QLabel("X-RAY 图像处理")
-        title_label.setStyleSheet(f"""
-            QLabel {{
-                font-size: 12px;
-                font-weight: 600;
-                color: {DesignTokens.TEXT_MUTED};
-                padding: 8px;
-                text-align: center;
-                border-bottom: 1px solid {DesignTokens.SIDEBAR_BORDER};
-                margin-bottom: 12px;
-            }}
-        """)
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         # 导航按钮
         self.nav_buttons = []
