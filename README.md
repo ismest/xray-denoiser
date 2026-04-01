@@ -1,13 +1,15 @@
-# X-ray Image Denoiser
+# X-ray Image Denoiser & Super-Resolution
 
-A cross-platform desktop application for denoising X-ray images with quantitative quality metrics.
+A cross-platform desktop application for denoising X-ray images with super-resolution reconstruction capabilities.
 
 ## Features
 
+- **Two-Step Workflow**: Denoise → Super-Resolution for optimal image enhancement
 - **Cross-platform**: Works on Windows, macOS, and Linux
-- **Multiple denoising algorithms**: Hybrid approach combining non-local means, bilateral filtering, and wavelet denoising
-- **Quantitative metrics**: PSNR (Peak Signal-to-Noise Ratio) and SSIM (Structural Similarity Index)
-- **User-friendly GUI**: Easy to use interface with real-time preview
+- **Multiple denoising algorithms**: Hybrid approach, Non-local Means, Bilateral, Wavelet, and Neural Network
+- **Super-Resolution**: Multiple upscaling methods (Bicubic, Lanczos, Edge-Preserving)
+- **Quantitative metrics**: PSNR, SSIM, MSE for both denoising and super-resolution quality
+- **User-friendly GUI**: Tab-based interface with real-time preview
 - **Multiple format support**: JPEG, PNG, BMP, TIFF, and other common image formats
 
 ## Installation
@@ -45,16 +47,45 @@ To create a standalone executable that doesn't require Python installation:
 
 ## Usage
 
-1. **Load Image**: Click "Load X-ray Image" and select your X-ray image file
+### Two-Step Workflow
+
+#### Step 1: Denoising (降噪处理)
+
+1. **Load Image**: Click "📁 加载图像" and select your X-ray image file
 2. **Select Algorithm**: Choose from available denoising algorithms:
-   - **Hybrid (Recommended)**: Combines multiple methods for optimal results
+   - **Hybrid (Recommended)**: Combines NLM + Bilateral for optimal results
    - **Non-local Means**: Effective for preserving fine details
    - **Bilateral Filter**: Good for edge preservation
    - **Wavelet**: Frequency-domain denoising approach
-3. **Process Image**: Click "Denoise Image" to apply the selected algorithm
-4. **View Results**: Compare original and denoised images side by side
-5. **Check Metrics**: View PSNR and SSIM values in the results panel
-6. **Save Result**: Save the denoised image to your preferred location
+   - **Neural Network**: Deep learning based denoising (if available)
+3. **Adjust Parameters**: Fine-tune algorithm-specific parameters
+4. **Execute Denoising**: Click "▶ 执行降噪" to process
+
+#### Step 2: Super-Resolution (超分辨率重构)
+
+After denoising is complete:
+
+1. **Select Method**: Choose upscaling method:
+   - **Bicubic**: Standard interpolation
+   - **Lanczos (Recommended)**: High-quality interpolation
+   - **Edge-Preserving**: Enhanced edge detail preservation
+2. **Select Scale**: Choose magnification factor (1.5x, 2.0x, 3.0x, 4.0x)
+3. **Enhancement Options**:
+   - Edge Enhancement: Improves edge clarity
+   - Contrast Enhancement: CLAHE-based contrast improvement
+4. **Execute SR**: Click "🔍 执行超分辨率" to process
+
+### Viewing Results
+
+- Use the tab interface to switch between:
+  - **原始图像**: Original loaded image
+  - **降噪结果**: Denoised image
+  - **超分辨率结果**: Super-resolution image
+
+### Saving Results
+
+- **💾 保存降噪图**: Save the denoised image
+- **💾 保存 SR 图**: Save the super-resolution image
 
 ## Metrics Explanation
 

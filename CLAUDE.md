@@ -20,8 +20,9 @@ python test_simple.py
 **Entry point**: `main.py` launches a PyQt5 GUI application (`DenoiseApp` in `denoise_app.py`).
 
 **Core modules**:
-- `image_processor.py` - Central `ImageProcessor` class managing image loading, processing, and saving
+- `image_processor.py` - Central `ImageProcessor` class managing image loading, denoising, super-resolution, and saving
 - `denoise_algorithms.py` - Denoising functions (`hybrid_denoise`, `adaptive_denoise`, `non_local_means_denoise`, `bilateral_filter_denoise`, `wavelet_denoise`) with multi-depth support (uint8/uint16/float)
+- `super_resolution.py` - Super-resolution reconstruction (bicubic, lanczos, edge-preserving upscaling with contrast enhancement)
 - `neural_denoise.py` - Optional ONNX-based neural denoiser with fallback to bilateral filter
 - `metrics.py` - PSNR, SSIM, MSE calculation with multi-depth normalization
 

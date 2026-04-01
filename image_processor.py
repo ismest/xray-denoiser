@@ -14,6 +14,7 @@ from denoise_algorithms import (
 )
 from neural_denoise import NeuralDenoiser
 from metrics import evaluate_denoising_quality
+from super_resolution import super_resolution_denoised_image, get_supported_sr_methods
 
 
 class ImageProcessor:
@@ -25,9 +26,11 @@ class ImageProcessor:
     def __init__(self):
         self.original_image = None
         self.denoised_image = None
+        self.sr_image = None  # Super-resolution result
         self.metrics = None
         self.image_info = {}
         self.neural_denoiser = NeuralDenoiser()
+        self.sr_metrics = None  # Metrics after super-resolution
         
     def load_image(self, file_path: str) -> bool:
         """
@@ -87,7 +90,7 @@ class ImageProcessor:
     
     def process_image(self, method: str = 'hybrid', **kwargs) -> bool:
         """
-        Apply denoising to the loaded image.
+        Step 1: Apply denoising to the loaded image.
 
         Args:
             method: Denoising method ('hybrid', 'nlm', 'bilateral', 'wavelet', 'neural', 'gaussian')
@@ -101,7 +104,7 @@ class ImageProcessor:
             return False
 
         try:
-            print(f"Processing with method: {method}, params: {kwargs}")
+            print(f"Step 1 - Denoising with method: {method}, params: {kwargs}")
 
             # Store original dtype for verification
             original_dtype = self.original_image.dtype
@@ -172,11 +175,59 @@ class ImageProcessor:
             else:
                 self.denoised_image = self.denoised_image
 
-            print(f"Processing complete. Output dtype: {self.denoised_image.dtype}")
+            # Calculate denoising metrics
+            self.metrics = evaluate_denoising_quality(self.original_image, self.denoised_image)
+
+            print(f"Denoising complete. Output dtype: {self.denoised_image.dtype}")
             return True
 
         except Exception as e:
             print(f"Error processing image: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def apply_super_resolution(self, scale: float = 2.0, method: str = 'lanczos',
+                                enhance_edges: bool = True, enhance_contrast: bool = True) -> bool:
+        """
+        Step 2: Apply super-resolution to the denoised image.
+
+        Args:
+            scale: Upscaling factor (1.5, 2.0, 3.0, 4.0)
+            method: SR method ('bicubic', 'lanczos', 'edge_preserving')
+            enhance_edges: Whether to apply edge enhancement
+            enhance_contrast: Whether to apply contrast enhancement
+
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if self.denoised_image is None:
+            print("No denoised image available for super-resolution")
+            return False
+
+        try:
+            print(f"Step 2 - Super-resolution: scale={scale}, method={method}")
+
+            self.sr_image = super_resolution_denoised_image(
+                self.denoised_image,
+                scale=scale,
+                method=method,
+                enhance_edges=enhance_edges,
+                enhance_contrast=enhance_contrast
+            )
+
+            if self.sr_image is None:
+                print("Super-resolution returned None")
+                return False
+
+            # Calculate SR metrics (compare denoised vs SR)
+            self.sr_metrics = evaluate_denoising_quality(self.denoised_image, self.sr_image)
+
+            print(f"Super-resolution complete. Output shape: {self.sr_image.shape}")
+            return True
+
+        except Exception as e:
+            print(f"Error applying super-resolution: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -198,36 +249,39 @@ class ImageProcessor:
             print(f"Error calculating metrics: {e}")
             return {'psnr': 0, 'ssim': 0, 'mse': 0}
     
-    def save_result(self, output_path: str) -> bool:
+    def save_result(self, output_path: str, use_sr: bool = False) -> bool:
         """
-        Save the denoised image to file.
-        
+        Save the processed image to file.
+
         Args:
-            output_path: Path to save the denoised image
-            
+            output_path: Path to save the image
+            use_sr: If True, save super-resolution image; if False, save denoised image
+
         Returns:
             bool: True if successful, False otherwise
         """
-        if self.denoised_image is None:
-            print("No denoised image to save")
+        image_to_save = self.sr_image if use_sr and self.sr_image is not None else self.denoised_image
+
+        if image_to_save is None:
+            print("No processed image to save")
             return False
-        
+
         try:
             # Ensure the output directory exists
             output_dir = os.path.dirname(output_path)
             if output_dir and not os.path.exists(output_dir):
                 os.makedirs(output_dir, exist_ok=True)
-            
+
             # Save image
-            success = cv2.imwrite(output_path, self.denoised_image)
-            
+            success = cv2.imwrite(output_path, image_to_save)
+
             if success:
                 print(f"Saved to: {output_path}")
             else:
                 print(f"Failed to save to: {output_path}")
-            
+
             return success
-            
+
         except Exception as e:
             print(f"Error saving image: {e}")
             return False
@@ -239,20 +293,30 @@ class ImageProcessor:
     def get_denoised_image(self):
         """Get denoised image."""
         return self.denoised_image
-    
+
+    def get_sr_image(self):
+        """Get super-resolution image."""
+        return self.sr_image
+
     def get_metrics(self):
         """Get current metrics."""
         return self.metrics
-    
+
+    def get_sr_metrics(self):
+        """Get super-resolution metrics."""
+        return self.sr_metrics
+
     def get_image_info(self) -> Dict[str, Any]:
         """Get information about the loaded image."""
         return self.image_info
-    
+
     def reset(self):
         """Reset processor state."""
         self.original_image = None
         self.denoised_image = None
+        self.sr_image = None
         self.metrics = None
+        self.sr_metrics = None
         self.image_info = {}
     
     def get_supported_methods(self) -> list:
