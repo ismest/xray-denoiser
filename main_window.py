@@ -38,19 +38,20 @@ class NavigationButton(QToolButton):
                 background-color: transparent;
                 border: none;
                 border-radius: 8px;
-                color: #64748b;
-                font-size: 12px;
+                color: #94a3b8;
+                font-size: 13px;
                 font-weight: 500;
-                padding: 8px;
-                margin: 4px 8px;
+                padding: 10px;
+                margin: 4px 6px;
             }
             QToolButton:hover {
-                background-color: #f1f5f9;
-                color: #3b82f6;
+                background-color: #334155;
+                color: #ffffff;
             }
             QToolButton:checked {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
                 color: white;
+                font-weight: 600;
             }
         """
 
@@ -109,8 +110,8 @@ class MainWindow(QMainWindow):
         sidebar.setObjectName("sidebar")
         sidebar.setStyleSheet("""
             QFrame#sidebar {
-                background-color: white;
-                border-right: 1px solid #e2e8f0;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1e293b, stop:1 #0f172a);
+                border-right: 1px solid #334155;
                 min-width: 180px;
                 max-width: 180px;
             }
@@ -118,22 +119,7 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout(sidebar)
         layout.setSpacing(8)
-        layout.setContentsMargins(12, 24, 12, 12)
-
-        # 应用标题
-        title_label = QLabel("X 射线图像处理")
-        title_label.setStyleSheet("""
-            QLabel {
-                font-size: 16px;
-                font-weight: 700;
-                color: #1e293b;
-                padding: 12px 8px;
-                border-bottom: 2px solid #e2e8f0;
-                margin-bottom: 16px;
-            }
-        """)
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
+        layout.setContentsMargins(12, 20, 12, 12)
 
         # 导航按钮
         self.nav_buttons = []
@@ -159,7 +145,7 @@ class MainWindow(QMainWindow):
         version_label = QLabel("v2.0")
         version_label.setStyleSheet("""
             QLabel {
-                color: #94a3b8;
+                color: #64748b;
                 font-size: 11px;
                 padding: 8px;
                 text-align: center;
