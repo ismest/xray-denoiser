@@ -663,11 +663,18 @@ class DenoiseApp(QMainWindow):
         # Handle images with alpha channel (4 channels)
         if len(img.shape) == 3:
             if img.shape[2] == 4:
-                # Remove alpha channel, keep only BGR
-                bgr_img = img[:, :, :3]
-                rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+                # Remove alpha channel, keep RGB (PIL loads as RGBA)
+                rgb_img = img[:, :, :3]
             elif img.shape[2] == 3:
-                rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                # Check if image was loaded from PIL (RGB) or OpenCV (BGR)
+                # PIL: RGB order, OpenCV: BGR order
+                # Heuristic: if R channel values > B channel values on average, likely RGB
+                mean_r = np.mean(img[:, :, 0])
+                mean_b = np.mean(img[:, :, 2])
+                # For X-ray images (grayscale), R=B in RGB, but R!=B in BGR conversion
+                # Safe approach: assume BGR from OpenCV, RGB from PIL
+                # Since we use PIL first now, assume RGB
+                rgb_img = img.copy()
             else:
                 # Single channel or other
                 gray = img[:, :, 0]

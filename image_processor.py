@@ -16,13 +16,21 @@ from neural_denoise import NeuralDenoiser
 from metrics import evaluate_denoising_quality
 from super_resolution import super_resolution_denoised_image, get_supported_sr_methods
 
+# Try to import PIL for better format support
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+    print("Warning: PIL not available. Some image formats may not load properly.")
+
 
 class ImageProcessor:
     """
     Core image processing class for X-ray image denoising.
     Supports multiple bit depths and formats.
     """
-    
+
     def __init__(self):
         self.original_image = None
         self.denoised_image = None
@@ -31,14 +39,15 @@ class ImageProcessor:
         self.image_info = {}
         self.neural_denoiser = NeuralDenoiser()
         self.sr_metrics = None  # Metrics after super-resolution
-        
+
     def load_image(self, file_path: str) -> bool:
         """
         Load an image from file path with automatic depth detection.
-        
+        Uses PIL for better format support, falls back to OpenCV.
+
         Args:
             file_path: Path to the image file
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -47,25 +56,46 @@ class ImageProcessor:
             if not os.path.exists(file_path):
                 print(f"File not found: {file_path}")
                 return False
-            
-            # Get file extension
-            ext = os.path.splitext(file_path)[1].lower()
-            
-            # Try different loading methods based on format
-            if ext in ['.tif', '.tiff']:
-                # For TIFF, try to load with all channels
-                image = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
-            elif ext in ['.png']:
-                # For PNG, preserve original depth
-                image = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
-            else:
-                # For other formats, standard loading
-                image = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
-            
+
+            image = None
+            use_pil = False
+
+            # Try PIL first for better format support
+            if HAS_PIL:
+                try:
+                    with Image.open(file_path) as img:
+                        # Convert to numpy array
+                        # PIL loads as RGBA for PNG with alpha, RGB for color, L for grayscale
+                        image = np.array(img)
+                        use_pil = True
+                        print(f"Loaded with PIL: {img.mode}, {img.size}")
+                except Exception as pil_error:
+                    print(f"PIL loading failed: {pil_error}")
+                    # Fall through to OpenCV
+
+            # If PIL failed or not available, try OpenCV
             if image is None:
-                print(f"Failed to load image: {file_path}")
+                # Try multiple OpenCV flags for robust loading
+                image = cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+
+                # If still failed, try with grayscale
+                if image is None:
+                    image = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+
+                if image is None:
+                    print(f"Failed to load image with OpenCV: {file_path}")
+                    return False
+
+            # Handle PNG with alpha channel (RGBA) - convert to RGB
+            if use_pil and len(image.shape) == 3 and image.shape[2] == 4:
+                # Remove alpha channel, keep RGB
+                image = image[:, :, :3]
+
+            # Ensure image is in proper numpy format
+            if image is None or image.size == 0:
+                print(f"Loaded image is empty: {file_path}")
                 return False
-            
+
             # Store image info
             self.image_info = {
                 'path': file_path,
@@ -75,17 +105,21 @@ class ImageProcessor:
                 'depth': image.dtype.itemsize * 8,
                 'size_mb': image.nbytes / (1024 * 1024)
             }
-            
+
             print(f"Loaded image: {self.image_info}")
-            
+
             self.original_image = image
             self.denoised_image = None
+            self.sr_image = None
             self.metrics = None
-            
+            self.sr_metrics = None
+
             return True
-            
+
         except Exception as e:
             print(f"Error loading image: {e}")
+            import traceback
+            traceback.print_exc()
             return False
     
     def process_image(self, method: str = 'hybrid', **kwargs) -> bool:
