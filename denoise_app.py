@@ -285,12 +285,6 @@ class DenoiseApp(QMainWindow):
         layout.setSpacing(14)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        # Title
-        title_label = QLabel("处理流程")
-        title_label.setObjectName("stepTitle")
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
-
         # File operations
         file_group = QGroupBox("文件操作")
         file_layout = QVBoxLayout(file_group)
@@ -386,20 +380,6 @@ class DenoiseApp(QMainWindow):
         sr_layout.addRow("放大倍数:", self.sr_scale_combo)
 
         step2_layout.addLayout(sr_layout)
-
-        # Enhancement options
-        enhance_layout = QHBoxLayout()
-        enhance_layout.setSpacing(15)
-
-        self.enhance_edges_cb = QCheckBox("边缘增强")
-        self.enhance_edges_cb.setChecked(True)
-        enhance_layout.addWidget(self.enhance_edges_cb)
-
-        self.enhance_contrast_cb = QCheckBox("对比度增强")
-        self.enhance_contrast_cb.setChecked(True)
-        enhance_layout.addWidget(self.enhance_contrast_cb)
-
-        step2_layout.addLayout(enhance_layout)
 
         self.sr_btn = QPushButton("🔍 执行超分辨率")
         self.sr_btn.setObjectName("secondaryBtn")
@@ -577,7 +557,7 @@ class DenoiseApp(QMainWindow):
         # Metrics section
         metrics_group = QGroupBox("评估指标")
         metrics_layout = QHBoxLayout()
-        metrics_layout.setSpacing(20)
+        metrics_layout.setSpacing(15)
 
         # Denoising metrics
         denoise_metrics_widget = QWidget()
@@ -605,13 +585,8 @@ class DenoiseApp(QMainWindow):
 
         metrics_layout.setStretch(0, 1)
         metrics_layout.setStretch(1, 1)
-        metrics_layout.addStretch(1)
 
-        metrics_layout_total = QVBoxLayout()
-        metrics_layout_total.addWidget(QLabel("<b>质量评估指标</b>"))
-        metrics_layout_total.addLayout(metrics_layout)
-
-        metrics_group.setLayout(metrics_layout_total)
+        metrics_group.setLayout(metrics_layout)
         layout.addWidget(metrics_group)
 
         return panel
@@ -685,10 +660,16 @@ class DenoiseApp(QMainWindow):
     def _convert_to_rgb(self, img):
         """Convert image to RGB for display."""
         import cv2
+        # Handle images with alpha channel (4 channels)
         if len(img.shape) == 3:
-            if img.shape[2] == 3:
+            if img.shape[2] == 4:
+                # Remove alpha channel, keep only BGR
+                bgr_img = img[:, :, :3]
+                rgb_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
+            elif img.shape[2] == 3:
                 rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             else:
+                # Single channel or other
                 gray = img[:, :, 0]
                 rgb_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
         else:
@@ -789,8 +770,8 @@ class DenoiseApp(QMainWindow):
         sr_params = {
             'scale': scale,
             'method': method,
-            'enhance_edges': self.enhance_edges_cb.isChecked(),
-            'enhance_contrast': self.enhance_contrast_cb.isChecked()
+            'enhance_edges': True,
+            'enhance_contrast': True
         }
 
         self.sr_progress.setVisible(True)
