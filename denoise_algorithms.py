@@ -370,11 +370,11 @@ def adaptive_denoise(image, method='auto', noise_estimate=None):
 def hybrid_denoise(image, strength='medium'):
     """
     Hybrid denoising approach combining multiple methods.
-    
+
     Args:
         image: Input image (any depth)
         strength: 'low', 'medium', 'high' - controls denoising strength
-    
+
     Returns:
         Denoised image in original depth
     """
@@ -382,7 +382,7 @@ def hybrid_denoise(image, strength='medium'):
         # Handle very small images
         if image.shape[0] < 20 or image.shape[1] < 20:
             return bilateral_filter_denoise(image)
-        
+
         # Set parameters based on strength
         if strength == 'low':
             h, patch_size, d = 6, 5, 5
@@ -393,15 +393,332 @@ def hybrid_denoise(image, strength='medium'):
         else:  # medium
             h, patch_size, d = 10, 7, 9
             sigma_color, sigma_space = 75, 75
-        
+
         # First pass: Non-local means
         denoised_nlm = non_local_means_denoise(image, h=h, patch_size=patch_size, patch_distance=15)
-        
+
         # Second pass: Bilateral filter to preserve edges
         denoised_final = bilateral_filter_denoise(denoised_nlm, d=d, sigma_color=sigma_color, sigma_space=sigma_space)
-        
+
         return denoised_final
-        
+
     except Exception as e:
         print(f"Hybrid denoising failed: {e}")
         return adaptive_denoise(image, method='auto')
+
+
+def bm3d_denoise(image, sigma_psd=20, stage_arg='hard'):
+    """
+    BM3D (Block-Matching 3D) denoising - advanced patch-based algorithm.
+
+    BM3D is one of the most effective denoising algorithms, using 3D
+    transform domain filtering with grouped similar patches.
+
+    Args:
+        image: Input image (any depth)
+        sigma_psd: Noise standard deviation estimate
+        stage_arg: 'hard' for basic estimate, 'hard+Wien' for final estimate
+
+    Returns:
+        Denoised image in original depth
+    """
+    try:
+        # Handle very small images
+        min_dim = min(image.shape[:2])
+        if min_dim < 16:
+            return bilateral_filter_denoise(image)
+
+        # Convert to grayscale if needed
+        if len(image.shape) == 3:
+            if image.shape[2] == 3:
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = image[:,:,0]
+        else:
+            gray = image
+
+        # Normalize to [0, 1]
+        normalized, original_dtype, original_max = normalize_image(gray)
+
+        # Try to use bm3d package if available
+        try:
+            import bm3d
+            denoised = bm3d.bm3d(normalized, sigma_psd=sigma_psd, stage_arg=stage_arg)
+        except ImportError:
+            # Fallback: implement simplified BM3D-like approach using OpenCV
+            # This is a simplified version that mimics BM3D behavior
+            denoised = _simplified_bm3d(normalized, sigma_psd=sigma_psd)
+
+        # Convert back to original depth
+        return denormalize_image(denoised, original_dtype, original_max)
+
+    except Exception as e:
+        print(f"BM3D denoising failed: {e}")
+        return adaptive_denoise(image, method='nlm')
+
+
+def _simplified_bm3d(image, sigma_psd=20, block_size=8, search_window=21):
+    """
+    Simplified BM3D implementation using OpenCV when bm3d package is not available.
+
+    This is a fallback implementation that approximates BM3D behavior using
+    block matching and collaborative filtering concepts.
+    """
+    # Normalize sigma
+    sigma = sigma_psd / 255.0
+
+    # Use OpenCV's fastNlMeansDenoise which implements similar concepts to BM3D
+    # Convert to uint8 for OpenCV
+    uint8_img = (image * 255).round().astype(np.uint8)
+
+    # Apply fast NLM with BM3D-like parameters
+    h = int(sigma * 100)
+    h = max(5, min(h, 100))
+
+    denoised_uint8 = cv2.fastNlMeansDenoise(
+        uint8_img,
+        h=h,
+        templateWindowSize=7,
+        searchWindowSize=search_window
+    )
+
+    return denoised_uint8.astype(np.float64) / 255.0
+
+
+def anisotropic_diffusion_denoise(image, niter=10, kappa=50, gamma=0.1, option=1):
+    """
+    Anisotropic Diffusion denoising - edge-preserving smoothing.
+
+    Uses partial differential equations to smooth homogeneous regions
+    while preserving edges. Based on Perona-Malik diffusion.
+
+    Args:
+        image: Input image (any depth)
+        niter: Number of iterations (more = stronger smoothing)
+        kappa: Gradient threshold (higher = more smoothing)
+        gamma: Step size (0-0.25, typically 0.1)
+        option: 1 for Perona-Malik function 1, 2 for function 2
+
+    Returns:
+        Denoised image in original depth
+    """
+    try:
+        # Handle very small images
+        min_dim = min(image.shape[:2])
+        if min_dim < 8:
+            return bilateral_filter_denoise(image)
+
+        # Convert to grayscale if needed
+        if len(image.shape) == 3:
+            if image.shape[2] == 3:
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = image[:,:,0]
+        else:
+            gray = image
+
+        # Normalize to float64 [0, 1]
+        normalized, original_dtype, original_max = normalize_image(gray)
+
+        # Apply anisotropic diffusion
+        denoised = _perona_mailik_diffusion(normalized, niter=niter, kappa=kappa, gamma=gamma, option=option)
+
+        # Convert back to original depth
+        return denormalize_image(denoised, original_dtype, original_max)
+
+    except Exception as e:
+        print(f"Anisotropic diffusion failed: {e}")
+        return bilateral_filter_denoise(image)
+
+
+def _perona_mailik_diffusion(image, niter=10, kappa=50, gamma=0.1, option=1):
+    """
+    Perona-Malik anisotropic diffusion implementation.
+
+    The diffusion coefficient controls the rate of smoothing:
+    - Option 1: c = exp(-(||grad(I)||/kappa)^2)
+    - Option 2: c = 1 / (1 + (||grad(I)||/kappa)^2)
+    """
+    image = image.astype(np.float64)
+
+    # Initialize output
+    output = image.copy()
+
+    # Clamp gamma to stable range
+    gamma = max(0.01, min(gamma, 0.25))
+
+    for i in range(niter):
+        # Compute gradients using finite differences
+        # North-South gradient
+        grad_n = np.zeros_like(output)
+        grad_n[:-1, :] = output[1:, :] - output[:-1, :]
+
+        grad_s = np.zeros_like(output)
+        grad_s[1:, :] = output[:-1, :] - output[1:, :]
+
+        # East-West gradient
+        grad_w = np.zeros_like(output)
+        grad_w[:, :-1] = output[:, 1:] - output[:, :-1]
+
+        grad_e = np.zeros_like(output)
+        grad_e[:, 1:] = output[:, :-1] - output[:, 1:]
+
+        # Compute diffusion coefficients
+        grad_magnitude_ns = np.abs(grad_n + grad_s) / 2
+        grad_magnitude_ew = np.abs(grad_w + grad_e) / 2
+
+        if option == 1:
+            # Perona-Malik function 1 (exponential)
+            c_n = np.exp(-(grad_magnitude_ns / kappa) ** 2)
+            c_s = c_n.copy()
+            c_w = np.exp(-(grad_magnitude_ew / kappa) ** 2)
+            c_e = c_w.copy()
+        else:
+            # Perona-Malik function 2 (rational)
+            c_n = 1.0 / (1.0 + (grad_magnitude_ns / kappa) ** 2)
+            c_s = c_n.copy()
+            c_w = 1.0 / (1.0 + (grad_magnitude_ew / kappa) ** 2)
+            c_e = c_w.copy()
+
+        # Handle boundaries
+        c_n[-1, :] = 0
+        c_s[0, :] = 0
+        c_w[:, -1] = 0
+        c_e[:, 0] = 0
+
+        # Update image using diffusion equation
+        output += gamma * (
+            c_n * grad_n +
+            c_s * grad_s +
+            c_w * grad_w +
+            c_e * grad_e
+        )
+
+        # Clip to valid range
+        output = np.clip(output, 0, 1)
+
+    return output
+
+
+def iterative_reconstruction_denoise(image, niter=5, regularization=0.1, method='tv'):
+    """
+    Iterative Reconstruction denoising using regularization.
+
+    Iteratively refines the image by minimizing an energy function
+    combining data fidelity and regularization terms.
+
+    Args:
+        image: Input image (any depth)
+        niter: Number of iterations
+        regularization: Regularization strength (higher = smoother)
+        method: 'tv' for Total Variation, 'tikhonov' for Tikhonov regularization
+
+    Returns:
+        Denoised image in original depth
+    """
+    try:
+        # Handle very small images
+        min_dim = min(image.shape[:2])
+        if min_dim < 8:
+            return bilateral_filter_denoise(image)
+
+        # Convert to grayscale if needed
+        if len(image.shape) == 3:
+            if image.shape[2] == 3:
+                gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            else:
+                gray = image[:,:,0]
+        else:
+            gray = image
+
+        # Normalize to float64 [0, 1]
+        normalized, original_dtype, original_max = normalize_image(gray)
+
+        # Apply iterative reconstruction
+        if method == 'tv':
+            denoised = _tv_denoise_iterative(normalized, niter=niter, alpha=regularization)
+        else:
+            denoised = _tikhonov_denoise_iterative(normalized, niter=niter, alpha=regularization)
+
+        # Convert back to original depth
+        return denormalize_image(denoised, original_dtype, original_max)
+
+    except Exception as e:
+        print(f"Iterative reconstruction failed: {e}")
+        return adaptive_denoise(image, method='auto')
+
+
+def _tv_denoise_iterative(image, niter=5, alpha=0.1, eps=1e-8):
+    """
+    Total Variation denoising using split Bregman / gradient descent.
+
+    TV regularization preserves edges while removing noise.
+    Minimizes: ||u - f||^2 + alpha * ||grad(u)||_1
+    """
+    image = image.astype(np.float64)
+    u = image.copy()
+
+    # Gradient descent with TV regularization
+    for _ in range(niter):
+        # Compute gradient magnitude
+        grad_x = np.zeros_like(u)
+        grad_x[:, :-1] = u[:, 1:] - u[:, :-1]
+
+        grad_y = np.zeros_like(u)
+        grad_y[:-1, :] = u[1:, :] - u[:-1, :]
+
+        # Magnitude with epsilon for numerical stability
+        grad_mag = np.sqrt(grad_x**2 + grad_y**2 + eps)
+
+        # Compute divergence for TV flow
+        div_x = np.zeros_like(u)
+        div_x[:, 1:] = grad_x[:, 1:] / np.maximum(grad_mag[:, 1:], eps)
+        div_x[:, :-1] -= grad_x[:, :-1] / np.maximum(grad_mag[:, :-1], eps)
+
+        div_y = np.zeros_like(u)
+        div_y[1:, :] = grad_y[1:, :] / np.maximum(grad_mag[1:, :], eps)
+        div_y[:-1, :] -= grad_y[:-1, :] / np.maximum(grad_mag[:-1, :], eps)
+
+        # Update with TV regularization
+        u = u - alpha * (u - image) + 0.1 * (div_x + div_y)
+
+        # Clip to valid range
+        u = np.clip(u, 0, 1)
+
+    return u
+
+
+def _tikhonov_denoise_iterative(image, niter=5, alpha=0.1):
+    """
+    Tikhonov regularization denoising (L2 regularization).
+
+    Smoother than TV but may blur edges.
+    Minimizes: ||u - f||^2 + alpha * ||grad(u)||^2
+    """
+    image = image.astype(np.float64)
+    u = image.copy()
+
+    # Laplacian kernel for regularization
+    laplacian = np.array([[0, 1, 0],
+                          [1, -4, 1],
+                          [0, 1, 0]], dtype=np.float64)
+
+    for _ in range(niter):
+        # Convolve with Laplacian (using manual implementation for speed)
+        # This approximates the second derivative
+        lap_u = np.zeros_like(u)
+
+        # Manual Laplacian computation
+        lap_u[1:-1, 1:-1] = (
+            u[:-2, 1:-1] + u[2:, 1:-1] +
+            u[1:-1, :-2] + u[1:-1, 2:] -
+            4 * u[1:-1, 1:-1]
+        )
+
+        # Update with regularization
+        u = u + alpha * lap_u * (u - image)
+
+        # Clip to valid range
+        u = np.clip(u, 0, 1)
+
+    return u

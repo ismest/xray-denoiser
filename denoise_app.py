@@ -404,6 +404,67 @@ class DenoiseWidget(QWidget):
         self.neural_group.setLayout(neural_layout)
         layout.addWidget(self.neural_group)
 
+        # BM3D parameters
+        self.bm3d_group = QGroupBox("BM3D 参数")
+        bm3d_layout = QHBoxLayout()
+        bm3d_layout.setSpacing(10)
+        self.bm3d_sigma_spin = QSpinBox()
+        self.bm3d_sigma_spin.setRange(1, 100)
+        self.bm3d_sigma_spin.setValue(20)
+        self.bm3d_sigma_spin.setMinimumHeight(32)
+        bm3d_layout.addWidget(QLabel("噪声标准差:"))
+        bm3d_layout.addWidget(self.bm3d_sigma_spin)
+        self.bm3d_group.setLayout(bm3d_layout)
+        layout.addWidget(self.bm3d_group)
+
+        # Anisotropic Diffusion parameters
+        self.aniso_group = QGroupBox("各向异性扩散参数")
+        aniso_layout = QHBoxLayout()
+        aniso_layout.setSpacing(10)
+        self.aniso_iter_spin = QSpinBox()
+        self.aniso_iter_spin.setRange(1, 50)
+        self.aniso_iter_spin.setValue(10)
+        self.aniso_iter_spin.setMinimumHeight(32)
+        aniso_layout.addWidget(QLabel("迭代次数:"))
+        aniso_layout.addWidget(self.aniso_iter_spin)
+
+        self.aniso_kappa_spin = QSpinBox()
+        self.aniso_kappa_spin.setRange(10, 200)
+        self.aniso_kappa_spin.setValue(50)
+        self.aniso_kappa_spin.setMinimumHeight(32)
+        aniso_layout.addWidget(QLabel("梯度阈值:"))
+        aniso_layout.addWidget(self.aniso_kappa_spin)
+        self.aniso_group.setLayout(aniso_layout)
+        layout.addWidget(self.aniso_group)
+
+        # Iterative Reconstruction parameters
+        self.iter_group = QGroupBox("迭代重建参数")
+        iter_layout = QHBoxLayout()
+        iter_layout.setSpacing(10)
+        self.iter_recon_iter_spin = QSpinBox()
+        self.iter_recon_iter_spin.setRange(1, 20)
+        self.iter_recon_iter_spin.setValue(5)
+        self.iter_recon_iter_spin.setMinimumHeight(32)
+        iter_layout.addWidget(QLabel("迭代次数:"))
+        iter_layout.addWidget(self.iter_recon_iter_spin)
+
+        self.iter_reg_spin = QDoubleSpinBox()
+        self.iter_reg_spin.setRange(0.01, 1.0)
+        self.iter_reg_spin.setSingleStep(0.01)
+        self.iter_reg_spin.setValue(0.1)
+        self.iter_reg_spin.setMinimumHeight(32)
+        iter_layout.addWidget(QLabel("正则化强度:"))
+        iter_layout.addWidget(self.iter_reg_spin)
+
+        self.iter_method_combo = QComboBox()
+        self.iter_method_combo.addItem("Total Variation", "tv")
+        self.iter_method_combo.addItem("Tikhonov", "tikhonov")
+        self.iter_method_combo.setMinimumHeight(32)
+        iter_layout.addWidget(QLabel("方法:"))
+        iter_layout.addWidget(self.iter_method_combo)
+        self.iter_group.setLayout(iter_layout)
+        layout.addWidget(self.iter_group)
+
         return widget
 
     def create_display_panel(self):
@@ -504,6 +565,9 @@ class DenoiseWidget(QWidget):
         self.nlm_group.setVisible(method == 'nlm')
         self.bilateral_group.setVisible(method == 'bilateral')
         self.neural_group.setVisible(method == 'neural')
+        self.bm3d_group.setVisible(method == 'bm3d')
+        self.aniso_group.setVisible(method == 'anisotropic')
+        self.iter_group.setVisible(method == 'iterative')
 
     def load_image(self):
         """Load an image file."""
@@ -592,6 +656,15 @@ class DenoiseWidget(QWidget):
         elif method == 'neural':
             params['patch_size'] = self.neural_patch_spin.value()
             params['stride'] = self.neural_stride_spin.value()
+        elif method == 'bm3d':
+            params['sigma'] = self.bm3d_sigma_spin.value()
+        elif method == 'anisotropic':
+            params['niter'] = self.aniso_iter_spin.value()
+            params['kappa'] = self.aniso_kappa_spin.value()
+        elif method == 'iterative':
+            params['niter'] = self.iter_recon_iter_spin.value()
+            params['regularization'] = self.iter_reg_spin.value()
+            params['recon_method'] = self.iter_method_combo.currentData()
 
         self.denoise_progress.setVisible(True)
         self.denoise_progress.setValue(0)

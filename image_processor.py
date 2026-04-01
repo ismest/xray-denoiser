@@ -10,7 +10,8 @@ from typing import Tuple, Optional, Dict, Any
 from denoise_algorithms import (
     hybrid_denoise, adaptive_denoise, normalize_image, denormalize_image,
     safe_resize_for_display, non_local_means_denoise, bilateral_filter_denoise,
-    wavelet_denoise, gaussian_denoise
+    wavelet_denoise, gaussian_denoise, bm3d_denoise, anisotropic_diffusion_denoise,
+    iterative_reconstruction_denoise
 )
 from neural_denoise import NeuralDenoiser
 from metrics import evaluate_denoising_quality, evaluate_super_resolution, compare_sr_with_reference
@@ -183,6 +184,30 @@ class ImageProcessor:
 
             elif method == 'gaussian':
                 self.denoised_image = gaussian_denoise(self.original_image)
+
+            elif method == 'bm3d':
+                sigma = kwargs.get('sigma', 20)
+                self.denoised_image = bm3d_denoise(self.original_image, sigma_psd=sigma)
+
+            elif method == 'anisotropic':
+                niter = kwargs.get('niter', 10)
+                kappa = kwargs.get('kappa', 50)
+                self.denoised_image = anisotropic_diffusion_denoise(
+                    self.original_image,
+                    niter=niter,
+                    kappa=kappa
+                )
+
+            elif method == 'iterative':
+                niter = kwargs.get('niter', 5)
+                regularization = kwargs.get('regularization', 0.1)
+                method_type = kwargs.get('recon_method', 'tv')
+                self.denoised_image = iterative_reconstruction_denoise(
+                    self.original_image,
+                    niter=niter,
+                    regularization=regularization,
+                    method=method_type
+                )
 
             else:
                 # Default to hybrid
@@ -369,14 +394,17 @@ class ImageProcessor:
         """Get list of supported denoising methods."""
         methods = [
             ('hybrid', 'Hybrid (Recommended)'),
+            ('bm3d', 'BM3D (Block-Matching 3D)'),
+            ('anisotropic', 'Anisotropic Diffusion'),
+            ('iterative', 'Iterative Reconstruction'),
             ('nlm', 'Non-local Means'),
             ('bilateral', 'Bilateral Filter'),
             ('wavelet', 'Wavelet'),
             ('gaussian', 'Gaussian Filter'),
         ]
-        
+
         # Add neural if available
         if self.neural_denoiser.is_available():
             methods.append(('neural', 'Neural Network'))
-        
+
         return methods
