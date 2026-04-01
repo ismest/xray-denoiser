@@ -188,9 +188,15 @@ class DenoiseWidget(QWidget):
         content_layout = QHBoxLayout()
         content_layout.setSpacing(16)
 
-        # Left panel - Controls
+        # Left panel - Controls (with scroll support)
         left_panel = self.create_control_panel()
-        content_layout.addWidget(left_panel, 1)
+        left_scroll = QScrollArea()
+        left_scroll.setWidget(left_panel)
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setFrameStyle(QFrame.NoFrame)
+        left_scroll.setMinimumWidth(280)
+        content_layout.addWidget(left_scroll, 1)
 
         # Right panel - Image display
         right_panel = self.create_display_panel()
@@ -204,33 +210,33 @@ class DenoiseWidget(QWidget):
         panel = QFrame()
         panel.setObjectName("controlPanel")
         layout = QVBoxLayout(panel)
-        layout.setSpacing(14)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         # File operations
         file_group = QGroupBox("文件操作")
         file_layout = QVBoxLayout(file_group)
-        file_layout.setSpacing(10)
+        file_layout.setSpacing(8)
 
         self.load_btn = QPushButton("📁 加载图像")
         self.load_btn.clicked.connect(self.load_image)
-        self.load_btn.setMinimumHeight(42)
+        self.load_btn.setMinimumHeight(36)
         file_layout.addWidget(self.load_btn)
 
         save_layout = QHBoxLayout()
-        save_layout.setSpacing(10)
+        save_layout.setSpacing(8)
         self.save_denoise_btn = QPushButton("💾 保存降噪图")
         self.save_denoise_btn.setObjectName("saveBtn")
         self.save_denoise_btn.clicked.connect(lambda: self.save_result(use_sr=False))
         self.save_denoise_btn.setEnabled(False)
-        self.save_denoise_btn.setMinimumHeight(38)
+        self.save_denoise_btn.setMinimumHeight(34)
         save_layout.addWidget(self.save_denoise_btn)
 
         self.save_sr_btn = QPushButton("💾 保存 SR 图")
         self.save_sr_btn.setObjectName("saveBtn")
         self.save_sr_btn.clicked.connect(lambda: self.save_result(use_sr=True))
         self.save_sr_btn.setEnabled(False)
-        self.save_sr_btn.setMinimumHeight(38)
+        self.save_sr_btn.setMinimumHeight(34)
         save_layout.addWidget(self.save_sr_btn)
         file_layout.addLayout(save_layout)
 
@@ -239,20 +245,20 @@ class DenoiseWidget(QWidget):
         # Step 1: Denoising
         step1_group = QGroupBox("步骤 1: 降噪处理")
         step1_layout = QVBoxLayout(step1_group)
-        step1_layout.setSpacing(12)
+        step1_layout.setSpacing(8)
 
         algo_layout = QFormLayout()
-        algo_layout.setSpacing(10)
+        algo_layout.setSpacing(8)
 
         self.algorithm_combo = QComboBox()
         self.update_algorithm_list()
-        self.algorithm_combo.setMinimumHeight(36)
+        self.algorithm_combo.setMinimumHeight(32)
         algo_layout.addRow("算法:", self.algorithm_combo)
 
         self.strength_combo = QComboBox()
         self.strength_combo.addItems(["低", "中", "高"])
         self.strength_combo.setCurrentIndex(1)
-        self.strength_combo.setMinimumHeight(36)
+        self.strength_combo.setMinimumHeight(32)
         algo_layout.addRow("强度:", self.strength_combo)
 
         step1_layout.addLayout(algo_layout)
@@ -264,7 +270,7 @@ class DenoiseWidget(QWidget):
         self.denoise_btn.setObjectName("primaryBtn")
         self.denoise_btn.clicked.connect(self.denoise_image)
         self.denoise_btn.setEnabled(False)
-        self.denoise_btn.setMinimumHeight(48)
+        self.denoise_btn.setMinimumHeight(40)
         step1_layout.addWidget(self.denoise_btn)
 
         self.denoise_progress = QProgressBar()
@@ -280,22 +286,22 @@ class DenoiseWidget(QWidget):
         # Step 2: Super-Resolution
         step2_group = QGroupBox("步骤 2: 超分辨率重构")
         step2_layout = QVBoxLayout(step2_group)
-        step2_layout.setSpacing(12)
+        step2_layout.setSpacing(8)
 
         sr_layout = QFormLayout()
-        sr_layout.setSpacing(10)
+        sr_layout.setSpacing(8)
 
         self.sr_method_combo = QComboBox()
         for key, name in get_supported_sr_methods():
             self.sr_method_combo.addItem(name, key)
         self.sr_method_combo.setCurrentIndex(1)
-        self.sr_method_combo.setMinimumHeight(36)
+        self.sr_method_combo.setMinimumHeight(32)
         sr_layout.addRow("插值方法:", self.sr_method_combo)
 
         self.sr_scale_combo = QComboBox()
         self.sr_scale_combo.addItems(["1.5x", "2.0x", "3.0x", "4.0x"])
         self.sr_scale_combo.setCurrentIndex(1)
-        self.sr_scale_combo.setMinimumHeight(36)
+        self.sr_scale_combo.setMinimumHeight(32)
         sr_layout.addRow("放大倍数:", self.sr_scale_combo)
 
         step2_layout.addLayout(sr_layout)
@@ -304,7 +310,7 @@ class DenoiseWidget(QWidget):
         self.sr_btn.setObjectName("secondaryBtn")
         self.sr_btn.clicked.connect(self.apply_sr)
         self.sr_btn.setEnabled(False)
-        self.sr_btn.setMinimumHeight(48)
+        self.sr_btn.setMinimumHeight(40)
         step2_layout.addWidget(self.sr_btn)
 
         self.sr_progress = QProgressBar()

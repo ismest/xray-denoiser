@@ -107,8 +107,8 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """初始化用户界面。"""
         self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.0.2')
-        self.setMinimumSize(1400, 900)
-        self.resize(1600, 1000)
+        self.setMinimumSize(1200, 700)
+        self.resize(1400, 800)
 
         # 设置全局调色板
         palette = QPalette()
