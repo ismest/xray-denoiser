@@ -57,218 +57,254 @@ class DenoiseApp(QMainWindow):
 
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #f0f2f5;
+                background-color: #e8ebf0;
             }
             QWidget {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                font-size: 14px;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                font-size: 13px;
+                color: #333;
             }
             QFrame#card, QFrame#controlPanel {
                 background-color: white;
-                border-radius: 12px;
+                border-radius: 10px;
+                border: 1px solid #d1d5db;
             }
             QLabel#sectionTitle {
                 font-weight: 600;
-                font-size: 15px;
-                color: #1a1a1a;
-                padding: 8px 0 8px 12px;
-                border-left: 4px solid #1976d2;
-                margin-bottom: 12px;
+                font-size: 13px;
+                color: #374151;
+                padding: 6px 0 6px 10px;
+                border-left: 3px solid #3b82f6;
+                margin-bottom: 8px;
+                background-color: transparent;
             }
             QPushButton {
-                background-color: #1976d2;
+                background-color: #3b82f6;
                 color: white;
                 border: none;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-weight: 600;
-                font-size: 14px;
+                padding: 8px 16px;
+                border-radius: 6px;
+                font-weight: 500;
+                font-size: 13px;
             }
-            QPushButton:hover { background-color: #1565c0; }
-            QPushButton:pressed { background-color: #0d47a1; }
-            QPushButton:disabled { background-color: #e0e0e0; color: #9e9e9e; }
+            QPushButton:hover { background-color: #2563eb; }
+            QPushButton:pressed { background-color: #1d4ed8; }
+            QPushButton:disabled { background-color: #d1d5db; color: #9ca3af; }
             QPushButton#saveButton, QPushButton#processButton {
-                background-color: #2e7d32;
+                background-color: #15803d;
+                color: white;
+                font-weight: 600;
             }
             QPushButton#saveButton:hover, QPushButton#processButton:hover {
-                background-color: #256628;
+                background-color: #166534;
+            }
+            QPushButton#saveButton:pressed, QPushButton#processButton:pressed {
+                background-color: #14532d;
             }
             QComboBox {
-                padding: 10px 14px;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
+                padding: 6px 10px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
                 background-color: white;
-                min-height: 40px;
+                min-height: 32px;
+                max-height: 32px;
             }
-            QComboBox:hover { border: 1px solid #1976d2; }
-            QComboBox::drop-down { border: none; padding-right: 10px; }
+            QComboBox:hover { border: 1px solid #3b82f6; }
+            QComboBox:focus { border: 1px solid #3b82f6; }
+            QComboBox::drop-down { border: none; padding-right: 8px; }
             QComboBox::down-arrow {
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid #666;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #6b7280;
             }
             QComboBox QAbstractItemView {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                selection-background-color: #e3f2fd;
-                selection-color: #1976d2;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                selection-background-color: #dbeafe;
+                selection-color: #1e40af;
+                background-color: white;
                 padding: 4px;
             }
             QComboBox QAbstractItemView::item {
-                min-height: 36px;
-                padding: 6px 10px;
+                min-height: 32px;
+                padding: 4px 8px;
                 border-radius: 4px;
             }
-            QSpinBox, QDoubleSpinBox {
-                padding: 10px 14px;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: white;
-                min-height: 40px;
+            QComboBox::item:selected {
+                background-color: #dbeafe;
+                color: #1e40af;
             }
-            QSpinBox:hover, QDoubleSpinBox:hover { border: 1px solid #1976d2; }
+            QSpinBox, QDoubleSpinBox {
+                padding: 6px 10px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                background-color: white;
+                min-height: 32px;
+                max-height: 32px;
+            }
+            QSpinBox:hover, QDoubleSpinBox:hover { border: 1px solid #3b82f6; }
             QSpinBox::up-button, QSpinBox::down-button,
             QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
                 border: none;
-                width: 24px;
-                background: #f5f5f5;
-                border-radius: 6px;
+                width: 20px;
+                background: #f3f4f6;
+                border-radius: 4px;
                 margin: 2px;
             }
             QSpinBox::up-button:hover, QSpinBox::down-button:hover,
             QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
-                background: #e0e0e0;
+                background: #e5e7eb;
             }
             QTextEdit {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                background-color: #fafafa;
-                padding: 12px;
-                font-size: 13px;
-                font-family: 'Consolas', 'Courier New', monospace;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
+                background-color: #f9fafb;
+                padding: 8px;
+                font-size: 12px;
+                font-family: 'Consolas', 'Courier New', 'Monaco', monospace;
             }
-            QTextEdit:focus { border: 1px solid #1976d2; }
+            QTextEdit:focus { border: 1px solid #3b82f6; }
             QProgressBar {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
+                border: 1px solid #e5e7eb;
+                border-radius: 6px;
                 text-align: center;
-                height: 32px;
-                font-weight: 600;
-                font-size: 13px;
-                background-color: #f5f5f5;
+                height: 24px;
+                font-weight: 500;
+                font-size: 12px;
+                background-color: #f9fafb;
+                color: #374151;
             }
             QProgressBar::chunk {
-                background-color: #2e7d32;
-                border-radius: 7px;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #22c55e, stop:1 #16a34a);
+                border-radius: 5px;
             }
             QStatusBar {
                 background-color: white;
-                color: #666666;
-                border-top: 1px solid #e0e0e0;
-                font-size: 13px;
+                color: #6b7280;
+                border-top: 1px solid #e5e7eb;
+                font-size: 12px;
             }
             QScrollBar:vertical {
-                background: #f5f5f5;
-                width: 10px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle {
-                background: #c0c0c0;
+                background: #f3f4f6;
+                width: 8px;
                 border-radius: 4px;
             }
-            QScrollBar::handle:hover { background: #a0a0a0; }
+            QScrollBar::handle {
+                background: #d1d5db;
+                border-radius: 3px;
+            }
+            QScrollBar::handle:hover { background: #9ca3af; }
             QScrollBar::add-line, QScrollBar::sub-line,
             QScrollBar::add-page, QScrollBar::sub-page {
                 height: 0; width: 0; background: none;
             }
             QLabel#imageBox {
-                border: 2px dashed #e0e0e0;
-                border-radius: 12px;
-                background-color: #fafafa;
-                color: #999;
+                border: 2px dashed #d1d5db;
+                border-radius: 10px;
+                background-color: #f9fafb;
+                color: #9ca3af;
                 font-style: italic;
             }
             QLabel#imageTitle {
                 font-weight: 600;
-                font-size: 15px;
-                color: #1a1a1a;
+                font-size: 13px;
+                color: #1f2937;
             }
         """)
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QHBoxLayout(central_widget)
-        main_layout.setSpacing(16)
-        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(12, 12, 12, 12)
 
         # Left panel - Controls
         left_panel = QFrame()
         left_panel.setObjectName("controlPanel")
         left_layout = QVBoxLayout(left_panel)
-        left_layout.setSpacing(16)
-        left_layout.setContentsMargins(20, 20, 20, 20)
+        left_layout.setSpacing(12)
+        left_layout.setContentsMargins(16, 16, 16, 16)
 
         title_label = QLabel("控制面板")
         title_label.setObjectName("sectionTitle")
+        title_label.setStyleSheet("font-size: 14px; font-weight: 700; border-left: 4px solid #3b82f6;")
         left_layout.addWidget(title_label)
 
         # File operations
         file_label = QLabel("文件操作")
         file_label.setObjectName("sectionTitle")
-        file_label.setCursor(Qt.PointingHandCursor)
         left_layout.addWidget(file_label)
 
         file_layout = QHBoxLayout()
-        file_layout.setSpacing(12)
-        self.load_btn = QPushButton("📁 加载 X 光图像")
+        file_layout.setSpacing(10)
+        self.load_btn = QPushButton("📁 加载图像")
         self.load_btn.clicked.connect(self.load_image)
+        self.load_btn.setMinimumHeight(36)
         file_layout.addWidget(self.load_btn)
 
-        self.save_btn = QPushButton("💾 保存结果")
+        self.save_btn = QPushButton("💾 保存")
         self.save_btn.setObjectName("saveButton")
         self.save_btn.clicked.connect(self.save_result)
         self.save_btn.setEnabled(False)
+        self.save_btn.setMinimumHeight(36)
         file_layout.addWidget(self.save_btn)
         left_layout.addLayout(file_layout)
 
         # Algorithm selection
         algo_label = QLabel("降噪算法")
         algo_label.setObjectName("sectionTitle")
-        algo_label.setCursor(Qt.PointingHandCursor)
         left_layout.addWidget(algo_label)
 
-        algo_layout = QHBoxLayout()
-        algo_layout.setSpacing(12)
-        algo_label2 = QLabel("算法")
-        algo_label2.setStyleSheet("color: #666;")
-        algo_layout.addWidget(algo_label2)
+        # Algorithm card
+        algo_card = QFrame()
+        algo_card.setStyleSheet("""
+            QFrame {
+                background-color: #f9fafb;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+            }
+        """)
+        algo_card_layout = QVBoxLayout(algo_card)
+        algo_card_layout.setSpacing(10)
+        algo_card_layout.setContentsMargins(12, 12, 12, 12)
+
+        algo_row = QHBoxLayout()
+        algo_row.setSpacing(8)
+        algo_text = QLabel("算法")
+        algo_text.setStyleSheet("color: #6b7280; font-weight: 500;")
+        algo_row.addWidget(algo_text)
 
         self.algorithm_combo = QComboBox()
         self.update_algorithm_list()
-        self.algorithm_combo.setMinimumWidth(200)
-        algo_layout.addWidget(self.algorithm_combo)
+        self.algorithm_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.algorithm_combo.setMinimumHeight(32)
+        algo_row.addWidget(self.algorithm_combo, 1)
+        algo_card_layout.addLayout(algo_row)
 
-        algo_layout.addSpacing(20)
-        strength_label = QLabel("强度")
-        strength_label.setStyleSheet("color: #666;")
-        algo_layout.addWidget(strength_label)
+        strength_row = QHBoxLayout()
+        strength_row.setSpacing(8)
+        strength_text = QLabel("强度")
+        strength_text.setStyleSheet("color: #6b7280; font-weight: 500;")
+        strength_row.addWidget(strength_text)
 
         self.strength_combo = QComboBox()
         self.strength_combo.addItems(["低", "中", "高"])
         self.strength_combo.setCurrentIndex(1)
-        self.strength_combo.setMinimumWidth(70)
-        algo_layout.addWidget(self.strength_combo)
-        algo_layout.addStretch()
-        left_layout.addLayout(algo_layout)
+        self.strength_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        self.strength_combo.setMinimumHeight(32)
+        strength_row.addWidget(self.strength_combo, 1)
+        algo_card_layout.addLayout(strength_row)
+
+        left_layout.addWidget(algo_card)
 
         # Parameters
         params_label = QLabel("参数设置")
         params_label.setObjectName("sectionTitle")
-        params_label.setCursor(Qt.PointingHandCursor)
         left_layout.addWidget(params_label)
 
         params_container = QHBoxLayout()
-        params_container.setSpacing(12)
+        params_container.setSpacing(10)
 
         self.nlm_group = QWidget()
         nlm_layout = QFormLayout()
@@ -276,10 +312,12 @@ class DenoiseApp(QMainWindow):
         self.nlm_h_spin = QSpinBox()
         self.nlm_h_spin.setRange(1, 50)
         self.nlm_h_spin.setValue(10)
+        self.nlm_h_spin.setMinimumHeight(32)
         nlm_layout.addRow("滤波强度 h:", self.nlm_h_spin)
         self.nlm_patch_spin = QSpinBox()
         self.nlm_patch_spin.setRange(3, 15)
         self.nlm_patch_spin.setValue(7)
+        self.nlm_patch_spin.setMinimumHeight(32)
         nlm_layout.addRow("块大小:", self.nlm_patch_spin)
         self.nlm_group.setLayout(nlm_layout)
         params_container.addWidget(self.nlm_group)
@@ -290,10 +328,12 @@ class DenoiseApp(QMainWindow):
         self.bilateral_d_spin = QSpinBox()
         self.bilateral_d_spin.setRange(3, 25)
         self.bilateral_d_spin.setValue(9)
+        self.bilateral_d_spin.setMinimumHeight(32)
         bilateral_layout.addRow("直径 d:", self.bilateral_d_spin)
         self.bilateral_color_spin = QSpinBox()
         self.bilateral_color_spin.setRange(10, 200)
         self.bilateral_color_spin.setValue(75)
+        self.bilateral_color_spin.setMinimumHeight(32)
         bilateral_layout.addRow("颜色标准差:", self.bilateral_color_spin)
         self.bilateral_group.setLayout(bilateral_layout)
         params_container.addWidget(self.bilateral_group)
@@ -304,10 +344,12 @@ class DenoiseApp(QMainWindow):
         self.neural_patch_spin = QSpinBox()
         self.neural_patch_spin.setRange(64, 512)
         self.neural_patch_spin.setValue(256)
+        self.neural_patch_spin.setMinimumHeight(32)
         neural_layout.addRow("块大小:", self.neural_patch_spin)
         self.neural_stride_spin = QSpinBox()
         self.neural_stride_spin.setRange(32, 256)
         self.neural_stride_spin.setValue(128)
+        self.neural_stride_spin.setMinimumHeight(32)
         neural_layout.addRow("步长:", self.neural_stride_spin)
         self.neural_group.setLayout(neural_layout)
         params_container.addWidget(self.neural_group)
@@ -317,13 +359,12 @@ class DenoiseApp(QMainWindow):
         # Image info
         info_label = QLabel("图像信息")
         info_label.setObjectName("sectionTitle")
-        info_label.setCursor(Qt.PointingHandCursor)
         left_layout.addWidget(info_label)
 
         self.info_text = QTextEdit()
         self.info_text.setReadOnly(True)
-        self.info_text.setMaximumHeight(100)
-        self.info_text.setMinimumHeight(80)
+        self.info_text.setMaximumHeight(80)
+        self.info_text.setMinimumHeight(70)
         left_layout.addWidget(self.info_text)
 
         # Process button
@@ -331,8 +372,8 @@ class DenoiseApp(QMainWindow):
         self.process_btn.setObjectName("processButton")
         self.process_btn.clicked.connect(self.process_image)
         self.process_btn.setEnabled(False)
-        self.process_btn.setMinimumHeight(50)
-        self.process_btn.setStyleSheet("font-size: 16px; padding: 16px;")
+        self.process_btn.setMinimumHeight(44)
+        self.process_btn.setStyleSheet("font-size: 14px; font-weight: 600;")
         left_layout.addWidget(self.process_btn)
 
         self.progress_bar = QProgressBar()
@@ -344,13 +385,14 @@ class DenoiseApp(QMainWindow):
         right_panel = QFrame()
         right_panel.setObjectName("card")
         right_layout = QVBoxLayout(right_panel)
-        right_layout.setSpacing(16)
-        right_layout.setContentsMargins(20, 20, 20, 20)
+        right_layout.setSpacing(12)
+        right_layout.setContentsMargins(16, 16, 16, 16)
 
         images_layout = QHBoxLayout()
-        images_layout.setSpacing(16)
+        images_layout.setSpacing(12)
 
         original_container = QVBoxLayout()
+        original_container.setSpacing(8)
         original_title = QLabel("原始图像")
         original_title.setObjectName("imageTitle")
         original_title.setAlignment(Qt.AlignCenter)
@@ -365,6 +407,7 @@ class DenoiseApp(QMainWindow):
         images_layout.addLayout(original_container, 1)
 
         denoised_container = QVBoxLayout()
+        denoised_container.setSpacing(8)
         denoised_title = QLabel("降噪后图像")
         denoised_title.setObjectName("imageTitle")
         denoised_title.setAlignment(Qt.AlignCenter)
@@ -382,19 +425,18 @@ class DenoiseApp(QMainWindow):
 
         results_label = QLabel("评估指标")
         results_label.setObjectName("sectionTitle")
-        results_label.setCursor(Qt.PointingHandCursor)
         right_layout.addWidget(results_label)
 
         self.metrics_text = QTextEdit()
         self.metrics_text.setReadOnly(True)
-        self.metrics_text.setMaximumHeight(80)
+        self.metrics_text.setMaximumHeight(70)
         self.metrics_text.setMinimumHeight(60)
         self.metrics_text.setText("处理后显示 PSNR、SSIM、MSE 指标")
         right_layout.addWidget(self.metrics_text)
         right_layout.addStretch()
 
-        main_layout.addWidget(left_panel)
-        main_layout.addWidget(right_panel, 1)
+        main_layout.addWidget(left_panel, 1)
+        main_layout.addWidget(right_panel, 2)
 
         self.status_bar = self.statusBar()
         self.status_bar.showMessage('就绪 - 加载图像开始')
