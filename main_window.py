@@ -65,7 +65,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统 v2.0')
+        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统 v2.0.1')
         self.setMinimumSize(1400, 900)
         self.resize(1600, 1000)
 
@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
         # 版本信息
-        version_label = QLabel("v2.0")
+        version_label = QLabel("v2.0.1")
         version_label.setStyleSheet("""
             QLabel {
                 color: #64748b;
