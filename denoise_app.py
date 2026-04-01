@@ -1,6 +1,8 @@
 """
 Main GUI application for X-ray image denoising and super-resolution.
 Two-step workflow: Denoise -> Super-Resolution
+
+Refactored to support both QMainWindow (standalone) and QWidget (embedded) modes.
 """
 
 import sys
@@ -60,25 +62,19 @@ class ProcessingThread(QThread):
             self.finished.emit(False, f"{str(e)}\n\n{error_details}")
 
 
-class DenoiseApp(QMainWindow):
-    """Main GUI application for X-ray image denoising."""
+class DenoiseWidget(QWidget):
+    """Denoising and Super-Resolution widget (can be embedded in main window)."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         self.processor = ImageProcessor()
         self.processing_thread = None
+        self.parent_window = parent
         self.init_ui()
 
     def init_ui(self):
         """Initialize the user interface."""
-        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统')
-        self.setMinimumSize(1400, 900)
-        self.resize(1600, 1000)
-
         self.setStyleSheet("""
-            QMainWindow {
-                background-color: #f1f5f9;
-            }
             QWidget {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
                 font-size: 13px;
@@ -88,24 +84,6 @@ class DenoiseApp(QMainWindow):
                 background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
-            }
-            QLabel#sectionTitle {
-                font-weight: 600;
-                font-size: 14px;
-                color: #1e293b;
-                padding: 8px 0 8px 12px;
-                border-left: 4px solid #3b82f6;
-                background-color: #f8fafc;
-                border-radius: 4px;
-            }
-            QLabel#stepTitle {
-                font-weight: 700;
-                font-size: 16px;
-                color: #0f172a;
-                padding: 12px;
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
-                color: white;
-                border-radius: 8px;
             }
             QPushButton {
                 background-color: #3b82f6;
@@ -128,9 +106,7 @@ class DenoiseApp(QMainWindow):
             QPushButton#primaryBtn:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
             }
-            QPushButton#primaryBtn:disabled {
-                background: #cbd5e1;
-            }
+            QPushButton#primaryBtn:disabled { background: #cbd5e1; }
             QPushButton#secondaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8b5cf6, stop:1 #7c3aed);
                 font-size: 15px;
@@ -140,9 +116,7 @@ class DenoiseApp(QMainWindow):
             QPushButton#secondaryBtn:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7c3aed, stop:1 #6d28d9);
             }
-            QPushButton#secondaryBtn:disabled {
-                background: #cbd5e1;
-            }
+            QPushButton#secondaryBtn:disabled { background: #cbd5e1; }
             QPushButton#saveBtn {
                 background-color: #0891b2;
                 font-weight: 600;
@@ -157,33 +131,6 @@ class DenoiseApp(QMainWindow):
                 min-height: 36px;
             }
             QComboBox:hover { border: 1px solid #3b82f6; }
-            QComboBox:focus { border: 1px solid #3b82f6; }
-            QComboBox::drop-down { border: none; padding-right: 8px; }
-            QComboBox::down-arrow {
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 6px solid #64748b;
-            }
-            QSpinBox, QDoubleSpinBox {
-                padding: 8px 12px;
-                border: 1px solid #cbd5e1;
-                border-radius: 8px;
-                background-color: white;
-                min-height: 36px;
-            }
-            QSpinBox:hover, QDoubleSpinBox:hover { border: 1px solid #3b82f6; }
-            QSpinBox::up-button, QSpinBox::down-button,
-            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
-                border: none;
-                width: 24px;
-                background: #f1f5f9;
-                border-radius: 6px;
-                margin: 2px;
-            }
-            QSpinBox::up-button:hover, QSpinBox::down-button:hover,
-            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
-                background: #e2e8f0;
-            }
             QTextEdit {
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
@@ -192,40 +139,16 @@ class DenoiseApp(QMainWindow):
                 font-size: 12px;
                 font-family: 'Consolas', 'Courier New', 'Monaco', monospace;
             }
-            QTextEdit:focus { border: 1px solid #3b82f6; }
             QProgressBar {
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 text-align: center;
                 height: 28px;
                 font-weight: 600;
-                font-size: 13px;
-                background-color: #f8fafc;
-                color: #475569;
             }
             QProgressBar::chunk {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
                 border-radius: 7px;
-            }
-            QStatusBar {
-                background-color: white;
-                color: #64748b;
-                border-top: 1px solid #e2e8f0;
-                font-size: 12px;
-            }
-            QScrollBar:vertical {
-                background: #f1f5f9;
-                width: 10px;
-                border-radius: 5px;
-            }
-            QScrollBar::handle {
-                background: #cbd5e1;
-                border-radius: 4px;
-            }
-            QScrollBar::handle:hover { background: #94a3b8; }
-            QScrollBar::add-line, QScrollBar::sub-line,
-            QScrollBar::add-page, QScrollBar::sub-page {
-                height: 0; width: 0; background: none;
             }
             QLabel#imageBox {
                 border: 2px dashed #cbd5e1;
@@ -235,14 +158,6 @@ class DenoiseApp(QMainWindow):
                 font-style: italic;
                 font-size: 14px;
             }
-            QLabel#imageTitle {
-                font-weight: 600;
-                font-size: 14px;
-                color: #1e293b;
-                padding: 8px;
-                background-color: #f1f5f9;
-                border-radius: 8px;
-            }
             QGroupBox {
                 font-weight: 600;
                 border: 1px solid #e2e8f0;
@@ -250,17 +165,9 @@ class DenoiseApp(QMainWindow):
                 margin-top: 12px;
                 padding-top: 12px;
             }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 12px;
-                padding: 0 8px;
-                color: #475569;
-            }
         """)
 
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QHBoxLayout(central_widget)
+        main_layout = QHBoxLayout(self)
         main_layout.setSpacing(16)
         main_layout.setContentsMargins(16, 16, 16, 16)
 
@@ -272,13 +179,10 @@ class DenoiseApp(QMainWindow):
         right_panel = self.create_display_panel()
         main_layout.addWidget(right_panel, 2)
 
-        self.status_bar = self.statusBar()
-        self.status_bar.showMessage('就绪 - 加载图像开始')
-
         self.update_parameter_panel()
 
     def create_control_panel(self):
-        """Create the left control panel with two steps."""
+        """Create the left control panel."""
         panel = QFrame()
         panel.setObjectName("controlPanel")
         layout = QVBoxLayout(panel)
@@ -319,7 +223,6 @@ class DenoiseApp(QMainWindow):
         step1_layout = QVBoxLayout(step1_group)
         step1_layout.setSpacing(12)
 
-        # Algorithm selection
         algo_layout = QFormLayout()
         algo_layout.setSpacing(10)
 
@@ -336,7 +239,6 @@ class DenoiseApp(QMainWindow):
 
         step1_layout.addLayout(algo_layout)
 
-        # Denoising parameters
         self.denoise_params_widget = self.create_denoise_params()
         step1_layout.addWidget(self.denoise_params_widget)
 
@@ -362,20 +264,19 @@ class DenoiseApp(QMainWindow):
         step2_layout = QVBoxLayout(step2_group)
         step2_layout.setSpacing(12)
 
-        # SR parameters
         sr_layout = QFormLayout()
         sr_layout.setSpacing(10)
 
         self.sr_method_combo = QComboBox()
         for key, name in get_supported_sr_methods():
             self.sr_method_combo.addItem(name, key)
-        self.sr_method_combo.setCurrentIndex(1)  # Lanczos default
+        self.sr_method_combo.setCurrentIndex(1)
         self.sr_method_combo.setMinimumHeight(36)
         sr_layout.addRow("插值方法:", self.sr_method_combo)
 
         self.sr_scale_combo = QComboBox()
         self.sr_scale_combo.addItems(["1.5x", "2.0x", "3.0x", "4.0x"])
-        self.sr_scale_combo.setCurrentIndex(1)  # 2.0x default
+        self.sr_scale_combo.setCurrentIndex(1)
         self.sr_scale_combo.setMinimumHeight(36)
         sr_layout.addRow("放大倍数:", self.sr_scale_combo)
 
@@ -409,7 +310,6 @@ class DenoiseApp(QMainWindow):
         layout.addWidget(info_group)
 
         layout.addStretch()
-
         return panel
 
     def create_denoise_params(self):
@@ -424,7 +324,6 @@ class DenoiseApp(QMainWindow):
         self.nlm_group = QGroupBox("Non-local Means 参数")
         nlm_layout = QHBoxLayout()
         nlm_layout.setSpacing(10)
-
         self.nlm_h_spin = QSpinBox()
         self.nlm_h_spin.setRange(1, 50)
         self.nlm_h_spin.setValue(10)
@@ -438,7 +337,6 @@ class DenoiseApp(QMainWindow):
         self.nlm_patch_spin.setMinimumHeight(32)
         nlm_layout.addWidget(QLabel("块大小:"))
         nlm_layout.addWidget(self.nlm_patch_spin)
-
         self.nlm_group.setLayout(nlm_layout)
         layout.addWidget(self.nlm_group)
 
@@ -446,7 +344,6 @@ class DenoiseApp(QMainWindow):
         self.bilateral_group = QGroupBox("Bilateral 参数")
         bilateral_layout = QHBoxLayout()
         bilateral_layout.setSpacing(10)
-
         self.bilateral_d_spin = QSpinBox()
         self.bilateral_d_spin.setRange(3, 25)
         self.bilateral_d_spin.setValue(9)
@@ -460,7 +357,6 @@ class DenoiseApp(QMainWindow):
         self.bilateral_color_spin.setMinimumHeight(32)
         bilateral_layout.addWidget(QLabel("强度:"))
         bilateral_layout.addWidget(self.bilateral_color_spin)
-
         self.bilateral_group.setLayout(bilateral_layout)
         layout.addWidget(self.bilateral_group)
 
@@ -468,7 +364,6 @@ class DenoiseApp(QMainWindow):
         self.neural_group = QGroupBox("神经网络参数")
         neural_layout = QHBoxLayout()
         neural_layout.setSpacing(10)
-
         self.neural_patch_spin = QSpinBox()
         self.neural_patch_spin.setRange(64, 512)
         self.neural_patch_spin.setValue(256)
@@ -482,7 +377,6 @@ class DenoiseApp(QMainWindow):
         self.neural_stride_spin.setMinimumHeight(32)
         neural_layout.addWidget(QLabel("步长:"))
         neural_layout.addWidget(self.neural_stride_spin)
-
         self.neural_group.setLayout(neural_layout)
         layout.addWidget(self.neural_group)
 
@@ -496,27 +390,11 @@ class DenoiseApp(QMainWindow):
         layout.setSpacing(14)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        # Tabs for different image views
         self.image_tabs = QTabWidget()
         self.image_tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                background-color: #f8fafc;
-            }
-            QTabBar::tab {
-                background-color: #e2e8f0;
-                padding: 10px 20px;
-                border-radius: 6px;
-                margin-right: 4px;
-            }
-            QTabBar::tab:selected {
-                background-color: white;
-                font-weight: 600;
-            }
-            QTabBar::tab:hover {
-                background-color: #cbd5e1;
-            }
+            QTabWidget::pane { border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; }
+            QTabBar::tab { background-color: #e2e8f0; padding: 10px 20px; border-radius: 6px; margin-right: 4px; }
+            QTabBar::tab:selected { background-color: white; font-weight: 600; }
         """)
 
         # Original image tab
@@ -559,7 +437,6 @@ class DenoiseApp(QMainWindow):
         metrics_layout = QHBoxLayout()
         metrics_layout.setSpacing(15)
 
-        # Denoising metrics
         denoise_metrics_widget = QWidget()
         dm_layout = QVBoxLayout(denoise_metrics_widget)
         dm_layout.setContentsMargins(0, 0, 0, 0)
@@ -571,7 +448,6 @@ class DenoiseApp(QMainWindow):
         dm_layout.addWidget(self.denoise_metrics_text)
         metrics_layout.addWidget(denoise_metrics_widget, 1)
 
-        # SR metrics
         sr_metrics_widget = QWidget()
         smr_layout = QVBoxLayout(sr_metrics_widget)
         smr_layout.setContentsMargins(0, 0, 0, 0)
@@ -585,14 +461,13 @@ class DenoiseApp(QMainWindow):
 
         metrics_layout.setStretch(0, 1)
         metrics_layout.setStretch(1, 1)
-
         metrics_group.setLayout(metrics_layout)
         layout.addWidget(metrics_group)
 
         return panel
 
     def update_algorithm_list(self):
-        """Update the algorithm dropdown with available methods."""
+        """Update the algorithm dropdown."""
         self.algorithm_combo.clear()
         methods = self.processor.get_supported_methods()
         for key, name in methods:
@@ -600,7 +475,7 @@ class DenoiseApp(QMainWindow):
         self.algorithm_combo.currentIndexChanged.connect(self.update_parameter_panel)
 
     def update_parameter_panel(self):
-        """Update parameter panel visibility based on selected algorithm."""
+        """Update parameter panel visibility."""
         method = self.algorithm_combo.currentData()
         self.nlm_group.setVisible(method == 'nlm')
         self.bilateral_group.setVisible(method == 'bilateral')
@@ -613,7 +488,6 @@ class DenoiseApp(QMainWindow):
             "图像文件 (*.png *.jpg *.jpeg *.bmp *.tiff *.tif);;所有文件 (*);;DICOM (*.dcm)"
         )
         if file_path:
-            self.status_bar.showMessage(f'正在加载 {os.path.basename(file_path)}...')
             success = self.processor.load_image(file_path)
             if success:
                 self.display_original_image()
@@ -626,7 +500,6 @@ class DenoiseApp(QMainWindow):
                 self.denoised_label.setPixmap(QPixmap())
                 self.sr_label.setText("超分辨率后显示")
                 self.sr_label.setPixmap(QPixmap())
-                self.status_bar.showMessage('图像加载成功')
                 info = self.processor.get_image_info()
                 self.info_text.setText(
                     f"文件名：{info.get('filename', 'N/A')}\n"
@@ -641,7 +514,6 @@ class DenoiseApp(QMainWindow):
 
     def display_original_image(self):
         """Display the original image."""
-        import cv2
         try:
             original_img = self.processor.get_original_image()
             if original_img is not None:
@@ -659,24 +531,14 @@ class DenoiseApp(QMainWindow):
 
     def _convert_to_rgb(self, img):
         """Convert image to RGB for display."""
-        import cv2
-        # Handle images with alpha channel (4 channels)
         if len(img.shape) == 3:
             if img.shape[2] == 4:
-                # Remove alpha channel, keep RGB (PIL loads as RGBA)
                 rgb_img = img[:, :, :3]
             elif img.shape[2] == 3:
-                # Check if image was loaded from PIL (RGB) or OpenCV (BGR)
-                # PIL: RGB order, OpenCV: BGR order
-                # Heuristic: if R channel values > B channel values on average, likely RGB
                 mean_r = np.mean(img[:, :, 0])
                 mean_b = np.mean(img[:, :, 2])
-                # For X-ray images (grayscale), R=B in RGB, but R!=B in BGR conversion
-                # Safe approach: assume BGR from OpenCV, RGB from PIL
-                # Since we use PIL first now, assume RGB
                 rgb_img = img.copy()
             else:
-                # Single channel or other
                 gray = img[:, :, 0]
                 rgb_img = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
         else:
@@ -735,14 +597,12 @@ class DenoiseApp(QMainWindow):
             self.save_denoise_btn.setEnabled(True)
             self.sr_btn.setEnabled(True)
             self.denoise_status.setText("降噪完成 ✓")
-            self.status_bar.showMessage('降噪处理成功')
         else:
             QMessageBox.critical(self, "处理错误", message)
             self.denoise_status.setText("降噪失败")
 
     def display_denoised_image(self):
         """Display the denoised image."""
-        import cv2
         try:
             denoised_img = self.processor.get_denoised_image()
             if denoised_img is not None:
@@ -808,14 +668,12 @@ class DenoiseApp(QMainWindow):
             self.calculate_and_display_sr_metrics()
             self.save_sr_btn.setEnabled(True)
             self.sr_status.setText("超分辨率完成 ✓")
-            self.status_bar.showMessage('超分辨率处理成功')
         else:
             QMessageBox.critical(self, "处理错误", message)
             self.sr_status.setText("超分辨率失败")
 
     def display_sr_image(self):
         """Display the super-resolution image."""
-        import cv2
         try:
             sr_img = self.processor.get_sr_image()
             if sr_img is not None:
@@ -836,10 +694,38 @@ class DenoiseApp(QMainWindow):
         """Calculate and display SR metrics."""
         metrics = self.processor.get_sr_metrics()
         if metrics:
-            psnr = metrics.get('psnr', 0)
-            ssim_val = metrics.get('ssim', 0)
-            mse = metrics.get('mse', 0)
-            self.sr_metrics_text.setText(f"PSNR: {psnr:.2f} dB\nSSIM: {ssim_val:.4f}\nMSE: {mse:.6f}")
+            resolution_info = metrics.get('resolution', {})
+            if 'lr_size' in resolution_info:
+                lr_w, lr_h = resolution_info['lr_size']
+                sr_w, sr_h = resolution_info['sr_size']
+                expected_w, expected_h = resolution_info.get('expected_sr_size', (sr_w, sr_h))
+                actual_scale_w = resolution_info.get('actual_scale_w', 0)
+                actual_scale_h = resolution_info.get('actual_scale_h', 0)
+
+                resolution_text = (
+                    f"分辨率验证:\n"
+                    f"  原始尺寸：{lr_w} x {lr_h}\n"
+                    f"  SR 尺寸：{sr_w} x {sr_h}\n"
+                    f"  期望尺寸：{expected_w} x {expected_h}\n"
+                    f"  实际倍数：{actual_scale_w:.2f}x (宽), {actual_scale_h:.2f}x (高)"
+                )
+            else:
+                sr_w, sr_h = resolution_info.get('sr_size', (0, 0))
+                resolution_text = f"SR 尺寸：{sr_w} x {sr_h}"
+
+            sharpness = metrics.get('sharpness', 0)
+            edge_strength = metrics.get('edge_strength', 0)
+            entropy = metrics.get('entropy', 0)
+
+            quality_text = (
+                f"{resolution_text}\n\n"
+                f"图像质量指标:\n"
+                f"  清晰度：{sharpness:.2f}\n"
+                f"  边缘强度：{edge_strength:.4f}\n"
+                f"  纹理熵：{entropy:.2f}"
+            )
+
+            self.sr_metrics_text.setText(quality_text)
 
     def save_result(self, use_sr: bool = False):
         """Save the processed image."""
@@ -848,10 +734,8 @@ class DenoiseApp(QMainWindow):
             "PNG 文件 (*.png);;TIFF 文件 (*.tiff *.tif);;JPEG 文件 (*.jpg *.jpeg);;所有文件 (*)"
         )
         if file_path:
-            self.status_bar.showMessage('正在保存结果...')
             success = self.processor.save_result(file_path, use_sr=use_sr)
             if success:
-                self.status_bar.showMessage('结果保存成功')
                 QMessageBox.information(self, "成功", "图像保存成功!")
             else:
                 QMessageBox.critical(self, "错误", "保存图像失败。")
@@ -860,6 +744,36 @@ class DenoiseApp(QMainWindow):
         """Handle window close event."""
         if self.processing_thread and self.processing_thread.isRunning():
             self.processing_thread.wait(1000)
+        event.accept()
+
+
+# For backward compatibility - standalone QMainWindow version
+class DenoiseApp(QMainWindow):
+    """Standalone main window version for backward compatibility."""
+
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统')
+        self.setMinimumSize(1400, 900)
+        self.resize(1600, 1000)
+        self.setStyleSheet("QMainWindow { background-color: #f1f5f9; }")
+
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+
+        layout = QHBoxLayout(central_widget)
+        layout.setSpacing(16)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        self.denoise_widget = DenoiseWidget(parent=self)
+        layout.addWidget(self.denoise_widget)
+
+        self.status_bar = self.statusBar()
+        self.status_bar.showMessage('就绪 - 加载图像开始')
+
+    def closeEvent(self, event):
+        if hasattr(self, 'denoise_widget') and self.denoise_widget.processing_thread:
+            self.denoise_widget.processing_thread.wait(1000)
         event.accept()
 
 

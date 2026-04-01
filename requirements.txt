@@ -5,3 +5,7 @@ numpy>=1.16.0
 scipy>=1.3.0
 onnxruntime>=1.8.0
 Pillow>=8.0.0
+
+# Optional: Training dependencies (for algorithm training page)
+torch>=1.9.0
+torchvision>=0.10.0

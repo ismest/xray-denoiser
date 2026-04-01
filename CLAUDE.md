@@ -8,28 +8,50 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 pip install -r requirements.txt
 
-# Run the application
+# Run the application (multi-page GUI)
 python main.py
 
 # Run tests
 python test_simple.py
 ```
 
-## Architecture
+## Architecture v2.0 - Multi-Page Design
 
-**Entry point**: `main.py` launches a PyQt5 GUI application (`DenoiseApp` in `denoise_app.py`).
+**Entry point**: `main.py` launches a PyQt5 GUI application with three pages.
 
-**Core modules**:
+### Pages
+
+1. **图片预处理 (Preprocess Page)** - `preprocess_page.py`
+   - Load noisy/clean image pairs
+   - Extract noise maps using difference or local std methods
+   - Build training datasets with metadata
+
+2. **算法训练 (Training Page)** - `training_page.py`
+   - Load preprocessed datasets
+   - Train neural denoising models (PyTorch)
+   - Export models to ONNX format
+   - Real-time training monitoring
+
+3. **降噪与超分辨率 (Denoise & SR Page)** - `denoise_app.py`
+   - Two-step workflow: Denoise -> Super-Resolution
+   - Multiple denoising algorithms
+   - Quality metrics (PSNR, SSIM, MSE)
+
+### Core modules**:
+- `main_window.py` - Main window with sidebar navigation and QStackedWidget
 - `image_processor.py` - Central `ImageProcessor` class managing image loading, denoising, super-resolution, and saving
 - `denoise_algorithms.py` - Denoising functions (`hybrid_denoise`, `adaptive_denoise`, `non_local_means_denoise`, `bilateral_filter_denoise`, `wavelet_denoise`) with multi-depth support (uint8/uint16/float)
 - `super_resolution.py` - Super-resolution reconstruction (bicubic, lanczos, edge-preserving upscaling with contrast enhancement)
 - `neural_denoise.py` - Optional ONNX-based neural denoiser with fallback to bilateral filter
 - `metrics.py` - PSNR, SSIM, MSE calculation with multi-depth normalization
+- `training_page.py` - PyTorch-based neural network training with ONNX export
+- `preprocess_page.py` - Noise extraction and dataset construction utilities
 
 **Key patterns**:
 - All denoising functions normalize images to float64 [0,1] before processing, then denormalize to original dtype
 - Processing runs in a background `QThread` to keep GUI responsive
 - Each algorithm has fallback chains (NLM → Bilateral → Gaussian → original) to handle edge cases
+- Training uses patch-based processing with data augmentation
 
 ## Dependencies
 

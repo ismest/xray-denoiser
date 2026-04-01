@@ -2,8 +2,10 @@
 """
 X-ray Image Denoiser - Main Application Entry Point
 
-This application provides a cross-platform GUI for denoising X-ray images
-using hybrid denoising algorithms and provides quantitative metrics (PSNR/SSIM).
+This application provides a multi-page GUI for:
+1. Image Preprocessing - Noise extraction and dataset construction
+2. Algorithm Training - Neural network model training
+3. Denoising & Super-Resolution - Image processing workflow
 """
 
 import sys
@@ -12,19 +14,22 @@ import os
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from denoise_app import DenoiseApp
+from main_window import MainWindow
+from denoise_app import DenoiseApp  # For backward compatibility (standalone mode)
 from PyQt5.QtWidgets import QApplication
+
 
 def main():
     """Main application entry point."""
     app = QApplication(sys.argv)
-    
-    # Create and show the main window
-    window = DenoiseApp()
+
+    # Use the new multi-page main window
+    window = MainWindow()
     window.show()
-    
+
     # Run the application
     sys.exit(app.exec_())
+
 
 if __name__ == "__main__":
     main()
