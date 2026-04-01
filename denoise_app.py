@@ -168,16 +168,16 @@ class DenoiseWidget(QWidget):
         """)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(16)
-        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(12, 12, 12, 12)
 
         # 页面标题 - 与其他页面保持一致
         title = QLabel("降噪与超分辨率 - 图像处理工作流")
         title.setStyleSheet("""
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             color: #1e293b;
-            padding: 12px;
+            padding: 8px 12px;
             border-left: 4px solid #0ea5e9;
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
             border-radius: 8px;

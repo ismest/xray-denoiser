@@ -160,12 +160,20 @@ class PreprocessPage(QWidget):
     def init_ui(self):
         """初始化用户界面。"""
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         # 标题
         title = QLabel("图片预处理 - 噪音提取与数据集构建")
-        title.setStyleSheet("font-size: 18px; font-weight: 600; color: #1e293b; padding: 8px;")
+        title.setStyleSheet("""
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+            padding: 8px 12px;
+            border-left: 4px solid #0ea5e9;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+            border-radius: 8px;
+        """)
         layout.addWidget(title)
 
         # 主内容区域 - 左右分栏
