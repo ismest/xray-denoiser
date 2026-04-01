@@ -13,7 +13,7 @@ from denoise_algorithms import (
     wavelet_denoise, gaussian_denoise
 )
 from neural_denoise import NeuralDenoiser
-from metrics import evaluate_denoising_quality
+from metrics import evaluate_denoising_quality, evaluate_super_resolution, compare_sr_with_reference
 from super_resolution import super_resolution_denoised_image, get_supported_sr_methods
 
 # Try to import PIL for better format support
@@ -254,10 +254,22 @@ class ImageProcessor:
                 print("Super-resolution returned None")
                 return False
 
-            # Calculate SR metrics (compare denoised vs SR)
-            self.sr_metrics = evaluate_denoising_quality(self.denoised_image, self.sr_image)
+            # Calculate comprehensive SR metrics
+            # 1. Resolution verification and quality metrics
+            self.sr_metrics = compare_sr_with_reference(
+                sr_image=self.sr_image,
+                original_lr_image=self.denoised_image,
+                expected_scale=scale
+            )
+
+            # 2. Additional no-reference quality assessment
+            sr_quality = evaluate_super_resolution(self.sr_image, scale_factor=scale)
+            self.sr_metrics.update(sr_quality)
 
             print(f"Super-resolution complete. Output shape: {self.sr_image.shape}")
+            print(f"SR Metrics: sharpness={self.sr_metrics.get('sharpness', 0):.2f}, "
+                  f"edge_strength={self.sr_metrics.get('edge_strength', 0):.4f}, "
+                  f"entropy={self.sr_metrics.get('entropy', 0):.2f}")
             return True
 
         except Exception as e:

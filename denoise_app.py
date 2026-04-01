@@ -746,6 +746,244 @@ class DenoiseWidget(QWidget):
             self.processing_thread.wait(1000)
         event.accept()
 
+    def apply_medical_style(self):
+        """应用 Medical Minimalism 风格"""
+        # 按钮样式
+        for btn in self.findChildren(QPushButton):
+            if "加载" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f1f5f9;
+                        color: #475569;
+                        border: 1px solid #cbd5e1;
+                        padding: 10px 20px;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        font-size: 13px;
+                    }
+                    QPushButton:hover {
+                        background-color: #e2e8f0;
+                        border-color: #0ea5e9;
+                    }
+                    QPushButton:pressed {
+                        background-color: #cbd5e1;
+                    }
+                """)
+            elif "保存" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton#saveBtn {
+                        background-color: #0891b2;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 13px;
+                    }
+                    QPushButton#saveBtn:hover {
+                        background-color: #0e7490;
+                    }
+                    QPushButton#saveBtn:disabled {
+                        background: #cbd5e1;
+                        color: #94a3b8;
+                    }
+                """)
+            elif "降噪" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton#primaryBtn {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 14px;
+                    }
+                    QPushButton#primaryBtn:hover {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
+                    }
+                    QPushButton#primaryBtn:disabled {
+                        background: #cbd5e1;
+                        color: #94a3b8;
+                    }
+                """)
+            elif "超分辨率" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton#secondaryBtn {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 14px;
+                    }
+                    QPushButton#secondaryBtn:hover {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0369a1);
+                    }
+                    QPushButton#secondaryBtn:disabled {
+                        background: #cbd5e1;
+                        color: #94a3b8;
+                    }
+                """)
+
+        # 进度条
+        for progress in self.findChildren(QProgressBar):
+            progress.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    text-align: center;
+                    height: 28px;
+                    font-weight: 600;
+                    font-size: 13px;
+                    background-color: #f8fafc;
+                    color: #475569;
+                }
+                QProgressBar::chunk {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
+                    border-radius: 7px;
+                }
+            """)
+
+        # GroupBox 样式
+        for group in self.findChildren(QGroupBox):
+            group.setStyleSheet("""
+                QGroupBox {
+                    font-weight: 600;
+                    color: #475569;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    margin-top: 16px;
+                    padding-top: 16px;
+                    font-size: 13px;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 12px;
+                    padding: 0 8px;
+                    color: #0ea5e9;
+                    font-weight: 600;
+                }
+            """)
+
+        # ComboBox
+        for combo in self.findChildren(QComboBox):
+            combo.setStyleSheet("""
+                QComboBox {
+                    padding: 8px 12px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    background-color: white;
+                    min-height: 36px;
+                    color: #1e293b;
+                }
+                QComboBox:hover {
+                    border-color: #0ea5e9;
+                }
+                QComboBox:focus {
+                    border-color: #0ea5e9;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    padding-right: 8px;
+                }
+                QComboBox::down-arrow {
+                    border-left: 5px solid transparent;
+                    border-right: 5px solid transparent;
+                    border-top: 6px solid #64748b;
+                }
+            """)
+
+        # SpinBox
+        for spin in self.findChildren(QSpinBox):
+            spin.setStyleSheet("""
+                QSpinBox {
+                    padding: 8px 12px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    background-color: white;
+                    min-height: 32px;
+                    color: #1e293b;
+                }
+                QSpinBox:hover {
+                    border-color: #0ea5e9;
+                }
+                QSpinBox:focus {
+                    border-color: #0ea5e9;
+                }
+                QSpinBox::up-button, QSpinBox::down-button {
+                    border: none;
+                    width: 24px;
+                    background: #f1f5f9;
+                    border-radius: 6px;
+                    margin: 2px;
+                }
+                QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+                    background: #e2e8f0;
+                }
+            """)
+
+        # 文本框
+        for text in self.findChildren(QTextEdit):
+            text.setStyleSheet("""
+                QTextEdit {
+                    font-family: 'Consolas', 'Courier New', monospace;
+                    font-size: 12px;
+                    background-color: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 8px;
+                    color: #475569;
+                }
+                QTextEdit:focus {
+                    border-color: #0ea5e9;
+                }
+            """)
+
+        # 图像显示框
+        for label in self.findChildren(QLabel):
+            if label.objectName() == "imageBox":
+                label.setStyleSheet("""
+                    QLabel#imageBox {
+                        border: 2px dashed #cbd5e1;
+                        border-radius: 12px;
+                        background-color: #f8fafc;
+                        color: #94a3b8;
+                        font-style: italic;
+                        font-size: 14px;
+                    }
+                    QLabel#imageBox:hover {
+                        border-color: #0ea5e9;
+                        background-color: #f0f9ff;
+                    }
+                """)
+
+        # 选项卡样式
+        for tabs in self.findChildren(QTabWidget):
+            tabs.setStyleSheet("""
+                QTabWidget::pane {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    background-color: #f8fafc;
+                }
+                QTabBar::tab {
+                    background-color: #e2e8f0;
+                    padding: 10px 20px;
+                    border-radius: 6px;
+                    margin-right: 4px;
+                    color: #64748b;
+                }
+                QTabBar::tab:selected {
+                    background-color: white;
+                    font-weight: 600;
+                    color: #0ea5e9;
+                }
+                QTabBar::tab:hover {
+                    background-color: #cbd5e1;
+                }
+            """)
+
 
 # For backward compatibility - standalone QMainWindow version
 class DenoiseApp(QMainWindow):

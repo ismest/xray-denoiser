@@ -688,3 +688,221 @@ class TrainingPage(QWidget):
             self.log_text.append(f"✗ {message}")
 
         self.status_label.setText("训练结束")
+
+    def apply_medical_style(self):
+        """应用 Medical Minimalism 风格"""
+        # 主标题
+        for label in self.findChildren(QLabel):
+            if label.text().startswith("算法训练"):
+                label.setStyleSheet("""
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #1e293b;
+                    padding: 12px;
+                    border-left: 4px solid #0ea5e9;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+                    border-radius: 8px;
+                """)
+
+        # GroupBox 样式
+        for group in self.findChildren(QGroupBox):
+            group.setStyleSheet("""
+                QGroupBox {
+                    font-weight: 600;
+                    color: #475569;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    margin-top: 16px;
+                    padding-top: 16px;
+                    font-size: 13px;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 12px;
+                    padding: 0 8px;
+                    color: #0ea5e9;
+                    font-weight: 600;
+                }
+            """)
+
+        # 按钮样式
+        for btn in self.findChildren(QPushButton):
+            if "选择" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f1f5f9;
+                        color: #475569;
+                        border: 1px solid #cbd5e1;
+                        padding: 10px 20px;
+                        border-radius: 8px;
+                        font-weight: 500;
+                        font-size: 13px;
+                    }
+                    QPushButton:hover {
+                        background-color: #e2e8f0;
+                        border-color: #0ea5e9;
+                    }
+                    QPushButton:pressed {
+                        background-color: #cbd5e1;
+                    }
+                """)
+            elif "开始" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 14px;
+                    }
+                    QPushButton:hover {
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
+                    }
+                    QPushButton:disabled {
+                        background: #cbd5e1;
+                        color: #94a3b8;
+                    }
+                """)
+            elif "停止" in btn.text():
+                btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #dc2626;
+                        color: white;
+                        border: none;
+                        padding: 12px 24px;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 14px;
+                    }
+                    QPushButton:hover {
+                        background-color: #b91c1c;
+                    }
+                    QPushButton:disabled {
+                        background: #cbd5e1;
+                        color: #94a3b8;
+                    }
+                """)
+
+        # 进度条
+        for progress in self.findChildren(QProgressBar):
+            progress.setStyleSheet("""
+                QProgressBar {
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    text-align: center;
+                    height: 28px;
+                    font-weight: 600;
+                    font-size: 13px;
+                    background-color: #f8fafc;
+                    color: #475569;
+                }
+                QProgressBar::chunk {
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
+                    border-radius: 7px;
+                }
+            """)
+
+        # 日志文本框
+        for text in self.findChildren(QTextEdit):
+            if text.isReadOnly():
+                text.setStyleSheet("""
+                    QTextEdit {
+                        font-family: 'Consolas', 'Courier New', monospace;
+                        font-size: 11px;
+                        background-color: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        padding: 8px;
+                        color: #475569;
+                    }
+                    QTextEdit:focus {
+                        border-color: #0ea5e9;
+                    }
+                """)
+
+        # ComboBox
+        for combo in self.findChildren(QComboBox):
+            combo.setStyleSheet("""
+                QComboBox {
+                    padding: 8px 12px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    background-color: white;
+                    min-height: 36px;
+                    color: #1e293b;
+                }
+                QComboBox:hover {
+                    border-color: #0ea5e9;
+                }
+                QComboBox:focus {
+                    border-color: #0ea5e9;
+                }
+                QComboBox::drop-down {
+                    border: none;
+                    padding-right: 8px;
+                }
+                QComboBox::down-arrow {
+                    border-left: 5px solid transparent;
+                    border-right: 5px solid transparent;
+                    border-top: 6px solid #64748b;
+                }
+            """)
+
+        # SpinBox 和 DoubleSpinBox
+        for spin in self.findChildren(QSpinBox):
+            spin.setStyleSheet("""
+                QSpinBox {
+                    padding: 8px 12px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    background-color: white;
+                    min-height: 32px;
+                    color: #1e293b;
+                }
+                QSpinBox:hover {
+                    border-color: #0ea5e9;
+                }
+                QSpinBox:focus {
+                    border-color: #0ea5e9;
+                }
+                QSpinBox::up-button, QSpinBox::down-button {
+                    border: none;
+                    width: 24px;
+                    background: #f1f5f9;
+                    border-radius: 6px;
+                    margin: 2px;
+                }
+                QSpinBox::up-button:hover, QSpinBox::down-button:hover {
+                    background: #e2e8f0;
+                }
+            """)
+
+        for spin in self.findChildren(QDoubleSpinBox):
+            spin.setStyleSheet("""
+                QDoubleSpinBox {
+                    padding: 8px 12px;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    background-color: white;
+                    min-height: 32px;
+                    color: #1e293b;
+                }
+                QDoubleSpinBox:hover {
+                    border-color: #0ea5e9;
+                }
+                QDoubleSpinBox:focus {
+                    border-color: #0ea5e9;
+                }
+                QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+                    border: none;
+                    width: 24px;
+                    background: #f1f5f9;
+                    border-radius: 6px;
+                    margin: 2px;
+                }
+                QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
+                    background: #e2e8f0;
+                }
+            """)

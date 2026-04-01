@@ -164,8 +164,8 @@ def super_resolution_denoised_image(image: np.ndarray,
     else:
         upscaled = lanczos_upscale(image, scale)
 
-    # Step 2: Optional edge enhancement
-    if enhance_edges:
+    # Step 2: Optional edge enhancement (skip if already edge-preserving method)
+    if enhance_edges and method != 'edge_preserving':
         upscaled = edge_preserving_upscale(upscaled, scale=1.0, alpha=0.3)
 
     # Step 3: Optional contrast enhancement

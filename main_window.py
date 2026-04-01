@@ -1,6 +1,7 @@
 """
 主窗口 - 多页面架构
 包含：图片预处理、算法训练、降噪与超分辨率三个页面
+Medical Minimalism 风格
 """
 
 import sys
@@ -8,7 +9,7 @@ import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLabel, QFrame,
                              QStackedWidget, QToolButton, QSpacerItem, QSizePolicy)
-from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QFont, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QSize
 
 # 导入页面模块
@@ -17,8 +18,48 @@ from training_page import TrainingPage
 from denoise_app import DenoiseWidget
 
 
+# 医疗极简主义设计令牌
+class DesignTokens:
+    """UI 设计令牌 - Medical Minimalism 风格"""
+
+    # 主色调 - Sky Blue
+    PRIMARY_500 = "#0ea5e9"
+    PRIMARY_600 = "#0284c7"
+    PRIMARY_700 = "#0369a1"
+
+    # 中性色
+    BACKGROUND = "#f8fafc"
+    SURFACE = "#ffffff"
+    BORDER = "#e2e8f0"
+    TEXT_PRIMARY = "#1e293b"
+    TEXT_SECONDARY = "#64748b"
+    TEXT_MUTED = "#94a3b8"
+
+    # 功能色
+    SUCCESS = "#10b981"
+    WARNING = "#f59e0b"
+    ERROR = "#ef4444"
+
+    # 侧边栏深色主题
+    SIDEBAR_DARK = "#1e293b"
+    SIDEBAR_DARKER = "#0f172a"
+    SIDEBAR_BORDER = "#334155"
+
+    # 间距
+    SPACING_4 = 4
+    SPACING_8 = 8
+    SPACING_12 = 12
+    SPACING_16 = 16
+    SPACING_24 = 24
+
+    # 圆角
+    RADIUS_SMALL = 4
+    RADIUS_MEDIUM = 8
+    RADIUS_LARGE = 12
+
+
 class NavigationButton(QToolButton):
-    """侧边栏导航按钮。"""
+    """侧边栏导航按钮 - Medical Minimalism 风格"""
 
     def __init__(self, text, icon=None, parent=None):
         super().__init__(parent)
@@ -29,35 +70,35 @@ class NavigationButton(QToolButton):
         self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         self.setIconSize(QSize(32, 32))
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(80)
+        self.setFixedHeight(76)
         self.setStyleSheet(self._get_style())
 
     def _get_style(self):
-        return """
-            QToolButton {
+        return f"""
+            QToolButton {{
                 background-color: transparent;
                 border: none;
-                border-radius: 8px;
-                color: #94a3b8;
+                border-radius: {DesignTokens.RADIUS_MEDIUM};
+                color: {DesignTokens.TEXT_MUTED};
                 font-size: 13px;
                 font-weight: 500;
                 padding: 10px;
                 margin: 4px 6px;
-            }
-            QToolButton:hover {
-                background-color: #334155;
-                color: #ffffff;
-            }
-            QToolButton:checked {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
+            }}
+            QToolButton:hover {{
+                background-color: {DesignTokens.SIDEBAR_BORDER};
+                color: {DesignTokens.SURFACE};
+            }}
+            QToolButton:checked {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.PRIMARY_500}, stop:1 {DesignTokens.PRIMARY_600});
                 color: white;
                 font-weight: 600;
-            }
+            }}
         """
 
 
 class MainWindow(QMainWindow):
-    """主窗口 - 多页面应用架构。"""
+    """主窗口 - 多页面应用架构 - Medical Minimalism 风格"""
 
     def __init__(self):
         super().__init__()
@@ -65,14 +106,30 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统 v2.0.1')
+        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v2.0.1')
         self.setMinimumSize(1400, 900)
         self.resize(1600, 1000)
 
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #f1f5f9;
-            }
+        # 设置全局调色板
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(DesignTokens.BACKGROUND))
+        palette.setColor(QPalette.WindowText, QColor(DesignTokens.TEXT_PRIMARY))
+        palette.setColor(QPalette.Base, QColor(DesignTokens.SURFACE))
+        palette.setColor(QPalette.AlternateBase, QColor(DesignTokens.BACKGROUND))
+        palette.setColor(QPalette.Text, QColor(DesignTokens.TEXT_PRIMARY))
+        palette.setColor(QPalette.Button, QColor(DesignTokens.SURFACE))
+        palette.setColor(QPalette.ButtonText, QColor(DesignTokens.TEXT_PRIMARY))
+        self.setPalette(palette)
+
+        self.setStyleSheet(f"""
+            QMainWindow {{
+                background-color: {DesignTokens.BACKGROUND};
+            }}
+            QWidget {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                font-size: 13px;
+                color: {DesignTokens.TEXT_PRIMARY};
+            }}
         """)
 
         # 中央部件
@@ -94,32 +151,48 @@ class MainWindow(QMainWindow):
 
         # 状态栏
         self.status_bar = self.statusBar()
-        self.status_bar.setStyleSheet("""
-            QStatusBar {
-                background-color: white;
-                color: #64748b;
-                border-top: 1px solid #e2e8f0;
+        self.status_bar.setStyleSheet(f"""
+            QStatusBar {{
+                background-color: {DesignTokens.SURFACE};
+                color: {DesignTokens.TEXT_SECONDARY};
+                border-top: 1px solid {DesignTokens.BORDER};
                 font-size: 12px;
-            }
+            }}
         """)
         self.status_bar.showMessage('就绪 - 请选择功能模块')
 
     def _create_sidebar(self):
-        """创建左侧导航栏。"""
+        """创建左侧导航栏 - 深色医疗风格"""
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setStyleSheet("""
-            QFrame#sidebar {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1e293b, stop:1 #0f172a);
-                border-right: 1px solid #334155;
+        sidebar.setStyleSheet(f"""
+            QFrame#sidebar {{
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {DesignTokens.SIDEBAR_DARK}, stop:1 {DesignTokens.SIDEBAR_DARKER});
+                border-right: 1px solid {DesignTokens.SIDEBAR_BORDER};
                 min-width: 180px;
                 max-width: 180px;
-            }
+            }}
         """)
 
         layout = QVBoxLayout(sidebar)
-        layout.setSpacing(8)
+        layout.setSpacing(DesignTokens.SPACING_8)
         layout.setContentsMargins(12, 20, 12, 12)
+
+        # 应用标题 - 简洁版本
+        title_label = QLabel("X-RAY 图像处理")
+        title_label.setStyleSheet(f"""
+            QLabel {{
+                font-size: 12px;
+                font-weight: 600;
+                color: {DesignTokens.TEXT_MUTED};
+                padding: 8px;
+                text-align: center;
+                border-bottom: 1px solid {DesignTokens.SIDEBAR_BORDER};
+                margin-bottom: 12px;
+            }}
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(title_label)
 
         # 导航按钮
         self.nav_buttons = []
@@ -143,13 +216,13 @@ class MainWindow(QMainWindow):
 
         # 版本信息
         version_label = QLabel("v2.0.1")
-        version_label.setStyleSheet("""
-            QLabel {
-                color: #64748b;
+        version_label.setStyleSheet(f"""
+            QLabel {{
+                color: {DesignTokens.TEXT_MUTED};
                 font-size: 11px;
                 padding: 8px;
                 text-align: center;
-            }
+            }}
         """)
         version_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(version_label)
@@ -160,7 +233,7 @@ class MainWindow(QMainWindow):
         return sidebar
 
     def _create_content_area(self):
-        """创建内容区域。"""
+        """创建内容区域 - Medical Minimalism 风格"""
         content = QFrame()
         content.setStyleSheet("""
             QFrame {
@@ -169,26 +242,30 @@ class MainWindow(QMainWindow):
         """)
 
         layout = QVBoxLayout(content)
-        layout.setSpacing(16)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(DesignTokens.SPACING_16)
+        layout.setContentsMargins(DesignTokens.SPACING_16, DesignTokens.SPACING_16,
+                                   DesignTokens.SPACING_16, DesignTokens.SPACING_16)
 
         # 页面堆栈
         self.page_stack = QStackedWidget()
-        self.page_stack.setStyleSheet("""
-            QStackedWidget {
+        self.page_stack.setStyleSheet(f"""
+            QStackedWidget {{
                 background-color: transparent;
-            }
+            }}
         """)
 
         # 添加页面
         self.preprocess_page = PreprocessPage()
+        self.preprocess_page.apply_medical_style()
         self.page_stack.addWidget(self.preprocess_page)
 
         self.training_page = TrainingPage()
+        self.training_page.apply_medical_style()
         self.page_stack.addWidget(self.training_page)
 
         # 降噪页面
         self.denoise_widget = DenoiseWidget()
+        self.denoise_widget.apply_medical_style()
         self.page_stack.addWidget(self.denoise_widget)
 
         layout.addWidget(self.page_stack)
@@ -210,6 +287,12 @@ class MainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+
+    # 设置全局字体
+    font = QFont("Microsoft YaHei", 9)
+    font.setStyleHint(QFont.SansSerif)
+    app.setFont(font)
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
