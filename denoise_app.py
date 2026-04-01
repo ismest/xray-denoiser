@@ -71,7 +71,7 @@ class DenoiseApp(QMainWindow):
 
     def init_ui(self):
         """Initialize the user interface."""
-        self.setWindowTitle('X 射线图像降噪与超分辨率系统')
+        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统')
         self.setMinimumSize(1400, 900)
         self.resize(1600, 1000)
 
