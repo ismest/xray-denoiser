@@ -15,7 +15,7 @@ python main.py
 python test_simple.py
 ```
 
-## Current Version: v3.0.2
+## Current Version: v3.0.3
 
 ## Architecture v2.0 - Multi-Page Design
 
@@ -42,7 +42,7 @@ python test_simple.py
 ### Core modules**:
 - `main_window.py` - Main window with sidebar navigation and QStackedWidget
 - `image_processor.py` - Central `ImageProcessor` class managing image loading, denoising, super-resolution, and saving
-- `denoise_algorithms.py` - Denoising functions (`hybrid_denoise`, `adaptive_denoise`, `non_local_means_denoise`, `bilateral_filter_denoise`, `wavelet_denoise`) with multi-depth support (uint8/uint16/float)
+- `denoise_algorithms.py` - Denoising functions (`hybrid_denoise`, `adaptive_denoise`, `non_local_means_denoise`, `bilateral_filter_denoise`, `wavelet_denoise`, `bm3d_denoise`, `anisotropic_diffusion_denoise`, `iterative_reconstruction_denoise`) with multi-depth support (uint8/uint16/float)
 - `super_resolution.py` - Super-resolution reconstruction (bicubic, lanczos, edge-preserving upscaling with contrast enhancement)
 - `neural_denoise.py` - Optional ONNX-based neural denoiser with fallback to bilateral filter
 - `metrics.py` - PSNR, SSIM, MSE calculation with multi-depth normalization
