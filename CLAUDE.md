@@ -15,6 +15,8 @@ python main.py
 python test_simple.py
 ```
 
+## Current Version: v2.0.1
+
 ## Architecture v2.0 - Multi-Page Design
 
 **Entry point**: `main.py` launches a PyQt5 GUI application with three pages.
