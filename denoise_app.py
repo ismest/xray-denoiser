@@ -168,7 +168,7 @@ class DenoiseWidget(QWidget):
         """)
 
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(16)
+        main_layout.setSpacing(12)
         main_layout.setContentsMargins(12, 12, 12, 12)
 
         # 页面标题 - 与其他页面保持一致
