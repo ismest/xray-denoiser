@@ -1038,6 +1038,19 @@ class DenoiseWidget(QWidget):
                 }
             """)
 
+        # 页面标题样式
+        for label in self.findChildren(QLabel):
+            if "降噪与超分辨率" in label.text() or "图片预处理" in label.text() or "算法训练" in label.text():
+                label.setStyleSheet("""
+                    font-size: 18px;
+                    font-weight: 600;
+                    color: #1e293b;
+                    padding: 8px 12px;
+                    border-left: 4px solid #0ea5e9;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+                    border-radius: 8px;
+                """)
+
         # 图像显示框
         for label in self.findChildren(QLabel):
             if label.objectName() == "imageBox":
