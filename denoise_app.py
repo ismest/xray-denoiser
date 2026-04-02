@@ -1043,10 +1043,10 @@ class DenoiseWidget(QWidget):
         title_label = self.findChild(QLabel, "pageTitle")
         if title_label:
             title_label.setStyleSheet("""
-                font-size: 18px;
+                font-size: 20px;
                 font-weight: 600;
                 color: #1e293b;
-                padding: 8px 12px;
+                padding: 12px;
                 border-left: 4px solid #0ea5e9;
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
                 border-radius: 8px;
