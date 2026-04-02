@@ -172,8 +172,9 @@ class DenoiseWidget(QWidget):
         main_layout.setContentsMargins(12, 12, 12, 12)
 
         # 页面标题 - 与其他页面保持一致
-        title = QLabel("降噪与超分辨率 - 图像处理工作流")
-        title.setStyleSheet("""
+        self.title_label = QLabel("降噪与超分辨率 - 图像处理工作流")
+        self.title_label.setObjectName("pageTitle")
+        self.title_label.setStyleSheet("""
             font-size: 18px;
             font-weight: 600;
             color: #1e293b;
@@ -182,7 +183,7 @@ class DenoiseWidget(QWidget):
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
             border-radius: 8px;
         """)
-        main_layout.addWidget(title)
+        main_layout.addWidget(self.title_label)
 
         # 内容区域（水平布局）
         content_layout = QHBoxLayout()
@@ -1039,17 +1040,17 @@ class DenoiseWidget(QWidget):
             """)
 
         # 页面标题样式
-        for label in self.findChildren(QLabel):
-            if "降噪与超分辨率" in label.text() or "图片预处理" in label.text() or "算法训练" in label.text():
-                label.setStyleSheet("""
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: #1e293b;
-                    padding: 8px 12px;
-                    border-left: 4px solid #0ea5e9;
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
-                    border-radius: 8px;
-                """)
+        title_label = self.findChild(QLabel, "pageTitle")
+        if title_label:
+            title_label.setStyleSheet("""
+                font-size: 18px;
+                font-weight: 600;
+                color: #1e293b;
+                padding: 8px 12px;
+                border-left: 4px solid #0ea5e9;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+                border-radius: 8px;
+            """)
 
         # 图像显示框
         for label in self.findChildren(QLabel):
