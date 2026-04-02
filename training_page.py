@@ -352,9 +352,15 @@ class TrainingPage(QWidget):
         main_layout = QHBoxLayout()
         main_layout.setSpacing(16)
 
-        # 左侧 - 训练配置
+        # 左侧 - 训练配置（带滚动支持）
         left_panel = self._create_config_panel()
-        main_layout.addWidget(left_panel, 1)
+        left_scroll = QScrollArea()
+        left_scroll.setWidget(left_panel)
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setFrameStyle(QFrame.NoFrame)
+        left_scroll.setMinimumWidth(280)
+        main_layout.addWidget(left_scroll, 1)
 
         # 右侧 - 训练监控
         right_panel = self._create_monitor_panel()
@@ -370,26 +376,26 @@ class TrainingPage(QWidget):
                 background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
-                padding: 16px;
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(14)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         # 1. 数据集选择
         data_group = QGroupBox("1. 数据集目录")
         data_layout = QVBoxLayout(data_group)
-        data_layout.setSpacing(10)
+        data_layout.setSpacing(8)
 
         self.dataset_path_edit = QTextEdit()
         self.dataset_path_edit.setReadOnly(True)
-        self.dataset_path_edit.setMaximumHeight(50)
+        self.dataset_path_edit.setMaximumHeight(45)
         self.dataset_path_edit.setPlaceholderText("选择预处理生成的数据集目录...")
         data_layout.addWidget(self.dataset_path_edit)
 
         browse_btn = QPushButton("选择数据集目录")
         browse_btn.clicked.connect(self.browse_dataset)
+        browse_btn.setMinimumHeight(36)
         data_layout.addWidget(browse_btn)
 
         layout.addWidget(data_group)
@@ -397,7 +403,7 @@ class TrainingPage(QWidget):
         # 2. 训练参数
         param_group = QGroupBox("2. 训练参数")
         param_layout = QFormLayout(param_group)
-        param_layout.setSpacing(10)
+        param_layout.setSpacing(8)
 
         self.epochs_spin = QSpinBox()
         self.epochs_spin.setRange(10, 500)
@@ -434,16 +440,17 @@ class TrainingPage(QWidget):
         # 3. 输出设置
         output_group = QGroupBox("3. 模型输出")
         output_layout = QVBoxLayout(output_group)
-        output_layout.setSpacing(10)
+        output_layout.setSpacing(8)
 
         self.output_path_edit = QTextEdit()
         self.output_path_edit.setReadOnly(True)
-        self.output_path_edit.setMaximumHeight(50)
+        self.output_path_edit.setMaximumHeight(45)
         self.output_path_edit.setPlaceholderText("模型保存目录...")
         output_layout.addWidget(self.output_path_edit)
 
         self.browse_output_btn = QPushButton("选择输出目录")
         self.browse_output_btn.clicked.connect(self.browse_output)
+        self.browse_output_btn.setMinimumHeight(36)
         output_layout.addWidget(self.browse_output_btn)
 
         layout.addWidget(output_group)
@@ -454,9 +461,9 @@ class TrainingPage(QWidget):
         self.train_btn.setStyleSheet("""
             QPushButton#primaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
-                font-size: 15px;
+                font-size: 14px;
                 font-weight: 600;
-                padding: 14px 24px;
+                padding: 12px 20px;
                 border-radius: 8px;
             }
             QPushButton#primaryBtn:hover {
@@ -468,7 +475,7 @@ class TrainingPage(QWidget):
         """)
         self.train_btn.clicked.connect(self.start_training)
         self.train_btn.setEnabled(False)
-        self.train_btn.setMinimumHeight(48)
+        self.train_btn.setMinimumHeight(40)
         layout.addWidget(self.train_btn)
 
         # 停止按钮
@@ -477,9 +484,9 @@ class TrainingPage(QWidget):
             QPushButton {
                 background-color: #dc2626;
                 color: white;
-                font-size: 15px;
+                font-size: 14px;
                 font-weight: 600;
-                padding: 12px 24px;
+                padding: 12px 20px;
                 border-radius: 8px;
             }
             QPushButton:hover { background-color: #b91c1c; }
@@ -487,7 +494,7 @@ class TrainingPage(QWidget):
         """)
         self.stop_btn.clicked.connect(self.stop_training)
         self.stop_btn.setEnabled(False)
-        self.stop_btn.setMinimumHeight(44)
+        self.stop_btn.setMinimumHeight(38)
         layout.addWidget(self.stop_btn)
 
         layout.addStretch()

@@ -180,9 +180,15 @@ class PreprocessPage(QWidget):
         main_layout = QHBoxLayout()
         main_layout.setSpacing(16)
 
-        # 左侧 - 控制面板
+        # 左侧 - 控制面板（带滚动支持）
         left_panel = self._create_control_panel()
-        main_layout.addWidget(left_panel, 1)
+        left_scroll = QScrollArea()
+        left_scroll.setWidget(left_panel)
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setFrameStyle(QFrame.NoFrame)
+        left_scroll.setMinimumWidth(280)
+        main_layout.addWidget(left_scroll, 1)
 
         # 右侧 - 图像显示
         right_panel = self._create_display_panel()
@@ -203,22 +209,22 @@ class PreprocessPage(QWidget):
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(14)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         # 1. 文件加载
         file_group = QGroupBox("1. 加载图像")
         file_layout = QVBoxLayout(file_group)
-        file_layout.setSpacing(10)
+        file_layout.setSpacing(8)
 
         self.load_noisy_btn = QPushButton("加载带噪图像 (单张/批量)")
         self.load_noisy_btn.clicked.connect(self.load_noisy_images)
-        self.load_noisy_btn.setMinimumHeight(42)
+        self.load_noisy_btn.setMinimumHeight(36)
         file_layout.addWidget(self.load_noisy_btn)
 
         self.load_clean_btn = QPushButton("加载参考干净图像 (可选)")
         self.load_clean_btn.clicked.connect(self.load_clean_images)
-        self.load_clean_btn.setMinimumHeight(42)
+        self.load_clean_btn.setMinimumHeight(36)
         file_layout.addWidget(self.load_clean_btn)
 
         self.file_count_label = QLabel("已加载：0 张图像")
@@ -230,7 +236,7 @@ class PreprocessPage(QWidget):
         # 2. 噪音提取参数
         noise_group = QGroupBox("2. 噪音提取参数")
         noise_layout = QFormLayout(noise_group)
-        noise_layout.setSpacing(10)
+        noise_layout.setSpacing(8)
 
         self.noise_method_combo = QComboBox()
         self.noise_method_combo.addItems([
@@ -238,6 +244,7 @@ class PreprocessPage(QWidget):
             "局部标准差法",
         ])
         self.noise_method_combo.setCurrentIndex(0)
+        self.noise_method_combo.setMinimumHeight(32)
         noise_layout.addRow("提取方法:", self.noise_method_combo)
 
         self.patch_size_spin = QSpinBox()
@@ -251,16 +258,17 @@ class PreprocessPage(QWidget):
         # 3. 输出设置
         output_group = QGroupBox("3. 输出设置")
         output_layout = QVBoxLayout(output_group)
-        output_layout.setSpacing(10)
+        output_layout.setSpacing(8)
 
         self.output_path_edit = QTextEdit()
         self.output_path_edit.setReadOnly(True)
-        self.output_path_edit.setMaximumHeight(60)
+        self.output_path_edit.setMaximumHeight(50)
         self.output_path_edit.setPlaceholderText("选择输出目录...")
         output_layout.addWidget(self.output_path_edit)
 
         self.browse_output_btn = QPushButton("选择输出目录")
         self.browse_output_btn.clicked.connect(self.browse_output)
+        self.browse_output_btn.setMinimumHeight(36)
         output_layout.addWidget(self.browse_output_btn)
 
         layout.addWidget(output_group)
@@ -271,9 +279,9 @@ class PreprocessPage(QWidget):
         self.extract_btn.setStyleSheet("""
             QPushButton#primaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
-                font-size: 15px;
+                font-size: 14px;
                 font-weight: 600;
-                padding: 14px 24px;
+                padding: 12px 20px;
                 border-radius: 8px;
             }
             QPushButton#primaryBtn:hover {
@@ -285,7 +293,7 @@ class PreprocessPage(QWidget):
         """)
         self.extract_btn.clicked.connect(self.start_extraction)
         self.extract_btn.setEnabled(False)
-        self.extract_btn.setMinimumHeight(48)
+        self.extract_btn.setMinimumHeight(40)
         layout.addWidget(self.extract_btn)
 
         # 进度条
