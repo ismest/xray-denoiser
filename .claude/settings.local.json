@@ -4,7 +4,13 @@
       "Bash(python:*)",
       "Bash(pip install:*)",
       "WebFetch(domain:github.com)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git commit:*)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq main.py*\")",
+      "Bash(python3 src/ui-ux-pro-max/scripts/search.py \"font size readability accessibility\" --domain ux -n 5)"
     ]
   }
 }

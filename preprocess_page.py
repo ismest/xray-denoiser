@@ -228,7 +228,7 @@ class PreprocessPage(QWidget):
         file_layout.addWidget(self.load_clean_btn)
 
         self.file_count_label = QLabel("已加载：0 张图像")
-        self.file_count_label.setStyleSheet("color: #64748b; font-size: 12px;")
+        self.file_count_label.setStyleSheet("color: #64748b; font-size: 13px;")
         file_layout.addWidget(self.file_count_label)
 
         layout.addWidget(file_group)
@@ -605,7 +605,7 @@ class PreprocessPage(QWidget):
                     border-radius: 8px;
                     margin-top: 16px;
                     padding-top: 16px;
-                    font-size: 13px;
+                    font-size: 14px;
                 }
                 QGroupBox::title {
                     subcontrol-origin: margin;
@@ -627,7 +627,7 @@ class PreprocessPage(QWidget):
                         padding: 10px 20px;
                         border-radius: 8px;
                         font-weight: 500;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                     QPushButton:hover {
                         background-color: #e2e8f0;
@@ -666,7 +666,7 @@ class PreprocessPage(QWidget):
                     text-align: center;
                     height: 28px;
                     font-weight: 600;
-                    font-size: 13px;
+                    font-size: 14px;
                     background-color: #f8fafc;
                     color: #475569;
                 }

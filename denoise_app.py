@@ -77,8 +77,8 @@ class DenoiseWidget(QWidget):
         self.setStyleSheet("""
             QWidget {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-                font-size: 13px;
-                color: #333;
+                font-size: 14px;
+                color: #1e293b;
             }
             QFrame#card, QFrame#controlPanel {
                 background-color: white;
@@ -279,7 +279,7 @@ class DenoiseWidget(QWidget):
         step1_layout.addWidget(self.denoise_progress)
 
         self.denoise_status = QLabel("等待处理...")
-        self.denoise_status.setStyleSheet("color: #64748b; font-size: 12px;")
+        self.denoise_status.setStyleSheet("color: #64748b; font-size: 13px;")
         step1_layout.addWidget(self.denoise_status)
 
         layout.addWidget(step1_group)
@@ -319,7 +319,7 @@ class DenoiseWidget(QWidget):
         step2_layout.addWidget(self.sr_progress)
 
         self.sr_status = QLabel("等待降噪完成...")
-        self.sr_status.setStyleSheet("color: #64748b; font-size: 12px;")
+        self.sr_status.setStyleSheet("color: #64748b; font-size: 13px;")
         step2_layout.addWidget(self.sr_status)
 
         layout.addWidget(step2_group)
@@ -954,7 +954,7 @@ class DenoiseWidget(QWidget):
                     border-radius: 8px;
                     margin-top: 16px;
                     padding-top: 16px;
-                    font-size: 13px;
+                    font-size: 14px;
                 }
                 QGroupBox::title {
                     subcontrol-origin: margin;
@@ -975,6 +975,7 @@ class DenoiseWidget(QWidget):
                     background-color: white;
                     min-height: 36px;
                     color: #1e293b;
+                    font-size: 14px;
                 }
                 QComboBox:hover {
                     border-color: #0ea5e9;
@@ -1027,7 +1028,7 @@ class DenoiseWidget(QWidget):
             text.setStyleSheet("""
                 QTextEdit {
                     font-family: 'Consolas', 'Courier New', monospace;
-                    font-size: 12px;
+                    font-size: 13px;
                     background-color: #f8fafc;
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;

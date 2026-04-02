@@ -127,7 +127,7 @@ class MainWindow(QMainWindow):
             }}
             QWidget {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-                font-size: 13px;
+                font-size: 14px;
                 color: {DesignTokens.TEXT_PRIMARY};
             }}
         """)

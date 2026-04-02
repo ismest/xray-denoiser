@@ -729,7 +729,7 @@ class TrainingPage(QWidget):
                     border-radius: 8px;
                     margin-top: 16px;
                     padding-top: 16px;
-                    font-size: 13px;
+                    font-size: 14px;
                 }
                 QGroupBox::title {
                     subcontrol-origin: margin;
@@ -751,7 +751,7 @@ class TrainingPage(QWidget):
                         padding: 10px 20px;
                         border-radius: 8px;
                         font-weight: 500;
-                        font-size: 13px;
+                        font-size: 14px;
                     }
                     QPushButton:hover {
                         background-color: #e2e8f0;
@@ -809,7 +809,7 @@ class TrainingPage(QWidget):
                     text-align: center;
                     height: 28px;
                     font-weight: 600;
-                    font-size: 13px;
+                    font-size: 14px;
                     background-color: #f8fafc;
                     color: #475569;
                 }
