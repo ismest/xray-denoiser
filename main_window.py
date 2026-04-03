@@ -106,9 +106,13 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.0.2')
-        self.setMinimumSize(1200, 700)
-        self.resize(1400, 800)
+        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.1.2')
+        # 根据界面布局计算的最小尺寸（确保按钮不重叠）：
+        # 宽度 = 侧边栏 (180px) + 内容左边距 (20px) + 左面板 (400px) + 间距 (20px) + 右面板 (500px) + 内容右边距 (20px) = 1140px
+        # 高度 = 标题栏 (55px) + 标签页 (50px) + 内容区 (750px) + 状态栏 (50px) + 边距 (40px) = 945px
+        # 增加缓冲空间防止压缩
+        self.setMinimumSize(1400, 980)
+        self.resize(1600, 1000)
 
         # 设置全局调色板
         palette = QPalette()
@@ -127,7 +131,7 @@ class MainWindow(QMainWindow):
             }}
             QWidget {{
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-                font-size: 14px;
+                font-size: 15px;
                 color: {DesignTokens.TEXT_PRIMARY};
             }}
         """)
@@ -199,7 +203,7 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
         # 版本信息
-        version_label = QLabel("v3.0.2")
+        version_label = QLabel("v3.1.1")
         version_label.setStyleSheet(f"""
             QLabel {{
                 color: {DesignTokens.TEXT_MUTED};

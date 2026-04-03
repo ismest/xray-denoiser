@@ -15,7 +15,7 @@ python main.py
 python test_simple.py
 ```
 
-## Current Version: v3.1.0
+## Current Version: v3.1.2
 
 ## Architecture v2.0 - Multi-Page Design
 
@@ -24,9 +24,10 @@ python test_simple.py
 ### Pages
 
 1. **图片预处理 (Preprocess Page)** - `preprocess_page.py`
-   - Load noisy/clean image pairs
-   - Extract noise maps using difference or local std methods
-   - Build training datasets with metadata
+   - **Step 1: 噪音提取** - Extract noise profile from single X-ray image
+   - **Step 2: 数据集生成** - Generate synthetic noisy/clean patch pairs using extracted noise parameters
+   - Noise model: Poisson(λ) + AWGN(σ) + Gaussian Blur(σ=1)
+   - Output: train/test/validation splits with metadata
 
 2. **算法训练 (Training Page)** - `training_page.py`
    - Load preprocessed datasets
@@ -39,7 +40,7 @@ python test_simple.py
    - Multiple denoising algorithms
    - Quality metrics (PSNR, SSIM, MSE)
 
-### Core modules**:
+### Core modules:
 - `main_window.py` - Main window with sidebar navigation and QStackedWidget
 - `image_processor.py` - Central `ImageProcessor` class managing image loading, denoising, super-resolution, and saving
 - `denoise_algorithms.py` - Denoising functions (`hybrid_denoise`, `adaptive_denoise`, `non_local_means_denoise`, `bilateral_filter_denoise`, `wavelet_denoise`, `bm3d_denoise`, `anisotropic_diffusion_denoise`, `iterative_reconstruction_denoise`) with multi-depth support (uint8/uint16/float)
@@ -47,7 +48,7 @@ python test_simple.py
 - `neural_denoise.py` - Optional ONNX-based neural denoiser with fallback to bilateral filter
 - `metrics.py` - PSNR, SSIM, MSE calculation with multi-depth normalization
 - `training_page.py` - PyTorch-based neural network training with ONNX export
-- `preprocess_page.py` - Noise extraction and dataset construction utilities
+- `preprocess_page.py` - Two-step workflow: noise extraction from single image, then synthetic dataset generation
 
 **Key patterns**:
 - All denoising functions normalize images to float64 [0,1] before processing, then denormalize to original dtype
