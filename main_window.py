@@ -108,12 +108,10 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """初始化用户界面。"""
         self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.1.3')
-        # 根据界面布局计算的最小尺寸（确保按钮不重叠）：
-        # 宽度 = 侧边栏 (180px) + 内容左边距 (20px) + 左面板 (400px) + 间距 (20px) + 右面板 (500px) + 内容右边距 (20px) = 1140px
-        # 高度 = 标题栏 (55px) + 标签页 (50px) + 内容区 (750px) + 状态栏 (50px) + 边距 (40px) = 945px
-        # 增加缓冲空间防止压缩
-        self.setMinimumSize(1400, 980)
-        self.resize(1600, 1000)
+        # 接近全屏的最小尺寸设置
+        # 宽度和高度增大，确保界面元素不压缩
+        self.setMinimumSize(1600, 1100)
+        self.resize(1920, 1200)
 
         # 设置全局调色板
         palette = QPalette()
