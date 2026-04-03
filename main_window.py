@@ -67,32 +67,33 @@ class NavigationButton(QToolButton):
         self.setCheckable(True)
         self.setChecked(False)
         self.setAutoExclusive(True)
-        self.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.setIconSize(QSize(32, 32))
+        self.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(76)
+        self.setFixedHeight(64)
         self.setStyleSheet(self._get_style())
 
     def _get_style(self):
         return f"""
             QToolButton {{
-                background-color: transparent;
-                border: none;
+                background-color: {DesignTokens.SIDEBAR_BORDER};
+                border: 1px solid {DesignTokens.SIDEBAR_BORDER};
                 border-radius: {DesignTokens.RADIUS_MEDIUM};
                 color: {DesignTokens.TEXT_MUTED};
-                font-size: 13px;
+                font-size: 17px;
                 font-weight: 500;
-                padding: 10px;
-                margin: 4px 6px;
+                padding: 16px 18px;
+                margin: 4px 8px;
             }}
             QToolButton:hover {{
-                background-color: {DesignTokens.SIDEBAR_BORDER};
+                background-color: {DesignTokens.PRIMARY_700};
+                border-color: {DesignTokens.PRIMARY_600};
                 color: {DesignTokens.SURFACE};
             }}
             QToolButton:checked {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.PRIMARY_500}, stop:1 {DesignTokens.PRIMARY_600});
                 color: white;
                 font-weight: 600;
+                border-color: transparent;
             }}
         """
 
@@ -106,7 +107,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.1.2')
+        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.1.3')
         # 根据界面布局计算的最小尺寸（确保按钮不重叠）：
         # 宽度 = 侧边栏 (180px) + 内容左边距 (20px) + 左面板 (400px) + 间距 (20px) + 右面板 (500px) + 内容右边距 (20px) = 1140px
         # 高度 = 标题栏 (55px) + 标签页 (50px) + 内容区 (750px) + 状态栏 (50px) + 边距 (40px) = 945px
@@ -180,30 +181,31 @@ class MainWindow(QMainWindow):
 
         layout = QVBoxLayout(sidebar)
         layout.setSpacing(DesignTokens.SPACING_8)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setContentsMargins(12, 24, 12, 12)
 
-        # 导航按钮
+        # 导航按钮 - 从顶部向上分布
         self.nav_buttons = []
 
-        self.btn_preprocess = NavigationButton("📊 图片预处理")
+        self.btn_preprocess = NavigationButton("图片预处理")
         self.btn_preprocess.clicked.connect(lambda: self._switch_page(0))
         layout.addWidget(self.btn_preprocess)
         self.nav_buttons.append(self.btn_preprocess)
 
-        self.btn_training = NavigationButton("🧠 算法训练")
+        self.btn_training = NavigationButton("算法训练")
         self.btn_training.clicked.connect(lambda: self._switch_page(1))
         layout.addWidget(self.btn_training)
         self.nav_buttons.append(self.btn_training)
 
-        self.btn_denoise = NavigationButton("🔍 降噪与超分")
+        self.btn_denoise = NavigationButton("降噪与超分")
         self.btn_denoise.clicked.connect(lambda: self._switch_page(2))
         layout.addWidget(self.btn_denoise)
         self.nav_buttons.append(self.btn_denoise)
 
+        # 底部弹性空间，将按钮推向顶部
         layout.addStretch()
 
         # 版本信息
-        version_label = QLabel("v3.1.1")
+        version_label = QLabel("v3.1.2")
         version_label.setStyleSheet(f"""
             QLabel {{
                 color: {DesignTokens.TEXT_MUTED};
