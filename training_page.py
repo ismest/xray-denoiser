@@ -683,7 +683,7 @@ class TrainingPage(QWidget):
         self.output_path_edit.setText(output_dir)
 
         self.is_training = True
-        self.train_history = []
+        self.train_history = {'epoch': [], 'train_loss': [], 'val_loss': [], 'lr': []}
         self.current_epoch = 0
 
         self.train_btn.setEnabled(False)
