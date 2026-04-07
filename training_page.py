@@ -407,18 +407,18 @@ class TrainingPage(QWidget):
 
         # 1. 数据集选择
         data_group = QGroupBox("1. 数据集目录")
-        data_layout = QVBoxLayout(data_group)
+        data_layout = QHBoxLayout(data_group)
         data_layout.setSpacing(10)
+        data_layout.setContentsMargins(10, 10, 10, 10)
 
         self.dataset_path_edit = QTextEdit()
         self.dataset_path_edit.setReadOnly(True)
-        self.dataset_path_edit.setMaximumHeight(50)
         self.dataset_path_edit.setPlaceholderText("选择预处理生成的数据集目录...")
-        data_layout.addWidget(self.dataset_path_edit)
+        data_layout.addWidget(self.dataset_path_edit, 1)
 
         browse_btn = QPushButton("选择数据集目录")
         browse_btn.clicked.connect(self.browse_dataset)
-        browse_btn.setMinimumHeight(44)
+        browse_btn.setMinimumWidth(140)
         data_layout.addWidget(browse_btn)
 
         layout.addWidget(data_group)
@@ -461,18 +461,18 @@ class TrainingPage(QWidget):
 
         # 3. 输出设置
         output_group = QGroupBox("3. 模型输出")
-        output_layout = QVBoxLayout(output_group)
+        output_layout = QHBoxLayout(output_group)
         output_layout.setSpacing(10)
+        output_layout.setContentsMargins(10, 10, 10, 10)
 
         self.output_path_edit = QTextEdit()
         self.output_path_edit.setReadOnly(True)
-        self.output_path_edit.setMaximumHeight(50)
         self.output_path_edit.setPlaceholderText("模型保存目录...")
-        output_layout.addWidget(self.output_path_edit)
+        output_layout.addWidget(self.output_path_edit, 1)
 
         self.browse_output_btn = QPushButton("选择模型输出目录")
         self.browse_output_btn.clicked.connect(self.browse_output)
-        self.browse_output_btn.setMinimumHeight(44)
+        self.browse_output_btn.setMinimumWidth(140)
         output_layout.addWidget(self.browse_output_btn)
 
         # 训练按钮
@@ -580,16 +580,17 @@ class TrainingPage(QWidget):
                 background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
-                padding: 20px;
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(16)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         # 进度显示
         progress_group = QGroupBox("训练进度")
         progress_layout = QVBoxLayout(progress_group)
+        progress_layout.setSpacing(8)
+        progress_layout.setContentsMargins(10, 10, 10, 10)
 
         self.progress = QProgressBar()
         self.progress.setMinimumHeight(36)
@@ -618,6 +619,8 @@ class TrainingPage(QWidget):
         # 日志输出
         log_group = QGroupBox("训练日志")
         log_layout = QVBoxLayout(log_group)
+        log_layout.setSpacing(0)
+        log_layout.setContentsMargins(0, 0, 0, 0)
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
@@ -627,13 +630,11 @@ class TrainingPage(QWidget):
                 font-family: 'Consolas', 'Courier New', monospace;
                 font-size: 16px;
                 background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
+                border: none;
                 padding: 10px;
             }
         """)
-        self.log_text.setMinimumHeight(200)
-        self.log_text.setMaximumHeight(250)
+        self.log_text.setMinimumHeight(250)
         log_layout.addWidget(self.log_text)
 
         layout.addWidget(log_group)
@@ -641,11 +642,13 @@ class TrainingPage(QWidget):
         # Loss 曲线图
         chart_group = QGroupBox("训练 Loss 曲线")
         chart_layout = QVBoxLayout(chart_group)
+        chart_layout.setSpacing(0)
+        chart_layout.setContentsMargins(0, 0, 0, 0)
 
         # 创建 matplotlib 图表
         self.loss_figure = Figure(figsize=(10, 8), dpi=100)
         self.loss_canvas = FigureCanvasQTAgg(self.loss_figure)
-        self.loss_canvas.setMinimumHeight(600)
+        self.loss_canvas.setMinimumHeight(550)
         self.loss_canvas.setStyleSheet("background-color: white;")
 
         # 初始化图表
