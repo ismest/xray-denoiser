@@ -871,13 +871,18 @@ class PreprocessPage(QWidget):
 
         # 数据集配置
         dataset_group = QGroupBox("数据集配置")
+        dataset_group.setMinimumHeight(200)
         dataset_layout = QFormLayout(dataset_group)
         dataset_layout.setSpacing(12)
+        dataset_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        dataset_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        dataset_layout.setRowWrapPolicy(QFormLayout.DontWrapRows)
 
         self.total_patches_spin = QSpinBox()
         self.total_patches_spin.setRange(0, 100000)
         self.total_patches_spin.setValue(0)
         self.total_patches_spin.setMinimumHeight(40)
+        self.total_patches_spin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.total_patches_spin.setStyleSheet("""
             QSpinBox {
                 font-size: 15px;
@@ -890,6 +895,7 @@ class PreprocessPage(QWidget):
         self.train_split_spin.setRange(50, 90)
         self.train_split_spin.setValue(80)
         self.train_split_spin.setMinimumHeight(40)
+        self.train_split_spin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.train_split_spin.setStyleSheet("""
             QSpinBox {
                 font-size: 15px;
@@ -902,6 +908,7 @@ class PreprocessPage(QWidget):
         self.test_split_spin.setRange(5, 25)
         self.test_split_spin.setValue(10)
         self.test_split_spin.setMinimumHeight(40)
+        self.test_split_spin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.test_split_spin.setStyleSheet("""
             QSpinBox {
                 font-size: 15px;
@@ -914,6 +921,7 @@ class PreprocessPage(QWidget):
         self.val_split_spin.setRange(5, 25)
         self.val_split_spin.setValue(10)
         self.val_split_spin.setMinimumHeight(40)
+        self.val_split_spin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.val_split_spin.setStyleSheet("""
             QSpinBox {
                 font-size: 15px;
@@ -1099,12 +1107,15 @@ class PreprocessPage(QWidget):
 
         # 噪声参数显示
         params_group = QGroupBox("提取的噪声参数")
-        params_group.setMinimumHeight(120)
+        params_group.setMinimumHeight(280)
         params_layout = QVBoxLayout(params_group)
-        self.extracted_params_label = QLabel("等待提取...")
-        self.extracted_params_label.setWordWrap(True)
-        self.extracted_params_label.setStyleSheet("""
-            QLabel {
+        self.extracted_params_text = QTextEdit()
+        self.extracted_params_text.setReadOnly(True)
+        self.extracted_params_text.setMaximumHeight(280)
+        self.extracted_params_text.setMinimumHeight(240)
+        self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
+        self.extracted_params_text.setStyleSheet("""
+            QTextEdit {
                 font-family: 'Consolas', monospace;
                 font-size: 14px;
                 background-color: #f8fafc;
@@ -1114,7 +1125,7 @@ class PreprocessPage(QWidget):
                 color: #475569;
             }
         """)
-        params_layout.addWidget(self.extracted_params_label)
+        params_layout.addWidget(self.extracted_params_text)
         layout.addWidget(params_group)
 
         return panel
@@ -1344,7 +1355,7 @@ class PreprocessPage(QWidget):
             self.blur_sigma_spin.setValue(self.noise_params.get('gaussian_blur_sigma', 1.0))
 
             # 显示简要信息（步骤 1 页面右侧）
-            self.extracted_params_label.setText(
+            self.extracted_params_text.setPlainText(
                 f"Poisson λ = {self.noise_params['poisson_lambda']:.1f}\n"
                 f"AWGN σ = {self.noise_params['awgn_sigma']:.4f}\n"
                 f"Gaussian Blur σ = 1.0\n"
