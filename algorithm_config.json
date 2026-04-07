@@ -53,7 +53,7 @@
       {
         "key": "bicubic",
         "name": "双三次插值 (Bicubic)",
-        "enabled": false
+        "enabled": true
       },
       {
         "key": "lanczos",
