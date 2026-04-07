@@ -218,8 +218,8 @@ class DenoiseWidget(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # 加载图像
-        file_group = QGroupBox("加载图像")
+        # 1. 加载图像
+        file_group = QGroupBox("1. 加载图像")
         file_layout = QVBoxLayout(file_group)
         file_layout.setSpacing(8)
 
@@ -247,8 +247,8 @@ class DenoiseWidget(QWidget):
 
         layout.addWidget(file_group)
 
-        # Step 1: Denoising
-        step1_group = QGroupBox("步骤 1: 降噪处理")
+        # 2. 降噪处理
+        step1_group = QGroupBox("2. 降噪处理")
         step1_layout = QVBoxLayout(step1_group)
         step1_layout.setSpacing(8)
 
@@ -288,8 +288,8 @@ class DenoiseWidget(QWidget):
 
         layout.addWidget(step1_group)
 
-        # Step 2: Super-Resolution
-        step2_group = QGroupBox("步骤 2: 超分辨率重构")
+        # 3. 超分辨率重构
+        step2_group = QGroupBox("3. 超分辨率重构")
         step2_layout = QVBoxLayout(step2_group)
         step2_layout.setSpacing(10)
 
