@@ -228,6 +228,14 @@ class DenoiseWidget(QWidget):
         self.load_btn.setMinimumHeight(36)
         file_layout.addWidget(self.load_btn)
 
+        # 图像信息
+        self.info_text = QTextEdit()
+        self.info_text.setReadOnly(True)
+        self.info_text.setMaximumHeight(90)
+        self.info_text.setMinimumHeight(80)
+        self.info_text.setPlaceholderText("加载图像后显示信息...")
+        file_layout.addWidget(self.info_text)
+
         save_layout = QHBoxLayout()
         save_layout.setSpacing(8)
         self.save_denoise_btn = QPushButton("💾 保存降噪图")
@@ -244,14 +252,6 @@ class DenoiseWidget(QWidget):
         self.save_sr_btn.setMinimumHeight(34)
         save_layout.addWidget(self.save_sr_btn)
         file_layout.addLayout(save_layout)
-
-        # 图像信息
-        self.info_text = QTextEdit()
-        self.info_text.setReadOnly(True)
-        self.info_text.setMaximumHeight(90)
-        self.info_text.setMinimumHeight(80)
-        self.info_text.setPlaceholderText("加载图像后显示信息...")
-        file_layout.addWidget(self.info_text)
 
         layout.addWidget(file_group)
 
