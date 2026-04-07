@@ -15,7 +15,7 @@ python main.py
 python test_simple.py
 ```
 
-## Current Version: v3.2.6
+## Current Version: v3.2.7
 
 ## Architecture v2.0 - Multi-Page Design
 
