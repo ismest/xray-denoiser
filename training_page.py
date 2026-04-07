@@ -632,6 +632,8 @@ class TrainingPage(QWidget):
                 padding: 10px;
             }
         """)
+        self.log_text.setMinimumHeight(200)
+        self.log_text.setMaximumHeight(250)
         log_layout.addWidget(self.log_text)
 
         layout.addWidget(log_group)
@@ -641,9 +643,9 @@ class TrainingPage(QWidget):
         chart_layout = QVBoxLayout(chart_group)
 
         # 创建 matplotlib 图表
-        self.loss_figure = Figure(figsize=(5, 4), dpi=100)
+        self.loss_figure = Figure(figsize=(10, 8), dpi=100)
         self.loss_canvas = FigureCanvasQTAgg(self.loss_figure)
-        self.loss_canvas.setMinimumHeight(300)
+        self.loss_canvas.setMinimumHeight(600)
         self.loss_canvas.setStyleSheet("background-color: white;")
 
         # 初始化图表
