@@ -158,9 +158,56 @@ def super_resolution_denoised_image(image: np.ndarray,
 
     original_dtype = image.dtype
 
-    # 使用训练的超分辨率模型
-    if method == 'trained_sr':
-        # 加载训练模型
+    # 使用训练的超分辨率模型（支持带时间戳的模型）
+    if method and method.startswith('trained_sr_'):
+        # 从方法名中提取时间戳
+        timestamp = method.replace('trained_sr_', '')
+
+        # 从特定子目录加载模型
+        sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution', timestamp)
+
+        if os.path.isdir(sr_model_dir):
+            # 查找模型文件
+            model_file = None
+            for f in ['sr_model.onnx', 'best_sr_model.pth', 'model_sr.pt', 'model.pth']:
+                if os.path.exists(os.path.join(sr_model_dir, f)):
+                    model_file = os.path.join(sr_model_dir, f)
+                    break
+
+            if model_file and os.path.exists(model_file):
+                try:
+                    # 加载模型
+                    if model_file.endswith('.onnx'):
+                        # ONNX 模型处理
+                        from neural_denoise import NeuralDenoiser
+                        denoiser = NeuralDenoiser(model_path=model_file)
+                        upscaled = denoiser.denoise(image)  # 简单处理，实际可能需要不同的 ONNX 推理
+                    else:
+                        # PyTorch 模型
+                        model = torch.load(model_file, map_location='cpu')
+                        model.eval()
+
+                        # 归一化
+                        img_norm = normalize_image(image)
+                        img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
+
+                        # 推理
+                        with torch.no_grad():
+                            result = model(img_tensor)
+                            upscaled = denormalize_image(result.squeeze().numpy())
+                except Exception as e:
+                    print(f"Failed to load trained SR model: {e}")
+                    # Fallback to lanczos
+                    upscaled = lanczos_upscale(image, scale)
+            else:
+                # Fallback to lanczos
+                upscaled = lanczos_upscale(image, scale)
+        else:
+            # Fallback to lanczos if directory doesn't exist
+            upscaled = lanczos_upscale(image, scale)
+
+    elif method == 'trained_sr':
+        # Legacy: 从 integrated_model/super_resolution 目录加载（不带时间戳）
         sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
         model_file = None
         for f in os.listdir(sr_model_dir):
@@ -189,6 +236,7 @@ def super_resolution_denoised_image(image: np.ndarray,
         else:
             # Fallback to lanczos
             upscaled = lanczos_upscale(image, scale)
+
     # Step 1: Upscale
     elif method == 'bicubic':
         upscaled = bicubic_upscale(image, scale)
@@ -226,18 +274,28 @@ def get_supported_sr_methods() -> list:
     config_methods = get_sr_algorithms()
     methods = [(item["key"], item["name"]) for item in config_methods]
 
-    # 检查是否有集成的超分辨率训练模型
+    # 检查是否有集成的超分辨率训练模型（扫描所有子目录）
     sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
-    if os.path.isdir(sr_model_dir) and os.path.exists(os.path.join(sr_model_dir, 'model_ready.marker')):
-        # 读取时间戳
-        timestamp = 'Unknown'
-        try:
-            with open(os.path.join(sr_model_dir, 'model_ready.marker'), 'r', encoding='utf-8') as f:
-                first_line = f.readline().strip()
-                if 'Integrated at' in first_line:
-                    timestamp = first_line.replace('Integrated at', '').strip()
-        except Exception:
-            pass
-        methods.append(('trained_sr', f'神经网络 (训练模型) [{timestamp}]'))
+    if os.path.isdir(sr_model_dir):
+        # 扫描所有子目录获取训练模型
+        for entry in os.listdir(sr_model_dir):
+            model_subdir = os.path.join(sr_model_dir, entry)
+            if os.path.isdir(model_subdir):
+                marker_file = os.path.join(model_subdir, 'model_ready.marker')
+                if os.path.exists(marker_file):
+                    # 读取时间戳
+                    timestamp = entry  # 使用目录名作为时间戳
+                    try:
+                        with open(marker_file, 'r', encoding='utf-8') as f:
+                            first_line = f.readline().strip()
+                            if 'Integrated at' in first_line:
+                                timestamp = first_line.replace('Integrated at', '').strip()
+                    except Exception:
+                        pass
+
+                    # 生成唯一的算法 key
+                    algo_key = f'trained_sr_{entry}'
+                    algo_name = f'神经网络 (训练模型) [{timestamp}]'
+                    methods.append((algo_key, algo_name))
 
     return methods

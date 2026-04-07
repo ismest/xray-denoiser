@@ -157,8 +157,69 @@ class ImageProcessor:
                     stride=stride
                 )
 
+            elif method and method.startswith('trained_neural_denoise_'):
+                # Use trained neural model from integrated_model/denoise/{timestamp} directory
+                patch_size = kwargs.get('patch_size', 256)
+                stride = kwargs.get('stride', 128)
+
+                # Extract timestamp from method name
+                timestamp = method.replace('trained_neural_denoise_', '')
+
+                # Load trained model from specific subdirectory
+                trained_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise', timestamp)
+
+                if os.path.isdir(trained_model_dir):
+                    # Try ONNX first, then PyTorch
+                    model_file_onnx = os.path.join(trained_model_dir, 'denoiser.onnx')
+                    model_file_pth = os.path.join(trained_model_dir, 'best_denoiser.pth')
+                    model_file_pt = os.path.join(trained_model_dir, 'model.pt')
+
+                    if os.path.exists(model_file_onnx):
+                        # Use ONNX model
+                        try:
+                            from neural_denoise import NeuralDenoiser
+                            denoiser = NeuralDenoiser(model_path=model_file_onnx)
+                            self.denoised_image = denoiser.denoise(
+                                self.original_image,
+                                patch_size=patch_size,
+                                stride=stride
+                            )
+                        except Exception as e:
+                            print(f"Failed to load ONNX model: {e}")
+                            self.denoised_image = hybrid_denoise(self.original_image)
+                    elif os.path.exists(model_file_pth) or os.path.exists(model_file_pt):
+                        # Load PyTorch model
+                        try:
+                            import torch
+                            from denoise_algorithms import normalize_image, denormalize_image
+
+                            # Find the model file
+                            model_file = model_file_pth if os.path.exists(model_file_pth) else model_file_pt
+
+                            # Load model
+                            model = torch.load(model_file, map_location='cpu')
+                            model.eval()
+
+                            # Normalize input
+                            img_norm = normalize_image(self.original_image)
+                            img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
+
+                            # Run inference
+                            with torch.no_grad():
+                                result = model(img_tensor)
+                                self.denoised_image = denormalize_image(result.squeeze().numpy())
+                        except Exception as e:
+                            print(f"Failed to load PyTorch model: {e}")
+                            self.denoised_image = hybrid_denoise(self.original_image)
+                    else:
+                        # Fallback to hybrid
+                        self.denoised_image = hybrid_denoise(self.original_image)
+                else:
+                    # Fallback to hybrid if directory doesn't exist
+                    self.denoised_image = hybrid_denoise(self.original_image)
+
             elif method == 'trained_neural_denoise':
-                # Use trained neural model from integrated_model/denoise directory
+                # Legacy: Use trained neural model from integrated_model/denoise directory (without timestamp)
                 patch_size = kwargs.get('patch_size', 256)
                 stride = kwargs.get('stride', 128)
 
@@ -451,27 +512,31 @@ class ImageProcessor:
         if self.neural_denoiser.is_available():
             methods.append(('neural', 'Neural Network'))
 
-        # Add trained neural model if available (check both denoise and super_resolution subdirs)
+        # Add trained neural models from integrated_model/denoise directory
+        # Scan all subdirectories for trained models
         trained_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model')
         if os.path.isdir(trained_model_dir):
-            # Check for denoise model
             denoise_dir = os.path.join(trained_model_dir, 'denoise')
-            if os.path.isdir(denoise_dir) and os.path.exists(os.path.join(denoise_dir, 'model_ready.marker')):
-                # Read timestamp from marker file
-                timestamp = 'Unknown'
-                try:
-                    with open(os.path.join(denoise_dir, 'model_ready.marker'), 'r', encoding='utf-8') as f:
-                        first_line = f.readline().strip()
-                        if 'Integrated at' in first_line:
-                            timestamp = first_line.replace('Integrated at', '').strip()
-                except Exception:
-                    pass
-                methods.append(('trained_neural_denoise', f'Neural Network (Trained - Denoise) [{timestamp}]'))
+            if os.path.isdir(denoise_dir):
+                # Scan all subdirectories for models
+                for entry in os.listdir(denoise_dir):
+                    model_subdir = os.path.join(denoise_dir, entry)
+                    if os.path.isdir(model_subdir):
+                        marker_file = os.path.join(model_subdir, 'model_ready.marker')
+                        if os.path.exists(marker_file):
+                            # Read timestamp from marker file
+                            timestamp = entry  # Use directory name as timestamp
+                            try:
+                                with open(marker_file, 'r', encoding='utf-8') as f:
+                                    first_line = f.readline().strip()
+                                    if 'Integrated at' in first_line:
+                                        timestamp = first_line.replace('Integrated at', '').strip()
+                            except Exception:
+                                pass
 
-            # Check for super resolution model (will be used after denoise)
-            sr_dir = os.path.join(trained_model_dir, 'super_resolution')
-            if os.path.isdir(sr_dir) and os.path.exists(os.path.join(sr_dir, 'model_ready.marker')):
-                # SR model is used in super-resolution step, not denoise step
-                pass
+                            # Generate unique key based on directory name
+                            algo_key = f'trained_neural_denoise_{entry}'
+                            algo_name = f'Trained Neural Denoise [{timestamp}]'
+                            methods.append((algo_key, algo_name))
 
         return methods
