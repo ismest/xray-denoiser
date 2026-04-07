@@ -145,17 +145,52 @@ def super_resolution_denoised_image(image: np.ndarray,
     Args:
         image: Denoised input image
         scale: Upscaling factor (1.5, 2.0, 3.0, 4.0)
-        method: Upscaling method ('bicubic', 'lanczos', 'edge_preserving')
+        method: Upscaling method ('bicubic', 'lanczos', 'edge_preserving', 'trained_sr')
         enhance_edges: Whether to apply edge enhancement
         enhance_contrast: Whether to apply contrast enhancement
 
     Returns:
         Super-resolved image
     """
+    import os
+    import torch
+    from denoise_algorithms import normalize_image, denormalize_image
+
     original_dtype = image.dtype
 
+    # 使用训练的超分辨率模型
+    if method == 'trained_sr':
+        # 加载训练模型
+        sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
+        model_file = None
+        for f in os.listdir(sr_model_dir):
+            if f.endswith('.pth'):
+                model_file = os.path.join(sr_model_dir, f)
+                break
+
+        if model_file and os.path.exists(model_file):
+            try:
+                # 加载模型
+                model = torch.load(model_file, map_location='cpu')
+                model.eval()
+
+                # 归一化
+                img_norm = normalize_image(image)
+                img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
+
+                # 推理
+                with torch.no_grad():
+                    result = model(img_tensor)
+                    upscaled = denormalize_image(result.squeeze().numpy())
+            except Exception as e:
+                print(f"Failed to load trained SR model: {e}")
+                # Fallback to lanczos
+                upscaled = lanczos_upscale(image, scale)
+        else:
+            # Fallback to lanczos
+            upscaled = lanczos_upscale(image, scale)
     # Step 1: Upscale
-    if method == 'bicubic':
+    elif method == 'bicubic':
         upscaled = bicubic_upscale(image, scale)
     elif method == 'lanczos':
         upscaled = lanczos_upscale(image, scale)
@@ -184,8 +219,26 @@ def super_resolution_denoised_image(image: np.ndarray,
 
 def get_supported_sr_methods() -> list:
     """Get list of supported super-resolution methods."""
-    return [
+    import os
+
+    methods = [
         ('bicubic', '双三次插值 (Bicubic)'),
         ('lanczos', '兰索斯插值 (Lanczos) - 推荐'),
         ('edge_preserving', '保边增强 (Edge Preserving)'),
     ]
+
+    # 检查是否有集成的超分辨率训练模型
+    sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
+    if os.path.isdir(sr_model_dir) and os.path.exists(os.path.join(sr_model_dir, 'model_ready.marker')):
+        # 读取时间戳
+        timestamp = 'Unknown'
+        try:
+            with open(os.path.join(sr_model_dir, 'model_ready.marker'), 'r', encoding='utf-8') as f:
+                first_line = f.readline().strip()
+                if 'Integrated at' in first_line:
+                    timestamp = first_line.replace('Integrated at', '').strip()
+        except Exception:
+            pass
+        methods.append(('trained_sr', f'神经网络 (训练模型) [{timestamp}]'))
+
+    return methods
