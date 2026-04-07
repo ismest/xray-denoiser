@@ -475,6 +475,48 @@ class TrainingPage(QWidget):
         self.browse_output_btn.setMinimumHeight(44)
         output_layout.addWidget(self.browse_output_btn)
 
+        # 训练按钮
+        self.train_btn = QPushButton("开始训练")
+        self.train_btn.setObjectName("primaryBtn")
+        self.train_btn.setStyleSheet("""
+            QPushButton#primaryBtn {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
+                font-size: 16px;
+                font-weight: 600;
+                padding: 16px 32px;
+                border-radius: 8px;
+            }
+            QPushButton#primaryBtn:hover {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
+            }
+            QPushButton#primaryBtn:disabled {
+                background: #cbd5e1;
+            }
+        """)
+        self.train_btn.clicked.connect(self.start_training)
+        self.train_btn.setEnabled(False)
+        self.train_btn.setMinimumHeight(48)
+        output_layout.addWidget(self.train_btn)
+
+        # 停止按钮
+        self.stop_btn = QPushButton("停止训练")
+        self.stop_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc2626;
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                padding: 14px 28px;
+                border-radius: 8px;
+            }
+            QPushButton:hover { background-color: #b91c1c; }
+            QPushButton:disabled { background-color: #cbd5e1; }
+        """)
+        self.stop_btn.clicked.connect(self.stop_training)
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.setMinimumHeight(48)
+        output_layout.addWidget(self.stop_btn)
+
         layout.addWidget(output_group)
 
         # 4. 模型集成
@@ -499,20 +541,19 @@ class TrainingPage(QWidget):
                 border-radius: 6px;
             }
         """)
-        self.model_type_combo.currentIndexChanged.connect(self.update_integrate_button_text)
         model_type_layout.addWidget(self.model_type_combo, 1)
         integrate_layout.addLayout(model_type_layout)
 
         # 集成按钮
-        self.integrate_model_btn = QPushButton("添加到降噪算法")
+        self.integrate_model_btn = QPushButton("添加")
         self.integrate_model_btn.setObjectName("integrateModelBtn")
         self.integrate_model_btn.setStyleSheet("""
             QPushButton#integrateModelBtn {
                 background-color: #0ea5e9;
                 color: white;
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 600;
-                padding: 14px 24px;
+                padding: 16px 32px;
                 border-radius: 8px;
             }
             QPushButton#integrateModelBtn:hover {
@@ -527,48 +568,6 @@ class TrainingPage(QWidget):
         integrate_layout.addWidget(self.integrate_model_btn)
 
         layout.addWidget(integrate_group)
-
-        # 5. 训练按钮
-        self.train_btn = QPushButton("开始训练")
-        self.train_btn.setObjectName("primaryBtn")
-        self.train_btn.setStyleSheet("""
-            QPushButton#primaryBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
-                font-size: 16px;
-                font-weight: 600;
-                padding: 16px 32px;
-                border-radius: 8px;
-            }
-            QPushButton#primaryBtn:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
-            }
-            QPushButton#primaryBtn:disabled {
-                background: #cbd5e1;
-            }
-        """)
-        self.train_btn.clicked.connect(self.start_training)
-        self.train_btn.setEnabled(False)
-        self.train_btn.setMinimumHeight(48)
-        layout.addWidget(self.train_btn)
-
-        # 停止按钮
-        self.stop_btn = QPushButton("停止训练")
-        self.stop_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #dc2626;
-                color: white;
-                font-size: 16px;
-                font-weight: 600;
-                padding: 14px 28px;
-                border-radius: 8px;
-            }
-            QPushButton:hover { background-color: #b91c1c; }
-            QPushButton:disabled { background-color: #cbd5e1; }
-        """)
-        self.stop_btn.clicked.connect(self.stop_training)
-        self.stop_btn.setEnabled(False)
-        self.stop_btn.setMinimumHeight(48)
-        layout.addWidget(self.stop_btn)
 
         layout.addStretch()
         return panel
@@ -820,20 +819,12 @@ class TrainingPage(QWidget):
 
             # 启用集成按钮
             self.integrate_model_btn.setEnabled(True)
-            self.log_text.append("✓ 训练完成，点击'添加到 XX 算法'按钮可集成模型")
+            self.log_text.append("✓ 训练完成，点击'添加'按钮可集成模型")
         else:
             QMessageBox.warning(self, "提示", message)
             self.log_text.append(f"✗ {message}")
 
         self.status_label.setText("训练结束")
-
-    def update_integrate_button_text(self):
-        """更新集成按钮文本（根据模型类型）。"""
-        model_type = self.model_type_combo.currentText()
-        if "降噪" in model_type:
-            self.integrate_model_btn.setText("添加到降噪算法")
-        else:
-            self.integrate_model_btn.setText("添加到超分辨率算法")
 
     def integrate_model(self):
         """集成训练后的模型到对应算法。"""
