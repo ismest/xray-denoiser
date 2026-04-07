@@ -286,9 +286,10 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage(f'当前页面：{page_names[index]}')
 
     def show_help_guide(self):
-        """显示使用指南对话框。"""
+        """显示使用指南对话框 - 非模态，不影响其他操作。"""
         dialog = HelpGuideDialog(self)
-        dialog.exec_()
+        dialog.setWindowModality(Qt.NonModal)
+        dialog.show()
 
 
 class HelpGuideDialog(QDialog):
