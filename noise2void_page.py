@@ -243,6 +243,8 @@ class Noise2VoidPage(QWidget):
         self.training_thread = None
         self.is_training = False
         self.train_history = {'epoch': [], 'loss': [], 'best_loss': []}
+        self.image_path = None
+        self.output_dir = None
         self.init_ui()
 
     def init_ui(self):
@@ -572,9 +574,12 @@ class Noise2VoidPage(QWidget):
                     info = f"文件名：{os.path.basename(file_path)} | 形状：({h}, {w}) | 数据类型：{dtype} | 位深度：{bit_depth}"
                     self.image_info_label.setText(info)
                     self.image_info_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 14px;")
+                else:
+                    self.image_info_label.setText(f"无法加载图像：{os.path.basename(file_path)}")
+                    self.image_info_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 14px;")
             except Exception as e:
-                self.image_info_label.setText(f"加载成功：{os.path.basename(file_path)}")
-                self.image_info_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 14px;")
+                self.image_info_label.setText(f"加载失败：{str(e)}")
+                self.image_info_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 14px;")
 
     def browse_output(self):
         """选择输出目录"""
