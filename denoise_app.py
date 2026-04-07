@@ -16,6 +16,8 @@ from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from image_processor import ImageProcessor
 from super_resolution import get_supported_sr_methods
+from algorithm_config import get_denoise_algorithms, get_sr_algorithms
+from algorithm_editor_dialog import AlgorithmEditorDialog
 import numpy as np
 
 
@@ -260,21 +262,47 @@ class DenoiseWidget(QWidget):
         step1_layout = QVBoxLayout(step1_group)
         step1_layout.setSpacing(8)
 
-        algo_layout = QFormLayout()
+        algo_layout = QHBoxLayout()
         algo_layout.setSpacing(8)
 
         self.algorithm_combo = QComboBox()
-        self.update_algorithm_list()
         self.algorithm_combo.setMinimumHeight(32)
-        algo_layout.addRow("算法:", self.algorithm_combo)
+        algo_layout.addWidget(self.algorithm_combo, 1)
+
+        # 算法管理按钮
+        self.manage_algo_btn = QPushButton("⚙ 管理")
+        self.manage_algo_btn.setObjectName("manageAlgoBtn")
+        self.manage_algo_btn.setMinimumHeight(32)
+        self.manage_algo_btn.setMinimumWidth(70)
+        self.manage_algo_btn.clicked.connect(self.open_algorithm_editor)
+        algo_layout.addWidget(self.manage_algo_btn)
+
+        # 刷新算法列表
+        self.update_algorithm_list()
+
+        step1_layout.addLayout(algo_layout)
+
+        # 强度选择
+        strength_layout = QHBoxLayout()
+        strength_layout.setSpacing(8)
+        strength_label = QLabel("强度:")
+        strength_label.setStyleSheet("font-size: 15px; color: #475569;")
+        strength_layout.addWidget(strength_label)
 
         self.strength_combo = QComboBox()
         self.strength_combo.addItems(["低", "中", "高"])
         self.strength_combo.setCurrentIndex(1)
         self.strength_combo.setMinimumHeight(32)
-        algo_layout.addRow("强度:", self.strength_combo)
-
-        step1_layout.addLayout(algo_layout)
+        self.strength_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 15px;
+                padding: 6px 10px;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+            }
+        """)
+        strength_layout.addWidget(self.strength_combo, 1)
+        step1_layout.addLayout(strength_layout)
 
         self.denoise_params_widget = self.create_denoise_params()
         step1_layout.addWidget(self.denoise_params_widget)
@@ -301,23 +329,48 @@ class DenoiseWidget(QWidget):
         step2_layout = QVBoxLayout(step2_group)
         step2_layout.setSpacing(10)
 
-        sr_layout = QFormLayout()
-        sr_layout.setSpacing(10)
+        # 算法选择和管埋
+        sr_algo_layout = QHBoxLayout()
+        sr_algo_layout.setSpacing(8)
 
         self.sr_method_combo = QComboBox()
-        for key, name in get_supported_sr_methods():
-            self.sr_method_combo.addItem(name, key)
-        self.sr_method_combo.setCurrentIndex(1)
         self.sr_method_combo.setMinimumHeight(44)
-        sr_layout.addRow("算法:", self.sr_method_combo)
+        sr_algo_layout.addWidget(self.sr_method_combo, 1)
+
+        # 算法管理按钮
+        self.manage_sr_algo_btn = QPushButton("⚙ 管理")
+        self.manage_sr_algo_btn.setObjectName("manageAlgoBtn")
+        self.manage_sr_algo_btn.setMinimumHeight(44)
+        self.manage_sr_algo_btn.setMinimumWidth(70)
+        self.manage_sr_algo_btn.clicked.connect(self.open_algorithm_editor)
+        sr_algo_layout.addWidget(self.manage_sr_algo_btn)
+
+        step2_layout.addLayout(sr_algo_layout)
+
+        # 刷新算法列表
+        self._update_sr_algorithm_list()
+
+        # 放大倍数
+        sr_scale_layout = QHBoxLayout()
+        sr_scale_layout.setSpacing(8)
+        sr_scale_label = QLabel("放大倍数:")
+        sr_scale_label.setStyleSheet("font-size: 15px; color: #475569;")
+        sr_scale_layout.addWidget(sr_scale_label)
 
         self.sr_scale_combo = QComboBox()
         self.sr_scale_combo.addItems(["1.5x", "2.0x", "3.0x", "4.0x"])
         self.sr_scale_combo.setCurrentIndex(1)
         self.sr_scale_combo.setMinimumHeight(44)
-        sr_layout.addRow("放大倍数:", self.sr_scale_combo)
-
-        step2_layout.addLayout(sr_layout)
+        self.sr_scale_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 15px;
+                padding: 6px 10px;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+            }
+        """)
+        sr_scale_layout.addWidget(self.sr_scale_combo, 1)
+        step2_layout.addLayout(sr_scale_layout)
 
         self.sr_btn = QPushButton("🔍 执行超分辨率")
         self.sr_btn.setObjectName("secondaryBtn")
@@ -555,12 +608,27 @@ class DenoiseWidget(QWidget):
         return panel
 
     def update_algorithm_list(self):
-        """Update the algorithm dropdown."""
+        """更新降噪算法下拉框。"""
         self.algorithm_combo.clear()
-        methods = self.processor.get_supported_methods()
-        for key, name in methods:
-            self.algorithm_combo.addItem(name, key)
+        methods = get_denoise_algorithms()
+        for item in methods:
+            self.algorithm_combo.addItem(item["name"], item["key"])
         self.algorithm_combo.currentIndexChanged.connect(self.update_parameter_panel)
+
+    def _update_sr_algorithm_list(self):
+        """更新超分辨率算法下拉框。"""
+        self.sr_method_combo.clear()
+        methods = get_sr_algorithms()
+        for item in methods:
+            self.sr_method_combo.addItem(item["name"], item["key"])
+
+    def open_algorithm_editor(self):
+        """打开算法编辑对话框。"""
+        dialog = AlgorithmEditorDialog(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # 刷新算法列表
+            self.update_algorithm_list()
+            self._update_sr_algorithm_list()
 
     def update_parameter_panel(self):
         """Update parameter panel visibility."""
@@ -854,7 +922,23 @@ class DenoiseWidget(QWidget):
         """应用 Medical Minimalism 风格"""
         # 按钮样式
         for btn in self.findChildren(QPushButton):
-            if "加载" in btn.text():
+            if btn.objectName() == "manageAlgoBtn":
+                btn.setStyleSheet("""
+                    QPushButton#manageAlgoBtn {
+                        background-color: #f1f5f9;
+                        color: #475569;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 6px;
+                        font-weight: 500;
+                        font-size: 14px;
+                    }
+                    QPushButton#manageAlgoBtn:hover {
+                        background-color: #e2e8f0;
+                        border-color: #0ea5e9;
+                        color: #0ea5e9;
+                    }
+                """)
+            elif "加载" in btn.text():
                 btn.setStyleSheet("""
                     QPushButton {
                         background-color: #f1f5f9;

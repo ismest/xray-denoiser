@@ -1,0 +1,65 @@
+{
+  "denoise": {
+    "algorithms": [
+      {
+        "key": "hybrid",
+        "name": "Hybrid (Recommended)",
+        "enabled": true
+      },
+      {
+        "key": "bm3d",
+        "name": "BM3D (Block-Matching 3D)",
+        "enabled": true
+      },
+      {
+        "key": "anisotropic",
+        "name": "Anisotropic Diffusion",
+        "enabled": true
+      },
+      {
+        "key": "iterative",
+        "name": "Iterative Reconstruction",
+        "enabled": true
+      },
+      {
+        "key": "nlm",
+        "name": "Non-local Means",
+        "enabled": true
+      },
+      {
+        "key": "bilateral",
+        "name": "Bilateral Filter",
+        "enabled": true
+      },
+      {
+        "key": "wavelet",
+        "name": "Wavelet",
+        "enabled": true
+      },
+      {
+        "key": "gaussian",
+        "name": "Gaussian Filter",
+        "enabled": true
+      }
+    ]
+  },
+  "super_resolution": {
+    "algorithms": [
+      {
+        "key": "bicubic",
+        "name": "双三次插值 (Bicubic)",
+        "enabled": true
+      },
+      {
+        "key": "lanczos",
+        "name": "兰索斯插值 (Lanczos) - 推荐",
+        "enabled": true
+      },
+      {
+        "key": "edge_preserving",
+        "name": "保边增强 (Edge Preserving)",
+        "enabled": true
+      }
+    ]
+  }
+}

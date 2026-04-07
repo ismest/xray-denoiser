@@ -438,19 +438,14 @@ class ImageProcessor:
         self.metrics = None
         self.sr_metrics = None
         self.image_info = {}
-    
+
     def get_supported_methods(self) -> list:
         """Get list of supported denoising methods."""
-        methods = [
-            ('hybrid', 'Hybrid (Recommended)'),
-            ('bm3d', 'BM3D (Block-Matching 3D)'),
-            ('anisotropic', 'Anisotropic Diffusion'),
-            ('iterative', 'Iterative Reconstruction'),
-            ('nlm', 'Non-local Means'),
-            ('bilateral', 'Bilateral Filter'),
-            ('wavelet', 'Wavelet'),
-            ('gaussian', 'Gaussian Filter'),
-        ]
+        from algorithm_config import get_denoise_algorithms
+
+        # 从配置读取算法列表
+        config_methods = get_denoise_algorithms()
+        methods = [(item["key"], item["name"]) for item in config_methods]
 
         # Add neural if available
         if self.neural_denoiser.is_available():

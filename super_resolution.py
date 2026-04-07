@@ -220,12 +220,11 @@ def super_resolution_denoised_image(image: np.ndarray,
 def get_supported_sr_methods() -> list:
     """Get list of supported super-resolution methods."""
     import os
+    from algorithm_config import get_sr_algorithms
 
-    methods = [
-        ('bicubic', '双三次插值 (Bicubic)'),
-        ('lanczos', '兰索斯插值 (Lanczos) - 推荐'),
-        ('edge_preserving', '保边增强 (Edge Preserving)'),
-    ]
+    # 从配置读取算法列表
+    config_methods = get_sr_algorithms()
+    methods = [(item["key"], item["name"]) for item in config_methods]
 
     # 检查是否有集成的超分辨率训练模型
     sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
