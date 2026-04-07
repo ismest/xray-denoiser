@@ -1299,7 +1299,31 @@ class PreprocessPage(QWidget):
 
         if file_path:
             self.source_image_path = file_path
-            self.source_info_text.setText(f"已加载：{os.path.basename(file_path)}")
+
+            # 读取图像获取信息
+            img_data = np.fromfile(file_path, dtype=np.uint8)
+            img = cv2.imdecode(img_data, cv2.IMREAD_UNCHANGED)
+
+            if img is not None:
+                # 获取图像信息
+                file_name = os.path.basename(file_path)
+                shape = img.shape
+                dtype = str(img.dtype)
+
+                # 计算位深度
+                if img.ndim == 2:
+                    h, w = shape
+                    channel_str = "Gray"
+                else:
+                    h, w, c = shape
+                    channel_str = f"{c} channels"
+
+                bit_depth = "8 位" if dtype == "uint8" else "16 位" if dtype == "uint16" else dtype
+
+                # 显示图像信息
+                info_text = f"文件名：{file_name}\n形状：({h}, {w})\n数据类型：{dtype}\n位深度：{bit_depth}"
+                self.source_info_text.setText(info_text)
+
             self.extract_btn.setEnabled(True)
             self._display_source_preview(file_path)
 
