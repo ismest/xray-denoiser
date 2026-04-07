@@ -462,6 +462,30 @@ class TrainingPage(QWidget):
         self.model_type_combo.setMinimumHeight(44)
         self.model_type_combo.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("模型类型:", self.model_type_combo)
+        self.model_type_combo.currentIndexChanged.connect(self.update_integrate_button_text)
+
+        # 集成按钮
+        self.integrate_model_btn = QPushButton("添加到降噪算法")
+        self.integrate_model_btn.setObjectName("integrateModelBtn")
+        self.integrate_model_btn.setStyleSheet("""
+            QPushButton#integrateModelBtn {
+                background-color: #0ea5e9;
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 12px 24px;
+                border-radius: 8px;
+            }
+            QPushButton#integrateModelBtn:hover {
+                background-color: #0284c7;
+            }
+            QPushButton#integrateModelBtn:disabled {
+                background-color: #cbd5e1;
+            }
+        """)
+        self.integrate_model_btn.clicked.connect(self.integrate_model)
+        self.integrate_model_btn.setEnabled(False)
+        param_layout.addRow(self.integrate_model_btn)
 
         layout.addWidget(param_group)
 
@@ -524,12 +548,6 @@ class TrainingPage(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_btn.setMinimumHeight(48)
         layout.addWidget(self.stop_btn)
-
-        # 集成选项
-        self.integrate_checkbox = QCheckBox("训练完成后自动集成到降噪与超分辨率算法")
-        self.integrate_checkbox.setChecked(True)
-        self.integrate_checkbox.setStyleSheet("font-size: 15px; font-weight: 500; padding: 8px;")
-        layout.addWidget(self.integrate_checkbox)
 
         layout.addStretch()
         return panel
@@ -779,48 +797,69 @@ class TrainingPage(QWidget):
             QMessageBox.information(self, "成功", message)
             self.log_text.append(f"✓ {message}")
 
-            # 如果勾选了集成选项，执行集成逻辑
-            if self.integrate_checkbox.isChecked():
-                self._integrate_model()
+            # 启用集成按钮
+            self.integrate_model_btn.setEnabled(True)
+            self.log_text.append("✓ 训练完成，点击'添加到 XX 算法'按钮可集成模型")
         else:
             QMessageBox.warning(self, "提示", message)
             self.log_text.append(f"✗ {message}")
 
         self.status_label.setText("训练结束")
 
-    def _integrate_model(self):
-        """集成训练后的模型到降噪算法。"""
+    def update_integrate_button_text(self):
+        """更新集成按钮文本（根据模型类型）。"""
+        model_type = self.model_type_combo.currentText()
+        if "降噪" in model_type:
+            self.integrate_model_btn.setText("添加到降噪算法")
+        else:
+            self.integrate_model_btn.setText("添加到超分辨率算法")
+
+    def integrate_model(self):
+        """集成训练后的模型到对应算法。"""
         try:
             output_dir = self.output_path_edit.toPlainText().strip()
             if not output_dir:
+                QMessageBox.warning(self, "警告", "没有找到输出目录")
                 return
 
-            # 查找最新的模型文件
+            # 查找模型文件
             model_dir = os.path.join(output_dir, 'models')
             if not os.path.isdir(model_dir):
+                QMessageBox.warning(self, "警告", "没有找到模型文件目录")
                 return
 
-            # 复制模型文件到集成目录
-            integrate_dir = os.path.join(os.path.dirname(__file__), 'integrated_model')
-            os.makedirs(integrate_dir, exist_ok=True)
+            # 根据模型类型决定目标目录
+            model_type = self.model_type_combo.currentText()
+            if "降噪" in model_type:
+                target_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise')
+            else:
+                target_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
 
-            # 复制所有模型文件
+            os.makedirs(target_dir, exist_ok=True)
+
+            # 复制模型文件
             import shutil
+            copied_count = 0
             for filename in os.listdir(model_dir):
                 if filename.endswith(('.pth', '.onnx', '.json')):
                     src = os.path.join(model_dir, filename)
-                    dst = os.path.join(integrate_dir, filename)
+                    dst = os.path.join(target_dir, filename)
                     shutil.copy2(src, dst)
+                    copied_count += 1
 
-            self.log_text.append(f"✓ 模型已集成到降噪算法：{integrate_dir}")
+            self.log_text.append(f"✓ 模型已集成到：{target_dir}")
+            self.integrate_model_btn.setEnabled(False)
 
             # 创建集成标记文件
-            marker_path = os.path.join(integrate_dir, 'model_ready.marker')
+            marker_path = os.path.join(target_dir, 'model_ready.marker')
             with open(marker_path, 'w', encoding='utf-8') as f:
-                f.write(f"Integrated at {datetime.now().isoformat()}")
+                f.write(f"Integrated at {datetime.now().isoformat()}\nModel Type: {model_type}")
+
+            QMessageBox.information(self, "成功", f"模型已集成到{'降噪' if '降噪' in model_type else '超分辨率'}算法\n目录：{target_dir}")
 
         except Exception as e:
-            self.log_text.append(f"⚠ 集成失败：{str(e)}")
+            QMessageBox.critical(self, "错误", f"集成失败：{str(e)}")
+            self.log_text.append(f"✗ 集成失败：{str(e)}")
 
     def apply_medical_style(self):
         """应用 Medical Minimalism 风格"""
