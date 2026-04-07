@@ -672,10 +672,11 @@ class TrainingPage(QWidget):
             self.dataset_path_edit.setText(dir_path)
             # 验证目录结构
             if self._validate_dataset(dir_path):
-                self.train_btn.setEnabled(True)
                 self.log_text.append(f"✓ 数据集目录有效：{dir_path}")
+                self._check_can_train()
             else:
                 self.log_text.append(f"⚠ 数据集目录可能不完整，请确认包含 train/clean 和 train/noisy 子目录")
+                self.train_btn.setEnabled(False)
 
     def _validate_dataset(self, dataset_dir):
         """验证数据集目录结构。"""
@@ -697,6 +698,17 @@ class TrainingPage(QWidget):
 
         return False
 
+    def _check_can_train(self):
+        """检查是否可以开始训练（数据集和输出目录都有效）。"""
+        dataset_dir = self.dataset_path_edit.toPlainText().strip()
+        output_dir = self.output_path_edit.toPlainText().strip()
+
+        # 必须同时满足：数据集有效 + 输出目录已选择
+        if dataset_dir and output_dir and self._validate_dataset(dataset_dir):
+            self.train_btn.setEnabled(True)
+        else:
+            self.train_btn.setEnabled(False)
+
     def browse_output(self):
         """选择模型输出目录。"""
         dir_path = QFileDialog.getExistingDirectory(
@@ -705,6 +717,7 @@ class TrainingPage(QWidget):
 
         if dir_path:
             self.output_path_edit.setText(dir_path)
+            self._check_can_train()
 
     def start_training(self):
         """开始训练。"""
