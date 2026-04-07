@@ -245,6 +245,14 @@ class DenoiseWidget(QWidget):
         save_layout.addWidget(self.save_sr_btn)
         file_layout.addLayout(save_layout)
 
+        # 图像信息
+        self.info_text = QTextEdit()
+        self.info_text.setReadOnly(True)
+        self.info_text.setMaximumHeight(90)
+        self.info_text.setMinimumHeight(80)
+        self.info_text.setPlaceholderText("加载图像后显示信息...")
+        file_layout.addWidget(self.info_text)
+
         layout.addWidget(file_group)
 
         # 2. 降噪处理
@@ -327,16 +335,6 @@ class DenoiseWidget(QWidget):
         step2_layout.addWidget(self.sr_status)
 
         layout.addWidget(step2_group)
-
-        # Image info
-        info_group = QGroupBox("图像信息")
-        info_layout = QVBoxLayout(info_group)
-        self.info_text = QTextEdit()
-        self.info_text.setReadOnly(True)
-        self.info_text.setMaximumHeight(90)
-        self.info_text.setMinimumHeight(80)
-        info_layout.addWidget(self.info_text)
-        layout.addWidget(info_group)
 
         layout.addStretch()
         return panel
