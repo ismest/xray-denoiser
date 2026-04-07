@@ -477,7 +477,58 @@ class TrainingPage(QWidget):
 
         layout.addWidget(output_group)
 
-        # 4. 训练按钮
+        # 4. 模型集成
+        integrate_group = QGroupBox("4. 模型集成")
+        integrate_layout = QVBoxLayout(integrate_group)
+        integrate_layout.setSpacing(10)
+
+        # 模型类型选择
+        model_type_layout = QHBoxLayout()
+        model_type_label = QLabel("模型类型:")
+        model_type_label.setStyleSheet("font-size: 15px; font-weight: 500; color: #475569;")
+        model_type_layout.addWidget(model_type_label)
+
+        self.model_type_combo = QComboBox()
+        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
+        self.model_type_combo.setMinimumHeight(40)
+        self.model_type_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 15px;
+                padding: 10px 14px;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+            }
+        """)
+        self.model_type_combo.currentIndexChanged.connect(self.update_integrate_button_text)
+        model_type_layout.addWidget(self.model_type_combo, 1)
+        integrate_layout.addLayout(model_type_layout)
+
+        # 集成按钮
+        self.integrate_model_btn = QPushButton("添加到降噪算法")
+        self.integrate_model_btn.setObjectName("integrateModelBtn")
+        self.integrate_model_btn.setStyleSheet("""
+            QPushButton#integrateModelBtn {
+                background-color: #0ea5e9;
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 14px 24px;
+                border-radius: 8px;
+            }
+            QPushButton#integrateModelBtn:hover {
+                background-color: #0284c7;
+            }
+            QPushButton#integrateModelBtn:disabled {
+                background-color: #cbd5e1;
+            }
+        """)
+        self.integrate_model_btn.clicked.connect(self.integrate_model)
+        self.integrate_model_btn.setEnabled(False)
+        integrate_layout.addWidget(self.integrate_model_btn)
+
+        layout.addWidget(integrate_group)
+
+        # 5. 训练按钮
         self.train_btn = QPushButton("开始训练")
         self.train_btn.setObjectName("primaryBtn")
         self.train_btn.setStyleSheet("""
@@ -518,50 +569,6 @@ class TrainingPage(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_btn.setMinimumHeight(48)
         layout.addWidget(self.stop_btn)
-
-        # 模型类型选择（放在输出设置区域下方，停止按钮下方）
-        model_type_group = QGroupBox("模型类型")
-        model_type_layout = QVBoxLayout(model_type_group)
-        model_type_layout.setSpacing(10)
-
-        self.model_type_combo = QComboBox()
-        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
-        self.model_type_combo.setMinimumHeight(44)
-        self.model_type_combo.setStyleSheet("""
-            QComboBox {
-                font-size: 15px;
-                padding: 10px 14px;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-            }
-        """)
-        self.model_type_combo.currentIndexChanged.connect(self.update_integrate_button_text)
-        model_type_layout.addWidget(self.model_type_combo)
-
-        # 集成按钮
-        self.integrate_model_btn = QPushButton("添加到降噪算法")
-        self.integrate_model_btn.setObjectName("integrateModelBtn")
-        self.integrate_model_btn.setStyleSheet("""
-            QPushButton#integrateModelBtn {
-                background-color: #0ea5e9;
-                color: white;
-                font-size: 15px;
-                font-weight: 600;
-                padding: 14px 24px;
-                border-radius: 8px;
-            }
-            QPushButton#integrateModelBtn:hover {
-                background-color: #0284c7;
-            }
-            QPushButton#integrateModelBtn:disabled {
-                background-color: #cbd5e1;
-            }
-        """)
-        self.integrate_model_btn.clicked.connect(self.integrate_model)
-        self.integrate_model_btn.setEnabled(False)
-        model_type_layout.addWidget(self.integrate_model_btn)
-
-        layout.addWidget(model_type_group)
 
         layout.addStretch()
         return panel
