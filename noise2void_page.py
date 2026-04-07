@@ -35,7 +35,9 @@ class DesignTokens:
     SUCCESS = "#10b981"
     WARNING = "#f59e0b"
     SPACING_8 = 8
+    SPACING_10 = 10
     SPACING_12 = 12
+    SPACING_14 = 14
     SPACING_16 = 16
     RADIUS_MEDIUM = 8
     RADIUS_LARGE = 12
