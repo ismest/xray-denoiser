@@ -322,8 +322,8 @@ class HelpGuideDialog(QDialog):
 **用途**: 从单张 X 光图像提取噪声参数，生成训练数据集。
 
 **操作步骤**:
-1. 点击"1. 噪音提取"标签页
-2. 点击"选择图像文件"加载 X 光图像
+1. 点击"噪音提取"标签页
+2. 点击"加载"按钮加载 X 光图像（显示文件名、形状、数据类型、位深度）
 3. 选择提取方法（局部标准差法/均匀区域法）
 4. 点击"开始提取噪声"
 5. 等待提取完成，查看提取的噪声参数
@@ -336,7 +336,7 @@ class HelpGuideDialog(QDialog):
 **用途**: 使用噪声参数生成合成噪声图像配对数据集。
 
 **操作步骤**:
-1. 点击"2. 数据集生成"标签页
+1. 点击"数据集生成"标签页
 2. 导入干净图像数据集（包含 train/clean 和 train/noisy 目录）
 3. 配置数据集参数：
    - 总样本数：生成图像对的数量
@@ -384,26 +384,55 @@ output/
 
 **操作步骤**:
 1. 点击"加载"按钮加载图像
-2. **步骤 1 - 降噪处理**:
-   - 选择降噪算法
+2. **降噪处理**:
+   - 选择降噪算法（包括自定义训练模型）
    - 调整强度和其他参数
    - 点击"执行降噪"
    - 查看降噪结果和质量指标
-3. **步骤 2 - 超分辨率重构**:
-   - 选择插值算法
+3. **超分辨率重构**:
+   - 选择算法
    - 选择放大倍数 (1.5x - 4.0x)
    - 点击"执行超分辨率"
    - 查看超分辨率结果
 4. 保存处理结果
 
 **可用算法**:
-- 降噪：Hybrid、BM3D、Anisotropic Diffusion、Iterative Reconstruction、NLM、Bilateral、Wavelet、Gaussian、Neural Network 等
-- 超分辨率：双三次插值、兰索斯插值、保边增强、训练模型
+- 降噪：Hybrid、BM3D、Anisotropic Diffusion、Iterative Reconstruction、NLM、Bilateral、Wavelet、Gaussian、Neural Network、Trained Neural Denoise (自定义训练模型)
+- 超分辨率：双三次插值、兰索斯插值、保边增强、神经网络 (训练模型)
 
 **算法管理**:
 - 点击每个模块的"⚙ 管理"按钮
 - 可启用/禁用算法
 - 可修改算法显示名称
+- 可通过目录加载自定义训练模型
+
+**自定义模型加载**:
+1. 点击"⚙ 管理"按钮打开算法编辑器
+2. 在"自定义模型加载"区域点击"浏览"
+3. 选择包含模型文件的目录
+4. 系统自动检测模型文件：
+   - 降噪模型：`denoiser.onnx`, `best_denoiser.pth`, `model.pt`
+   - 超分模型：`sr_model.onnx`, `best_sr_model.pth`, `model_sr.pt`
+5. 点击"加载模型到算法列表"
+6. 模型自动复制到 `integrated_model/{type}/{timestamp}/` 目录
+7. 算法下拉框刷新显示新模型（带时间戳）
+
+**模型目录结构**:
+```
+integrated_model/
+├── denoise/
+│   ├── 20260407_153000/      # 时间戳命名的子目录
+│   │   ├── denoiser.onnx
+│   │   ├── best_denoiser.pth
+│   │   └── model_ready.marker
+│   └── 20260408_102000/
+│       └── ...
+└── super_resolution/
+    ├── 20260407_160000/
+    │   ├── sr_model.onnx
+    │   └── model_ready.marker
+    └── ...
+```
 
 ## 快捷操作流程
 
