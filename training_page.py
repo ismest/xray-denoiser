@@ -457,36 +457,6 @@ class TrainingPage(QWidget):
         self.patch_size_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("块大小 (Patch Size):", self.patch_size_spin)
 
-        self.model_type_combo = QComboBox()
-        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
-        self.model_type_combo.setMinimumHeight(44)
-        self.model_type_combo.setStyleSheet("font-size: 15px; padding: 10px 14px;")
-        param_layout.addRow("模型类型:", self.model_type_combo)
-        self.model_type_combo.currentIndexChanged.connect(self.update_integrate_button_text)
-
-        # 集成按钮
-        self.integrate_model_btn = QPushButton("添加到降噪算法")
-        self.integrate_model_btn.setObjectName("integrateModelBtn")
-        self.integrate_model_btn.setStyleSheet("""
-            QPushButton#integrateModelBtn {
-                background-color: #0ea5e9;
-                color: white;
-                font-size: 15px;
-                font-weight: 600;
-                padding: 12px 24px;
-                border-radius: 8px;
-            }
-            QPushButton#integrateModelBtn:hover {
-                background-color: #0284c7;
-            }
-            QPushButton#integrateModelBtn:disabled {
-                background-color: #cbd5e1;
-            }
-        """)
-        self.integrate_model_btn.clicked.connect(self.integrate_model)
-        self.integrate_model_btn.setEnabled(False)
-        param_layout.addRow(self.integrate_model_btn)
-
         layout.addWidget(param_group)
 
         # 3. 输出设置
@@ -548,6 +518,50 @@ class TrainingPage(QWidget):
         self.stop_btn.setEnabled(False)
         self.stop_btn.setMinimumHeight(48)
         layout.addWidget(self.stop_btn)
+
+        # 模型类型选择（放在输出设置区域下方，停止按钮下方）
+        model_type_group = QGroupBox("模型类型")
+        model_type_layout = QVBoxLayout(model_type_group)
+        model_type_layout.setSpacing(10)
+
+        self.model_type_combo = QComboBox()
+        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
+        self.model_type_combo.setMinimumHeight(44)
+        self.model_type_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 15px;
+                padding: 10px 14px;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+            }
+        """)
+        self.model_type_combo.currentIndexChanged.connect(self.update_integrate_button_text)
+        model_type_layout.addWidget(self.model_type_combo)
+
+        # 集成按钮
+        self.integrate_model_btn = QPushButton("添加到降噪算法")
+        self.integrate_model_btn.setObjectName("integrateModelBtn")
+        self.integrate_model_btn.setStyleSheet("""
+            QPushButton#integrateModelBtn {
+                background-color: #0ea5e9;
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 14px 24px;
+                border-radius: 8px;
+            }
+            QPushButton#integrateModelBtn:hover {
+                background-color: #0284c7;
+            }
+            QPushButton#integrateModelBtn:disabled {
+                background-color: #cbd5e1;
+            }
+        """)
+        self.integrate_model_btn.clicked.connect(self.integrate_model)
+        self.integrate_model_btn.setEnabled(False)
+        model_type_layout.addWidget(self.integrate_model_btn)
+
+        layout.addWidget(model_type_group)
 
         layout.addStretch()
         return panel
