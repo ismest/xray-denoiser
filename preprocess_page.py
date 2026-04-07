@@ -606,7 +606,7 @@ class PreprocessPage(QWidget):
         left_layout.addWidget(info_label)
 
         # 1. 加载图像
-        load_group = QGroupBox("加载图像")
+        load_group = QGroupBox("1. 加载 X 光图像")
         load_group.setMinimumHeight(130)
         load_layout = QVBoxLayout(load_group)
         self.load_btn = QPushButton("加载")
