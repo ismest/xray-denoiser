@@ -217,12 +217,12 @@ class MainWindow(QMainWindow):
         self.nav_buttons.append(self.btn_training)
 
         self.btn_n2v = NavigationButton("Noise2Void")
-        self.btn_n2v.clicked.connect(lambda: self._switch_page(3))
+        self.btn_n2v.clicked.connect(lambda: self._switch_page(2))
         layout.addWidget(self.btn_n2v)
         self.nav_buttons.append(self.btn_n2v)
 
         self.btn_denoise = NavigationButton("降噪与超分")
-        self.btn_denoise.clicked.connect(lambda: self._switch_page(2))
+        self.btn_denoise.clicked.connect(lambda: self._switch_page(3))
         layout.addWidget(self.btn_denoise)
         self.nav_buttons.append(self.btn_denoise)
 
