@@ -407,18 +407,19 @@ class TrainingPage(QWidget):
 
         # 1. 数据集选择
         data_group = QGroupBox("1. 数据集目录")
-        data_layout = QHBoxLayout(data_group)
-        data_layout.setSpacing(10)
+        data_layout = QVBoxLayout(data_group)
+        data_layout.setSpacing(8)
         data_layout.setContentsMargins(10, 10, 10, 10)
 
         self.dataset_path_edit = QTextEdit()
         self.dataset_path_edit.setReadOnly(True)
+        self.dataset_path_edit.setMaximumHeight(40)
         self.dataset_path_edit.setPlaceholderText("选择预处理生成的数据集目录...")
-        data_layout.addWidget(self.dataset_path_edit, 1)
+        data_layout.addWidget(self.dataset_path_edit)
 
         browse_btn = QPushButton("选择数据集目录")
         browse_btn.clicked.connect(self.browse_dataset)
-        browse_btn.setMinimumWidth(140)
+        browse_btn.setMinimumHeight(40)
         data_layout.addWidget(browse_btn)
 
         layout.addWidget(data_group)
@@ -461,18 +462,19 @@ class TrainingPage(QWidget):
 
         # 3. 输出设置
         output_group = QGroupBox("3. 模型输出")
-        output_layout = QHBoxLayout(output_group)
-        output_layout.setSpacing(10)
+        output_layout = QVBoxLayout(output_group)
+        output_layout.setSpacing(8)
         output_layout.setContentsMargins(10, 10, 10, 10)
 
         self.output_path_edit = QTextEdit()
         self.output_path_edit.setReadOnly(True)
+        self.output_path_edit.setMaximumHeight(40)
         self.output_path_edit.setPlaceholderText("模型保存目录...")
-        output_layout.addWidget(self.output_path_edit, 1)
+        output_layout.addWidget(self.output_path_edit)
 
         self.browse_output_btn = QPushButton("选择模型输出目录")
         self.browse_output_btn.clicked.connect(self.browse_output)
-        self.browse_output_btn.setMinimumWidth(140)
+        self.browse_output_btn.setMinimumHeight(40)
         output_layout.addWidget(self.browse_output_btn)
 
         # 训练按钮
