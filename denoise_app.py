@@ -218,12 +218,12 @@ class DenoiseWidget(QWidget):
         layout.setSpacing(10)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # File operations
-        file_group = QGroupBox("文件操作")
+        # 加载图像
+        file_group = QGroupBox("加载图像")
         file_layout = QVBoxLayout(file_group)
         file_layout.setSpacing(8)
 
-        self.load_btn = QPushButton("📁 加载图像")
+        self.load_btn = QPushButton("加载")
         self.load_btn.clicked.connect(self.load_image)
         self.load_btn.setMinimumHeight(36)
         file_layout.addWidget(self.load_btn)
@@ -1129,7 +1129,7 @@ class DenoiseApp(QMainWindow):
         layout.addWidget(self.denoise_widget)
 
         self.status_bar = self.statusBar()
-        self.status_bar.showMessage('就绪 - 加载图像开始')
+        self.status_bar.showMessage('就绪 - 请加载图像')
 
     def closeEvent(self, event):
         if hasattr(self, 'denoise_widget') and self.denoise_widget.processing_thread:
