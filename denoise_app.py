@@ -309,7 +309,7 @@ class DenoiseWidget(QWidget):
             self.sr_method_combo.addItem(name, key)
         self.sr_method_combo.setCurrentIndex(1)
         self.sr_method_combo.setMinimumHeight(44)
-        sr_layout.addRow("插值方法:", self.sr_method_combo)
+        sr_layout.addRow("算法:", self.sr_method_combo)
 
         self.sr_scale_combo = QComboBox()
         self.sr_scale_combo.addItems(["1.5x", "2.0x", "3.0x", "4.0x"])
