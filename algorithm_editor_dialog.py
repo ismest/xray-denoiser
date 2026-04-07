@@ -5,8 +5,8 @@
 
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
                              QTableWidget, QTableWidgetItem, QLabel, QMessageBox,
-                             QTabWidget, QWidget, QHeaderView, QCheckBox, QLineEdit,
-                             QFormLayout, QGroupBox)
+                             QWidget, QHeaderView, QCheckBox, QLineEdit,
+                             QFrame)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
@@ -16,15 +16,22 @@ from algorithm_config import (get_algorithm_config, update_algorithm,
 
 
 class AlgorithmEditorDialog(QDialog):
-    """算法编辑对话框。"""
+    """算法编辑对话框 - 支持降噪和超分辨率。"""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, algo_type="denoise"):
+        """
+        初始化对话框。
+
+        Args:
+            parent: 父窗口
+            algo_type: 算法类型 ("denoise" 或 "super_resolution")
+        """
         super().__init__(parent)
-        self.setWindowTitle("算法管理")
-        self.setMinimumSize(700, 500)
-        self.resize(800, 600)
-
-        self.current_changes = {}  # 暂存当前修改
+        self.algo_type = algo_type
+        self.tab_name = "降噪算法" if algo_type == "denoise" else "超分辨率算法"
+        self.setWindowTitle(f"{self.tab_name} - 管理")
+        self.setMinimumSize(600, 450)
+        self.resize(700, 550)
 
         self.init_ui()
         self.apply_medical_style()
@@ -36,23 +43,31 @@ class AlgorithmEditorDialog(QDialog):
         layout.setContentsMargins(16, 16, 16, 16)
 
         # 说明标签
-        info_label = QLabel("提示：勾选启用算法，双击名称可修改显示名称。修改后点击保存生效。")
+        info_label = QLabel('提示：勾选启用算法，双击名称可修改。修改后点击"保存"生效。')
         info_label.setStyleSheet("color: #64748b; font-size: 14px; padding: 8px; background-color: #f8fafc; border-radius: 6px;")
         layout.addWidget(info_label)
 
-        # 标签页
-        self.tabs = QTabWidget()
-        self.tabs.setObjectName("algorithmTabs")
+        # 算法表格
+        self.table = QTableWidget()
+        self.table.setObjectName("algoTable")
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["启用", "算法名称"])
 
-        # 降噪算法标签页
-        self.denoise_widget = self._create_algorithm_tab("denoise")
-        self.tabs.addTab(self.denoise_widget, "降噪算法")
+        # 表格样式
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Fixed)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table.setColumnWidth(0, 60)
 
-        # 超分辨率算法标签页
-        self.sr_widget = self._create_algorithm_tab("super_resolution")
-        self.tabs.addTab(self.sr_widget, "超分辨率算法")
+        self.table.verticalHeader().setVisible(False)
+        self.table.setEditTriggers(QTableWidget.DoubleClicked)  # 双击可编辑
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setAlternatingRowColors(True)
 
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.table)
+
+        # 加载算法数据
+        self._load_algorithms()
 
         # 底部按钮
         button_layout = QHBoxLayout()
@@ -77,48 +92,12 @@ class AlgorithmEditorDialog(QDialog):
 
         layout.addLayout(button_layout)
 
-    def _create_algorithm_tab(self, algo_type: str) -> QWidget:
-        """创建算法标签页。"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        # 算法表格
-        self.table = QTableWidget()
-        self.table.setObjectName(f"{algo_type}Table")
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["启用", "算法名称", "操作"])
-
-        # 表格样式
-        header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)
-        header.setSectionResizeMode(1, QHeaderView.Stretch)
-        header.setSectionResizeMode(2, QHeaderView.Fixed)
-        self.table.setColumnWidth(0, 60)
-        self.table.setColumnWidth(2, 80)
-
-        self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setAlternatingRowColors(True)
-
-        layout.addWidget(self.table)
-
-        # 加载算法数据
-        self._load_algorithms(algo_type)
-
-        # 存储类型引用
-        self.table.algo_type = algo_type
-
-        return widget
-
-    def _load_algorithms(self, algo_type: str):
+    def _load_algorithms(self):
         """加载算法列表到表格。"""
-        config = get_algorithm_config(algo_type)
+        config = get_algorithm_config(self.algo_type)
 
         # 获取默认名称用于对比
-        if algo_type == "denoise":
+        if self.algo_type == "denoise":
             defaults = {a["key"]: a["name"] for a in DEFAULT_DENOISE_ALGORITHMS}
         else:
             defaults = {a["key"]: a["name"] for a in DEFAULT_SR_ALGORITHMS}
@@ -132,7 +111,7 @@ class AlgorithmEditorDialog(QDialog):
             check_item.setCheckState(Qt.Checked if algo.get("enabled", True) else Qt.Unchecked)
             self.table.setItem(row, 0, check_item)
 
-            # 算法名称
+            # 算法名称（可编辑）
             name_item = QTableWidgetItem(algo["name"])
             name_item.setFlags(name_item.flags() | Qt.ItemIsEditable)
             # 标记是否修改过
@@ -141,51 +120,24 @@ class AlgorithmEditorDialog(QDialog):
                 name_item.setBackground(Qt.lightGray)
             self.table.setItem(row, 1, name_item)
 
-            # 删除按钮
-            delete_btn = QPushButton("删除")
-            delete_btn.setObjectName("deleteRowBtn")
-            delete_btn.setStyleSheet("""
-                QPushButton#deleteRowBtn {
-                    background-color: #fee2e2;
-                    color: #dc2626;
-                    border: 1px solid #fca5a5;
-                    border-radius: 4px;
-                    padding: 4px 12px;
-                    font-size: 13px;
-                }
-                QPushButton#deleteRowBtn:hover {
-                    background-color: #fecaca;
-                }
-            """)
-            delete_btn.clicked.connect(lambda checked, r=row: self._delete_row(algo_type, r))
-            self.table.setCellWidget(row, 2, delete_btn)
+    def _reset_defaults(self):
+        """恢复默认配置。"""
+        reply = QMessageBox.question(
+            self, "确认恢复默认",
+            f"确定要恢复{self.tab_name}的默认配置吗？\n\n所有自定义名称和启用状态将被重置。",
+            QMessageBox.Yes | QMessageBox.No
+        )
 
-    def _delete_row(self, algo_type: str, row: int):
-        """删除一行算法。"""
-        key = self.table.item(row, 1).text()
-        # 从配置中查找实际的 key
-        config = get_algorithm_config(algo_type)
-        if row < len(config):
-            actual_key = config[row]["key"]
-
-            reply = QMessageBox.question(
-                self, "确认删除",
-                f"确定要从列表中删除算法吗？\n\n这只会从显示列表中移除，不会删除实际算法代码。",
-                QMessageBox.Yes | QMessageBox.No
-            )
-
-            if reply == QMessageBox.Yes:
-                if delete_algorithm(algo_type, actual_key):
-                    self.table.removeRow(row)
-                    self._load_algorithms(algo_type)  # 重新加载
-                    QMessageBox.information(self, "成功", "算法已从列表中移除")
-                else:
-                    QMessageBox.warning(self, "失败", "删除算法失败")
+        if reply == QMessageBox.Yes:
+            if reset_to_defaults(self.algo_type):
+                self._load_algorithms()
+                QMessageBox.information(self, "成功", "已恢复默认配置")
+            else:
+                QMessageBox.warning(self, "失败", "恢复默认配置失败")
 
     def _save_changes(self):
         """保存修改。"""
-        algo_type = self.tabs.currentWidget().table.algo_type
-        config = get_algorithm_config(algo_type)
+        config = get_algorithm_config(self.algo_type)
 
         success = True
         for row in range(self.table.rowCount()):
@@ -197,7 +149,7 @@ class AlgorithmEditorDialog(QDialog):
                 enabled = check_item.checkState() == Qt.Checked
                 name = name_item.text()
 
-                if not update_algorithm(algo_type, key, name=name, enabled=enabled):
+                if not update_algorithm(self.algo_type, key, name=name, enabled=enabled):
                     success = False
 
         if success:
@@ -206,49 +158,11 @@ class AlgorithmEditorDialog(QDialog):
         else:
             QMessageBox.warning(self, "失败", "保存配置时出错")
 
-    def _reset_defaults(self):
-        """恢复默认配置。"""
-        algo_type = self.tabs.currentWidget().table.algo_type
-        tab_name = "降噪" if algo_type == "denoise" else "超分辨率"
-
-        reply = QMessageBox.question(
-            self, "确认恢复默认",
-            f"确定要恢复{tab_name}算法的默认配置吗？\n\n所有自定义名称和启用状态将被重置。",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            if reset_to_defaults(algo_type):
-                self._load_algorithms(algo_type)
-                QMessageBox.information(self, "成功", "已恢复默认配置")
-            else:
-                QMessageBox.warning(self, "失败", "恢复默认配置失败")
-
     def apply_medical_style(self):
         """应用 Medical Minimalism 风格。"""
         self.setStyleSheet("""
             QDialog {
                 background-color: #f8fafc;
-            }
-            QTabWidget::pane {
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                background-color: white;
-            }
-            QTabBar::tab {
-                background-color: #e2e8f0;
-                color: #64748b;
-                padding: 10px 20px;
-                margin-right: 4px;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                font-size: 15px;
-                font-weight: 500;
-            }
-            QTabBar::tab:selected {
-                background-color: white;
-                color: #0ea5e9;
-                font-weight: 600;
             }
             QTableWidget {
                 border: 1px solid #e2e8f0;
@@ -263,6 +177,9 @@ class AlgorithmEditorDialog(QDialog):
             QTableWidget::item:selected {
                 background-color: #e0f2fe;
                 color: #0369a1;
+            }
+            QTableWidget::item:focus {
+                border: 2px solid #0ea5e9;
             }
             QHeaderView::section {
                 background-color: #f1f5f9;
@@ -311,3 +228,39 @@ class AlgorithmEditorDialog(QDialog):
                 background-color: #fde68a;
             }
         """)
+
+
+class DenoiseAlgorithmEditor(QDialog):
+    """降噪算法编辑对话框。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.editor = AlgorithmEditorDialog(parent, "denoise")
+        self.setWindowTitle(self.editor.windowTitle())
+        self.setMinimumSize(self.editor.minimumSize())
+        self.resize(self.editor.size())
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.editor)
+
+        # 连接信号
+        self.editor.accepted.connect(self.accept)
+        self.editor.rejected.connect(self.reject)
+
+
+class SRAlgorithmEditor(QDialog):
+    """超分辨率算法编辑对话框。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.editor = AlgorithmEditorDialog(parent, "super_resolution")
+        self.setWindowTitle(self.editor.windowTitle())
+        self.setMinimumSize(self.editor.minimumSize())
+        self.resize(self.editor.size())
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.editor)
+
+        # 连接信号
+        self.editor.accepted.connect(self.accept)
+        self.editor.rejected.connect(self.reject)

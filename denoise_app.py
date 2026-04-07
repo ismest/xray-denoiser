@@ -11,13 +11,13 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QPushButton, QLabel, QFileDialog, QProgressBar,
                              QComboBox, QTextEdit, QMessageBox, QSpinBox, QCheckBox,
                              QDoubleSpinBox, QGridLayout, QFormLayout, QScrollArea,
-                             QSizePolicy, QFrame, QTabWidget, QGroupBox)
+                             QSizePolicy, QFrame, QTabWidget, QGroupBox, QDialog)
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from image_processor import ImageProcessor
 from super_resolution import get_supported_sr_methods
 from algorithm_config import get_denoise_algorithms, get_sr_algorithms
-from algorithm_editor_dialog import AlgorithmEditorDialog
+from algorithm_editor_dialog import DenoiseAlgorithmEditor, SRAlgorithmEditor
 import numpy as np
 
 
@@ -274,7 +274,7 @@ class DenoiseWidget(QWidget):
         self.manage_algo_btn.setObjectName("manageAlgoBtn")
         self.manage_algo_btn.setMinimumHeight(32)
         self.manage_algo_btn.setMinimumWidth(70)
-        self.manage_algo_btn.clicked.connect(self.open_algorithm_editor)
+        self.manage_algo_btn.clicked.connect(self.open_denoise_algorithm_editor)
         algo_layout.addWidget(self.manage_algo_btn)
 
         # 刷新算法列表
@@ -342,7 +342,7 @@ class DenoiseWidget(QWidget):
         self.manage_sr_algo_btn.setObjectName("manageAlgoBtn")
         self.manage_sr_algo_btn.setMinimumHeight(44)
         self.manage_sr_algo_btn.setMinimumWidth(70)
-        self.manage_sr_algo_btn.clicked.connect(self.open_algorithm_editor)
+        self.manage_sr_algo_btn.clicked.connect(self.open_sr_algorithm_editor)
         sr_algo_layout.addWidget(self.manage_sr_algo_btn)
 
         step2_layout.addLayout(sr_algo_layout)
@@ -622,12 +622,18 @@ class DenoiseWidget(QWidget):
         for item in methods:
             self.sr_method_combo.addItem(item["name"], item["key"])
 
-    def open_algorithm_editor(self):
-        """打开算法编辑对话框。"""
-        dialog = AlgorithmEditorDialog(self)
+    def open_denoise_algorithm_editor(self):
+        """打开降噪算法编辑对话框。"""
+        dialog = DenoiseAlgorithmEditor(self)
         if dialog.exec_() == QDialog.Accepted:
-            # 刷新算法列表
+            # 刷新降噪算法列表
             self.update_algorithm_list()
+
+    def open_sr_algorithm_editor(self):
+        """打开超分辨率算法编辑对话框。"""
+        dialog = SRAlgorithmEditor(self)
+        if dialog.exec_() == QDialog.Accepted:
+            # 刷新超分辨率算法列表
             self._update_sr_algorithm_list()
 
     def update_parameter_panel(self):
