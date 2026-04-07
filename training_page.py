@@ -470,7 +470,7 @@ class TrainingPage(QWidget):
         self.output_path_edit.setPlaceholderText("模型保存目录...")
         output_layout.addWidget(self.output_path_edit)
 
-        self.browse_output_btn = QPushButton("选择输出目录")
+        self.browse_output_btn = QPushButton("选择模型输出目录")
         self.browse_output_btn.clicked.connect(self.browse_output)
         self.browse_output_btn.setMinimumHeight(44)
         output_layout.addWidget(self.browse_output_btn)
