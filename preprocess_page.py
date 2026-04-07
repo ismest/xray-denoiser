@@ -607,7 +607,7 @@ class PreprocessPage(QWidget):
 
         # 1. 加载图像
         load_group = QGroupBox("1. 加载 X 光图像")
-        load_group.setMinimumHeight(130)
+        load_group.setMinimumHeight(180)
         load_layout = QVBoxLayout(load_group)
         self.load_btn = QPushButton("加载")
         self.load_btn.clicked.connect(self.load_source_image)
@@ -629,9 +629,23 @@ class PreprocessPage(QWidget):
         """)
         load_layout.addWidget(self.load_btn)
 
-        self.source_info_label = QLabel("未加载图像")
-        self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 15px; font-weight: 500;")
-        load_layout.addWidget(self.source_info_label)
+        # 图像信息
+        self.source_info_text = QTextEdit()
+        self.source_info_text.setReadOnly(True)
+        self.source_info_text.setMaximumHeight(90)
+        self.source_info_text.setMinimumHeight(80)
+        self.source_info_text.setPlaceholderText("加载图像后显示信息...")
+        self.source_info_text.setStyleSheet("""
+            QTextEdit {
+                font-size: 14px;
+                color: #64748b;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                padding: 8px 12px;
+                background-color: #f8fafc;
+            }
+        """)
+        load_layout.addWidget(self.source_info_text)
         left_layout.addWidget(load_group)
 
         # 2. 提取参数
@@ -1285,8 +1299,7 @@ class PreprocessPage(QWidget):
 
         if file_path:
             self.source_image_path = file_path
-            self.source_info_label.setText(f"已加载：{os.path.basename(file_path)}")
-            self.source_info_label.setStyleSheet("color: #10b981; font-size: 15px; font-weight: 500;")
+            self.source_info_text.setText(f"已加载：{os.path.basename(file_path)}")
             self.extract_btn.setEnabled(True)
             self._display_source_preview(file_path)
 
