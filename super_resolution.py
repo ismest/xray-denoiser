@@ -158,7 +158,7 @@ def super_resolution_denoised_image(image: np.ndarray,
 
     original_dtype = image.dtype
 
-    # 使用训练的超分辨率模型（支持带时间戳的模型）
+    # 使用训练的超分辨率模型（支持带时间戳的模型，任意文件名）
     if method and method.startswith('trained_sr_'):
         # 从方法名中提取时间戳
         timestamp = method.replace('trained_sr_', '')
@@ -167,12 +167,19 @@ def super_resolution_denoised_image(image: np.ndarray,
         sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution', timestamp)
 
         if os.path.isdir(sr_model_dir):
-            # 查找模型文件
-            model_file = None
-            for f in ['sr_model.onnx', 'best_sr_model.pth', 'model_sr.pt', 'model.pth']:
-                if os.path.exists(os.path.join(sr_model_dir, f)):
-                    model_file = os.path.join(sr_model_dir, f)
-                    break
+            # 查找模型文件（任意文件名，只限制扩展名）
+            model_file_onnx = None
+            model_file_pth = None
+
+            for filename in os.listdir(sr_model_dir):
+                if filename.startswith('.'):
+                    continue
+                if filename.lower().endswith('.onnx') and model_file_onnx is None:
+                    model_file_onnx = os.path.join(sr_model_dir, filename)
+                elif (filename.lower().endswith('.pth') or filename.lower().endswith('.pt')) and model_file_pth is None:
+                    model_file_pth = os.path.join(sr_model_dir, filename)
+
+            model_file = model_file_onnx or model_file_pth
 
             if model_file and os.path.exists(model_file):
                 try:
@@ -181,7 +188,7 @@ def super_resolution_denoised_image(image: np.ndarray,
                         # ONNX 模型处理
                         from neural_denoise import NeuralDenoiser
                         denoiser = NeuralDenoiser(model_path=model_file)
-                        upscaled = denoiser.denoise(image)  # 简单处理，实际可能需要不同的 ONNX 推理
+                        upscaled = denoiser.denoise(image)
                     else:
                         # PyTorch 模型
                         model = torch.load(model_file, map_location='cpu')
@@ -210,8 +217,8 @@ def super_resolution_denoised_image(image: np.ndarray,
         # Legacy: 从 integrated_model/super_resolution 目录加载（不带时间戳）
         sr_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
         model_file = None
-        for f in os.listdir(sr_model_dir):
-            if f.endswith('.pth'):
+        for filename in os.listdir(sr_model_dir):
+            if filename.lower().endswith('.pth') or filename.lower().endswith('.pt'):
                 model_file = os.path.join(sr_model_dir, f)
                 break
 

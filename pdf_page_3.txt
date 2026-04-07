@@ -1,0 +1,108 @@
+Review of
+Scientific Instruments
+ARTICLE
+pubs.aip.org/aip/rsi
+are subject to a variety of noise in both form and amount, and this
+noise usually falls outside the range of existing NN models, so we
+must create a new model that is applicable to our data. We adapt
+our neural network architecture from existing machine learning
+methods, and we train our denoiser model using an approxima-
+tion of the NIF Hardened Gated X-ray Detector (HGXD)9 camera
+noise observed in our experiments. Our denoiser is tailored to the
+thin-layer MShock experiments but would also apply to many other
+experiments using these cameras under similar conditions and with
+similar noise10–15 and, in principle, could be extended to any type of
+noise.
+At the basic level, our neural network denoiser takes as input
+a noisy image and returns two residual arrays representing additive
+and multiplicative contributions, which return the denoised image
+when applied to the input image. The general process for creating
+the desired denoiser is as follows: (1) estimate the noise distribution
+of the target images; (2) apply this noise distribution to a set of clean
+images to generate training and testing image sets; (3) train the net-
+work using the noisy and clean image pairs; (4) calculate the average
+denoising error on the testing set; and (5) apply to the data. We work
+through these steps for our new denoiser in the remainder of this
+paper.
+This paper is organized as follows: Sec. II describes the MShock
+experiments and the corresponding images we are interested in
+denoising and shows our estimate of the noise in this dataset. In
+Sec. III, we introduce the neural network denoiser, describe the
+network architecture and training procedure, show the results on
+the synthetic noise images using different noise models, and com-
+pare with other common denoising methods. In Sec. IV, we apply
+the trained denoising models to some data images and discuss
+the results. Section V concludes the paper and provides notes for
+potential future directions of model improvement.
+II. HED X-RAY IMAGES AND NOISE
+The x-ray images we are concerned with in this paper come
+from the thin-layer MShock1 series of HED hydrodynamics exper-
+iments performed at the NIF to study the RM and RT instabilities.
+An illustration of the physics package is shown in Fig. 1 and consists
+of an initially solid shock tube target, which is driven by irradiating
+gold Hohlraums on both ends of the target with lasers. The shock
+tube consists of an inner beryllium (Be) tube lining with 2.25 mm
+inner diameter and 3.05 mm outer diameter in the region of the
+viewing window, and only 190 μm of Be outside of the window, with
+a fluorinated plastic casing making up the rest of the outer diameter.
+The interior of the targets contains a plastic disk of polyamide-imide
+(PAI) with an interior strip of iodine-doped plastic (CHI) as the
+opaque tracer layer for x-ray imaging. One side of the PAI/CHI disk
+is machined to have a large-scale sinusoidal mode, which is either
+smooth or with an additional amount of machined roughness. The
+plastic layer is surrounded on both sides by low-density (100 mg/cc)
+CH foam. The goal of these experiments is to observe the evolution
+of hydrodynamic instabilities from the perturbed surface via x-ray
+images of the opacity.
+The thin-layer MShock campaign obtained many x-ray images
+of the system evolution under different initial conditions using the
+same camera and backlighter configuration. The x-ray source is
+a Big-Area Backlighter16 (BABL) laser-driven x-ray source, which
+is mounted flat against the target, ∼5 mm from the center of the
+shock tube, as shown in Fig. 1. The camera for these experiments
+is the two-strip NIF HGXD,9 which allows us to take two 200 ps
+time-integrated images per shot at two different delays. The HGXD
+is very similar in design to the Gated X-ray Detector (GXD)17,18
+cameras, and they share much of the same noise concerns. Both
+the GXD and HGXD convert incident x rays into electrons at the
+front of the detector using gold-coated strips. The electron signal
+is then amplified through a microchannel plate (MCP) array, and
+the electrons are then converted back into photons at a phosphor
+layer. These photons travel through the fiber-optic faceplate and
+to a CCD (GXD) or film (HGXD). These cameras allow us to take
+high-resolution images with time gating on the order of hundreds of
+picoseconds, but each step of the HGXD imaging process adds noise
+and distortion, which affect our ability to quantitatively determine
+the true transmission through the object being imaged and which
+alter the inference of material density. The primary sources of noise
+for many of these experiments, which are common to both cameras,
+are likely the x-ray conversion at the gold cathode, the electron signal
+amplification by the MCP, and the electron conversion at the phos-
+phor layer, coupled with the short time gating. Because the GXD
+and HGXD have many similar components, the noise between the
+two imagers is roughly comparable.
+Over the short time-scales during which we image these
+systems—usually ∼200 ps—the variation of photon statistics is
+noticeable, and Poisson noise is observed on the images. Barring
+the effect of other physical processes, Poisson noise is directly tied
+to the illumination of an image, so regions of greater transmission
+should experience lower relative noise than regions with reduced
+transmission. The x-ray illumination of the laser-driven backlighter
+also contributes to the noise distribution on the images. Although
+the lasers are generally tiled in such a way as to produce a some-
+what uniform irradiation pattern,16 nonuniform illumination from
+FIG. 1. Illustration of the NIF MShock thin-layer geometry. The target is made up
+of a plastic shock tube (cross section shown at center), filled with a low-density CH
+foam, and a solid plastic disk, onto which a perturbation profile is machined for RM-
+RT instability study. In the center of the plastic disk is a tracer strip of iodine-doped
+plastic (CHI) to increase the opacity for measurement. The shock tube is driven
+with variable laser drives by irradiating the Au Hohlraums at the top and bottom.
+The backlighter is flat against the back of the target and is driven separately using
+tiled lasers. The interior of the tube is beryllium, which is more transparent to the
+x-ray signal, with a plastic casing around the tube at the left and right. Closer to the
+tracer layer, the plastic casing ends and tube is entirely beryllium, allowing better
+imaging of the tracer.
+Rev. Sci. Instrum. 95, 063508 (2024); doi: 10.1063/5.0207005
+95, 063508-2
+© Author(s) 2024
+ 14 October 2024 14:30:48

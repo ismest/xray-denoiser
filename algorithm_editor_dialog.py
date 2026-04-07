@@ -194,31 +194,25 @@ class AlgorithmEditorDialog(QDialog):
             self.load_model_btn.setEnabled(False)
             return
 
-        # 检查模型文件
+        # 检查模型文件（只限制文件类型，不限制文件名）
         model_files = []
-        if self.algo_type == "denoise":
-            # 检查降噪模型文件
-            if os.path.exists(os.path.join(dir_path, 'denoiser.onnx')):
-                model_files.append("denoiser.onnx")
-            if os.path.exists(os.path.join(dir_path, 'best_denoiser.pth')):
-                model_files.append("best_denoiser.pth")
-            if os.path.exists(os.path.join(dir_path, 'model.pt')):
-                model_files.append("model.pt")
-        else:
-            # 检查超分辨率模型文件
-            if os.path.exists(os.path.join(dir_path, 'sr_model.onnx')):
-                model_files.append("sr_model.onnx")
-            if os.path.exists(os.path.join(dir_path, 'best_sr_model.pth')):
-                model_files.append("best_sr_model.pth")
-            if os.path.exists(os.path.join(dir_path, 'model_sr.pt')):
-                model_files.append("model_sr.pt")
+        valid_extensions = ['.onnx', '.pth', '.pt']
+
+        for filename in os.listdir(dir_path):
+            if filename.startswith('.'):
+                continue
+            # 检查文件扩展名
+            for ext in valid_extensions:
+                if filename.lower().endswith(ext):
+                    model_files.append(filename)
+                    break
 
         if model_files:
-            self.model_info_label.setText(f"找到模型文件：{', '.join(model_files)}")
+            self.model_info_label.setText(f"找到模型文件 ({len(model_files)} 个): {', '.join(model_files)}")
             self.model_info_label.setStyleSheet("color: #10b981; font-size: 13px; padding: 6px;")
             self.load_model_btn.setEnabled(True)
         else:
-            self.model_info_label.setText("未找到有效的模型文件")
+            self.model_info_label.setText("未找到有效的模型文件 (.onnx, .pth, .pt)")
             self.model_info_label.setStyleSheet("color: #ef4444; font-size: 13px; padding: 6px;")
             self.load_model_btn.setEnabled(False)
 

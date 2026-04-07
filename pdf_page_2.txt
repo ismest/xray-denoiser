@@ -1,0 +1,72 @@
+Review of
+Scientific Instruments
+ARTICLE
+pubs.aip.org/aip/rsi
+Neural network denoising of x-ray images
+from high-energy-density experiments
+Cite as: Rev. Sci. Instrum. 95, 063508 (2024); doi: 10.1063/5.0207005
+Submitted: 5 March 2024 • Accepted: 5 June 2024 •
+Published Online: 28 June 2024
+Joseph M. Levesque,a)
+Elizabeth C. Merritt,
+Kirk A. Flippo,
+Alexander M. Rasmus,
+and Forrest W. Doss
+AFFILIATIONS
+Los Alamos National Laboratory, Los Alamos, New Mexico 87545, USA
+a)Author to whom correspondence should be addressed: jmlevesque@lanl.gov
+ABSTRACT
+Noise is a consistent problem for x-ray transmission images of High-Energy-Density (HED) experiments because it can significantly affect the
+accuracy of inferring quantitative physical properties from these images. We consider experiments that use x-ray area backlighting to image a
+thin layer of opaque material within a physics package to observe its hydrodynamic evolution. The spatial variance of the x-ray transmission
+across the system due to changing opacity serves as an analog for measuring density in this evolving layer. The noise in these images adds
+nonphysical variations in measured intensity, which can significantly reduce the accuracy of our inferred densities, particularly at small spatial
+scales. Denoising these images is thus necessary to improve our quantitative analysis, but any denoising method also affects the underlying
+information in the image. In this paper, we present a method for denoising HED x-ray images via a deep convolutional neural network model
+with a modified DenseNet architecture. In our denoising framework, we estimate the noise present in the real (data) images of interest and
+apply the inferred noise distribution to a set of natural images. These synthetic noisy images are then used to train a neural network model to
+recognize and remove noise of that character. We show that our trained denoiser network significantly reduces the noise in our experimental
+images while retaining important physical features.
+© 2024 Author(s). All article content, except where otherwise noted, is licensed under a Creative Commons Attribution-NonCommercial 4.0
+International (CC BY-NC) license (https://creativecommons.org/licenses/by-nc/4.0/). https://doi.org/10.1063/5.0207005
+I. INTRODUCTION
+All imaging systems are subject to noise, but the type and extent
+of the noise vary depending on the system and subject. As such,
+image denoising and optimal filtering are active areas of research,
+with many varied approaches depending on the use case and desired
+sensitivity. In this paper, we are primarily interested in reducing the
+noise observed on x-ray images from high-energy-density (HED)
+experiments at the National Ignition Facility (NIF) and similar
+facilities. Specifically, we focus on x-ray images from the Multi-
+Shock (MShock) series of experiments1 in which we drive a shock
+into an initially solid physics package with intense laser beams and
+image the system to observe its evolution over tens of nanoseconds.
+The noise in images from these experiments comes from a com-
+bination of x-ray source and detector effects and is generally not
+well-characterized or modeled. The noise also varies between exper-
+iments and even between individual shots within an experimental
+campaign. Given the high level of noise on many HED x-ray images,
+denoising is necessary for improving quantitative inference of phys-
+ical properties from these images. In this paper, we adapt neural
+network (NN) denoising methods, which have found success on
+optical image denoising to our experimental images.
+Neural networks are a versatile and powerful form of machine
+learning methods that have been used for many varied appli-
+cations, from language processing and prediction tasks to com-
+puter vision applications, such as image segmentation and object
+classification.2–6 Convolutional neural networks are a type of net-
+work that uses weighted spatial convolutions whose weights and
+biases are learned via training. Convolutional neural networks are
+commonly applied to image reconstruction tasks, particularly super-
+resolution7 and denoising.8 The Denoising Convolutional Neural
+Network (DnCNN) approach presented by Zhang et al.8 showed that
+convolutional networks with many successive layers are able to reg-
+ularly outperform other denoisers on certain image reconstruction
+tasks, when trained properly.
+Following these successes, we want to create a neural network
+denoising method that can be applied to our data images in such a
+way that we can anticipate which features it will affect. HED images
+Rev. Sci. Instrum. 95, 063508 (2024); doi: 10.1063/5.0207005
+95, 063508-1
+© Author(s) 2024
+ 14 October 2024 14:30:48

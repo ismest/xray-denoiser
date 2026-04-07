@@ -1,0 +1,26 @@
+
+View
+Online 
+Export
+Citation
+RESEARCH ARTICLE |  JUNE 28 2024
+Neural network denoising of x-ray images from high-energy-
+density experiments 
+Joseph M. Levesque  
+ ; Elizabeth C. Merritt 
+ ; Kirk A. Flippo 
+ ; Alexander M. Rasmus 
+ ;
+Forrest W. Doss 
+Rev. Sci. Instrum. 95, 063508 (2024)
+https://doi.org/10.1063/5.0207005
+Articles You May Be Interested In
+Improving multi-state appliance classification by SE-DenseNet based on color encoding in non-intrusive
+load monitoring
+J. Renewable Sustainable Energy (February 2024)
+DenseNet-121 architecture for plant leaf disease classification
+AIP Conf. Proc. (January 2024)
+Advanced attention-based spatial-temporal neural networks for enhanced CO2 water-alternating-gas
+performance prediction and history matching
+Physics of Fluids (September 2024)
+ 14 October 2024 14:30:48

@@ -169,12 +169,20 @@ class ImageProcessor:
                 trained_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise', timestamp)
 
                 if os.path.isdir(trained_model_dir):
-                    # Try ONNX first, then PyTorch
-                    model_file_onnx = os.path.join(trained_model_dir, 'denoiser.onnx')
-                    model_file_pth = os.path.join(trained_model_dir, 'best_denoiser.pth')
-                    model_file_pt = os.path.join(trained_model_dir, 'model.pt')
+                    # Try ONNX first, then PyTorch (support any filename with valid extension)
+                    model_file_onnx = None
+                    model_file_pth = None
 
-                    if os.path.exists(model_file_onnx):
+                    # Find model files by extension (any filename)
+                    for filename in os.listdir(trained_model_dir):
+                        if filename.startswith('.'):
+                            continue
+                        if filename.lower().endswith('.onnx') and model_file_onnx is None:
+                            model_file_onnx = os.path.join(trained_model_dir, filename)
+                        elif (filename.lower().endswith('.pth') or filename.lower().endswith('.pt')) and model_file_pth is None:
+                            model_file_pth = os.path.join(trained_model_dir, filename)
+
+                    if model_file_onnx:
                         # Use ONNX model
                         try:
                             from neural_denoise import NeuralDenoiser
@@ -187,17 +195,14 @@ class ImageProcessor:
                         except Exception as e:
                             print(f"Failed to load ONNX model: {e}")
                             self.denoised_image = hybrid_denoise(self.original_image)
-                    elif os.path.exists(model_file_pth) or os.path.exists(model_file_pt):
+                    elif model_file_pth:
                         # Load PyTorch model
                         try:
                             import torch
                             from denoise_algorithms import normalize_image, denormalize_image
 
-                            # Find the model file
-                            model_file = model_file_pth if os.path.exists(model_file_pth) else model_file_pt
-
                             # Load model
-                            model = torch.load(model_file, map_location='cpu')
+                            model = torch.load(model_file_pth, map_location='cpu')
                             model.eval()
 
                             # Normalize input

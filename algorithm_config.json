@@ -40,6 +40,11 @@
         "key": "gaussian",
         "name": "Gaussian Filter",
         "enabled": true
+      },
+      {
+        "key": "trained_neural_denoise_20260407_170903",
+        "name": "Trained Neural Denoise [20260407_170903]",
+        "enabled": true
       }
     ]
   },
@@ -48,7 +53,7 @@
       {
         "key": "bicubic",
         "name": "双三次插值 (Bicubic)",
-        "enabled": true
+        "enabled": false
       },
       {
         "key": "lanczos",

@@ -10,7 +10,21 @@
       "Bash(git commit -m ':*)",
       "Bash(git commit:*)",
       "Bash(taskkill /F /FI \"WINDOWTITLE eq main.py*\")",
-      "Bash(python3 src/ui-ux-pro-max/scripts/search.py \"font size readability accessibility\" --domain ux -n 5)"
+      "Bash(python3 src/ui-ux-pro-max/scripts/search.py \"font size readability accessibility\" --domain ux -n 5)",
+      "Bash(findstr \".pdf\")",
+      "Bash(findstr /C:\"noise\" /C:\"noisy\" /C:\"Fig\" /C:\"algorithm\" /C:\"method\" /C:\"extract\")",
+      "Bash(D:\\\\xray-denoiser)",
+      "WebFetch(domain:)",
+      "Bash(dir /b *.pdf)",
+      "Bash(start python:*)",
+      "Bash(python3 -c ':*)",
+      "Bash(python3:*)",
+      "Bash(pip list:*)",
+      "Bash(git tag:*)",
+      "Bash(git reset:*)",
+      "Bash(git restore:*)",
+      "Bash(git checkout:*)",
+      "Bash(ls:*)"
     ]
   }
 }

@@ -1,0 +1,90 @@
+Review of
+Scientific Instruments
+ARTICLE
+pubs.aip.org/aip/rsi
+FIG. 11. Example of the neural network denoiser on an image from NIF shot N150604-002 from the shock–shear campaign that used a similar camera and backlighter
+configuration.
+input image to a model has significantly different noise than what
+the model was trained on and suggest that our estimate of the noise
+from the data for the other two models is at least fairly representative
+of the real noise.
+In addition to the specific set of MShock hydrodynamics exper-
+iments, our denoiser model also works well on x-ray images from
+other experiments without requiring retraining another model. In
+Fig. 11, we show the result of our denoising model on an image
+from the LANL’s shock–shear campaign at the NIF.12,27,28 The
+shock–shear campaign was very similar to the MShock campaign,
+being its predecessor, and used a similar camera and backlighter
+configuration. While there are likely more aspects of the system that
+need to be considered, the denoiser performs fairly well at remov-
+ing noise-like features. This result demonstrates the utility of our
+denoiser and shows that this method can apply well to any type of
+image so long as the model is trained on a reasonable approximation
+of the detector noise.
+V. CONCLUSION
+In this paper, we have presented a new, neural network-based
+method for denoising x-ray images from HED hydrodynamics and
+ICF experiments. Focusing on data from the NIF MShock campaign,
+we estimated the noise in our images to resemble a combination of
+additive and Poisson noises with a Gaussian blur. We modeled our
+denoising architecture after previously successful models, albeit with
+some significant additions of dense connections and splitting the
+output into additive and multiplicative components of the noise. We
+trained our denoiser on a large set of noisy training images generated
+from the BSD300 set of natural images by augmenting clean patches
+with our estimated range of noise. Our denoiser effectively reduces
+noise from the training and testing sets of images and also appears to
+work well on our noisy experimental data, retaining many important
+physical features. With these results, we should be able to more accu-
+rately infer quantitative values from our data, with confidence that
+the structures being removed by our denoiser are predominantly
+noise.
+Although we focus on a specific approximation of the noise
+observed on the HGXD images from our experiments in this paper,
+our method could easily be adapted for GXD CCD images as well,
+and neural networks can, in principle, be trained for any type of
+noise. There are some minor downsides to neural network denois-
+ing, however—the trained model is not a universal denoiser, and it
+will primarily attempt to recognize the level and types of noise it was
+trained on, which is likely to reduce its denoising effectiveness on
+images that exhibit noise outside of this range. In particular, image
+denoising with a model trained on lower noise than the input may
+not remove as much noise as it would otherwise, and on the con-
+trary, using a model trained on higher noise levels than an input
+image may over-filter it, reducing some of the real information.
+In the future, it may be possible to further improve the denois-
+ing performance for our HED experiments by training on synthetic
+images, which incorporate a more physical model of the camera
+noise. It should also be possible to improve the denoising model
+by changing the model architecture, but there is no simple or
+straightforward path for improvement. The simple addition of more
+blocks or model parameters to the network is not guaranteed to
+improve denoising performance; instead, there is a complicated and
+unknown relationship between model size and generalizability. In
+tests we have run, we find that adding more blocks tends to reduce
+the generalizability of the model to data, in the form of additional
+blur to the denoised images. Conversely, with fewer blocks, the net-
+work tends to hallucinate more connected features from the noise,
+similar to reducing the Poisson noise in training as in Fig. 10. Despite
+the above downsides, neural network models are an attractive option
+for denoising a wide range of data that could be put to broader use.
+ACKNOWLEDGMENTS
+Los Alamos National Laboratory is operated by Triad
+National Security, LLC for the National Nuclear Security Admin-
+istration of U.S. Department of Energy under Contract No.
+89233218CNA000001.
+AUTHOR DECLARATIONS
+Conflict of Interest
+The authors have no conflicts to disclose.
+Author Contributions
+Joseph M. Levesque: Writing – original draft (lead); Writing –
+review & editing (lead). Elizabeth C. Merritt: Writing – original
+draft (supporting); Writing – review & editing (supporting). Kirk
+A. Flippo: Writing – original draft (supporting); Writing – review
+& editing (supporting). Alexander M. Rasmus: Writing – original
+draft (supporting); Writing – review & editing (supporting). Forrest
+W. Doss: Writing – review & editing (supporting).
+Rev. Sci. Instrum. 95, 063508 (2024); doi: 10.1063/5.0207005
+95, 063508-11
+© Author(s) 2024
+ 14 October 2024 14:30:48
