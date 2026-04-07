@@ -8,7 +8,8 @@ import sys
 import os
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLabel, QFrame,
-                             QStackedWidget, QToolButton, QSpacerItem, QSizePolicy)
+                             QStackedWidget, QToolButton, QSpacerItem, QSizePolicy,
+                             QTextEdit, QDialog, QVBoxLayout)
 from PyQt5.QtGui import QFont, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QSize
 
@@ -202,18 +203,26 @@ class MainWindow(QMainWindow):
         # 底部弹性空间，将按钮推向顶部
         layout.addStretch()
 
-        # 版本信息
-        version_label = QLabel("v3.1.2")
-        version_label.setStyleSheet(f"""
-            QLabel {{
-                color: {DesignTokens.TEXT_MUTED};
-                font-size: 11px;
-                padding: 8px;
-                text-align: center;
-            }}
+        # 使用指南按钮
+        self.help_btn = QPushButton("📖 使用指南")
+        self.help_btn.setObjectName("helpBtn")
+        self.help_btn.setMinimumHeight(44)
+        self.help_btn.setStyleSheet("""
+            QPushButton#helpBtn {
+                background-color: #0ea5e9;
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin: 8px;
+            }
+            QPushButton#helpBtn:hover {
+                background-color: #0284c7;
+            }
         """)
-        version_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(version_label)
+        self.help_btn.clicked.connect(self.show_help_guide)
+        layout.addWidget(self.help_btn)
 
         # 默认选中第一个
         self.btn_preprocess.setChecked(True)
@@ -271,6 +280,232 @@ class MainWindow(QMainWindow):
         # 更新状态栏
         page_names = ['图片预处理', '算法训练', '降噪与超分辨率']
         self.status_bar.showMessage(f'当前页面：{page_names[index]}')
+
+    def show_help_guide(self):
+        """显示使用指南对话框。"""
+        dialog = HelpGuideDialog(self)
+        dialog.exec_()
+
+
+class HelpGuideDialog(QDialog):
+    """使用指南对话框 - 显示 Markdown 格式的使用说明。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("使用指南")
+        self.setMinimumSize(800, 600)
+        self.resize(900, 700)
+        self.init_ui()
+        self.apply_medical_style()
+
+    def init_ui(self):
+        """初始化界面。"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
+
+        # Markdown 内容
+        markdown_text = """
+# X 射线图像降噪与超分辨率重构系统 - 使用指南
+
+## 系统简介
+本系统提供 X 射线图像的降噪处理和超分辨率重构功能，采用深度学习算法，有效提升图像质量。
+
+## 功能模块
+
+### 1. 图片预处理
+**用途**: 从单张 X 光图像提取噪声参数，生成训练数据集。
+
+**操作步骤**:
+1. 点击"1. 噪音提取"标签页
+2. 点击"选择图像文件"加载 X 光图像
+3. 选择提取方法（局部标准差法/均匀区域法）
+4. 点击"开始提取噪声"
+5. 等待提取完成，查看提取的噪声参数
+
+**生成文件**:
+- `noise_params.json` - 噪声参数配置文件
+- 包含 Poisson λ、AWGN σ、Gaussian Blur σ 等参数
+
+### 2. 数据集生成
+**用途**: 使用噪声参数生成合成噪声图像配对数据集。
+
+**操作步骤**:
+1. 点击"2. 数据集生成"标签页
+2. 导入干净图像数据集（包含 train/clean 和 train/noisy 目录）
+3. 配置数据集参数：
+   - 总样本数：生成图像对的数量
+   - 训练集/测试集/验证集比例
+4. 点击"开始生成数据集"
+5. 等待生成完成
+
+**输出目录结构**:
+```
+output/
+├── train/
+│   ├── clean/    # 干净图像
+│   └── noisy/    # 噪声图像
+├── test/
+│   ├── clean/
+│   └── noisy/
+└── validation/
+    ├── clean/
+    └── noisy/
+```
+
+### 3. 算法训练
+**用途**: 训练深度learning 降噪/超分辨率模型。
+
+**操作步骤**:
+1. 选择数据集目录（选择预处理生成的数据集）
+2. 选择模型输出目录
+3. 配置训练参数：
+   - 训练轮数 (Epochs): 推荐 50-100
+   - 批次大小 (Batch Size): 推荐 16-32
+   - 学习率：推荐 0.001
+   - 块大小 (Patch Size): 推荐 64
+   - 模型类型：降噪模型/超分辨率模型
+4. 点击"开始训练"
+5. 实时监控训练进度和 Loss 曲线
+6. 训练完成后，点击"添加"按钮将模型集成到对应算法
+
+**训练完成**:
+- 模型自动保存到输出目录
+- 可点击"添加"按钮集成到降噪或超分算法
+- 在"降噪与超分"页面可使用训练的模型
+
+### 4. 降噪与超分
+**用途**: 对 X 射线图像进行降噪和超分辨率处理。
+
+**操作步骤**:
+1. 点击"加载"按钮加载图像
+2. **步骤 1 - 降噪处理**:
+   - 选择降噪算法
+   - 调整强度和其他参数
+   - 点击"执行降噪"
+   - 查看降噪结果和质量指标
+3. **步骤 2 - 超分辨率重构**:
+   - 选择插值算法
+   - 选择放大倍数 (1.5x - 4.0x)
+   - 点击"执行超分辨率"
+   - 查看超分辨率结果
+4. 保存处理结果
+
+**可用算法**:
+- 降噪：Hybrid、BM3D、Anisotropic Diffusion、Iterative Reconstruction、NLM、Bilateral、Wavelet、Gaussian、Neural Network 等
+- 超分辨率：双三次插值、兰索斯插值、保边增强、训练模型
+
+**算法管理**:
+- 点击每个模块的"⚙ 管理"按钮
+- 可启用/禁用算法
+- 可修改算法显示名称
+
+## 快捷操作流程
+
+### 完整训练流程
+1. 图片预处理 → 噪音提取 → 生成 noise_params.json
+2. 图片预处理 → 数据集生成 → 生成训练数据集
+3. 算法训练 → 选择数据集 → 开始训练 → 添加模型
+4. 降噪与超分 → 加载图像 → 降噪 → 超分 → 保存
+
+### 直接使用预训练模型
+1. 降噪与超分 → 加载图像
+2. 选择"Neural Network (Trained)"算法（如有）
+3. 执行降噪/超分处理
+
+## 技术指标
+- 支持图像格式：PNG、JPG、BMP、TIFF、DICOM
+- 支持位深度：8 位、16 位灰度图像
+- 评估指标：PSNR、SSIM、MSE
+"""
+
+        # 文本显示区域
+        self.text_display = QTextEdit()
+        self.text_display.setReadOnly(True)
+        self.text_display.setMarkdown(markdown_text)
+        layout.addWidget(self.text_display)
+
+        # 关闭按钮
+        close_btn = QPushButton("关闭")
+        close_btn.setObjectName("closeBtn")
+        close_btn.setMinimumHeight(44)
+        close_btn.clicked.connect(self.accept)
+        layout.addWidget(close_btn)
+
+    def apply_medical_style(self):
+        """应用 Medical Minimalism 风格。"""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8fafc;
+            }
+            QTextEdit {
+                font-family: 'Microsoft YaHei', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+                background-color: white;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 16px;
+                color: #1e293b;
+            }
+            QTextEdit h1 {
+                font-size: 24px;
+                font-weight: 600;
+                color: #0ea5e9;
+                margin-bottom: 16px;
+            }
+            QTextEdit h2 {
+                font-size: 20px;
+                font-weight: 600;
+                color: #0284c7;
+                margin-top: 20px;
+                margin-bottom: 12px;
+            }
+            QTextEdit h3 {
+                font-size: 16px;
+                font-weight: 600;
+                color: #475569;
+                margin-top: 16px;
+                margin-bottom: 8px;
+            }
+            QTextEdit p {
+                margin-bottom: 12px;
+            }
+            QTextEdit ul, QTextEdit ol {
+                margin-bottom: 12px;
+                padding-left: 24px;
+            }
+            QTextEdit li {
+                margin-bottom: 4px;
+            }
+            QTextEdit code {
+                background-color: #f1f5f9;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            QTextEdit pre {
+                background-color: #1e293b;
+                color: #e2e8f0;
+                padding: 12px;
+                border-radius: 8px;
+                font-family: 'Consolas', 'Courier New', monospace;
+                font-size: 13px;
+                overflow-x: auto;
+            }
+            QPushButton#closeBtn {
+                background-color: #0ea5e9;
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 12px 24px;
+                border-radius: 8px;
+            }
+            QPushButton#closeBtn:hover {
+                background-color: #0284c7;
+            }
+        """)
 
 
 if __name__ == '__main__':
