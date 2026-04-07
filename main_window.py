@@ -62,41 +62,61 @@ class DesignTokens:
 class NavigationButton(QToolButton):
     """侧边栏导航按钮 - Medical Minimalism 风格"""
 
-    def __init__(self, text, icon=None, parent=None):
+    def __init__(self, text, icon=None, checkable=True, parent=None):
         super().__init__(parent)
         self.setText(text)
-        self.setCheckable(True)
+        self.setCheckable(checkable)
         self.setChecked(False)
-        self.setAutoExclusive(True)
+        self.setAutoExclusive(checkable)
         self.setToolButtonStyle(Qt.ToolButtonTextOnly)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.setFixedHeight(64)
-        self.setStyleSheet(self._get_style())
+        self.setStyleSheet(self._get_style(checkable))
 
-    def _get_style(self):
-        return f"""
-            QToolButton {{
-                background-color: {DesignTokens.SIDEBAR_BORDER};
-                border: 1px solid {DesignTokens.SIDEBAR_BORDER};
-                border-radius: {DesignTokens.RADIUS_MEDIUM};
-                color: {DesignTokens.TEXT_MUTED};
-                font-size: 17px;
-                font-weight: 500;
-                padding: 16px 18px;
-                margin: 4px 8px;
-            }}
-            QToolButton:hover {{
-                background-color: {DesignTokens.PRIMARY_700};
-                border-color: {DesignTokens.PRIMARY_600};
-                color: {DesignTokens.SURFACE};
-            }}
-            QToolButton:checked {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.PRIMARY_500}, stop:1 {DesignTokens.PRIMARY_600});
-                color: white;
-                font-weight: 600;
-                border-color: transparent;
-            }}
-        """
+    def _get_style(self, checkable=True):
+        if not checkable:
+            # Action button style (like help guide)
+            return f"""
+                QToolButton {{
+                    background-color: {DesignTokens.PRIMARY_500};
+                    border: 1px solid {DesignTokens.PRIMARY_500};
+                    border-radius: {DesignTokens.RADIUS_MEDIUM};
+                    color: white;
+                    font-size: 17px;
+                    font-weight: 500;
+                    padding: 16px 18px;
+                    margin: 4px 8px;
+                }}
+                QToolButton:hover {{
+                    background-color: {DesignTokens.PRIMARY_600};
+                    border-color: {DesignTokens.PRIMARY_600};
+                }}
+            """
+        else:
+            # Navigation button style
+            return f"""
+                QToolButton {{
+                    background-color: {DesignTokens.SIDEBAR_BORDER};
+                    border: 1px solid {DesignTokens.SIDEBAR_BORDER};
+                    border-radius: {DesignTokens.RADIUS_MEDIUM};
+                    color: {DesignTokens.TEXT_MUTED};
+                    font-size: 17px;
+                    font-weight: 500;
+                    padding: 16px 18px;
+                    margin: 4px 8px;
+                }}
+                QToolButton:hover {{
+                    background-color: {DesignTokens.PRIMARY_700};
+                    border-color: {DesignTokens.PRIMARY_600};
+                    color: {DesignTokens.SURFACE};
+                }}
+                QToolButton:checked {{
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.PRIMARY_500}, stop:1 {DesignTokens.PRIMARY_600});
+                    color: white;
+                    font-weight: 600;
+                    border-color: transparent;
+                }}
+            """
 
 
 class MainWindow(QMainWindow):
@@ -204,23 +224,7 @@ class MainWindow(QMainWindow):
         layout.addStretch()
 
         # 使用指南按钮
-        self.help_btn = QPushButton("📖 使用指南")
-        self.help_btn.setObjectName("helpBtn")
-        self.help_btn.setMinimumHeight(44)
-        self.help_btn.setStyleSheet("""
-            QPushButton#helpBtn {
-                background-color: #0ea5e9;
-                color: white;
-                font-size: 15px;
-                font-weight: 600;
-                padding: 12px 16px;
-                border-radius: 8px;
-                margin: 8px;
-            }
-            QPushButton#helpBtn:hover {
-                background-color: #0284c7;
-            }
-        """)
+        self.help_btn = NavigationButton("使用指南", checkable=False)
         self.help_btn.clicked.connect(self.show_help_guide)
         layout.addWidget(self.help_btn)
 
