@@ -1071,17 +1071,18 @@ class PreprocessPage(QWidget):
                 background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
-                padding: 20px;
+                padding: 12px;
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(18)
+        layout.setSpacing(10)
         layout.setContentsMargins(0, 0, 0, 0)
 
         # 图像预览
         preview_group = QGroupBox("源图像预览")
         preview_layout = QVBoxLayout(preview_group)
-        preview_layout.setSpacing(16)
+        preview_layout.setSpacing(10)
+        preview_layout.setContentsMargins(10, 10, 10, 10)
         # 根据 X 光图片尺寸（最大约 2333x1608）设定最小高度
         preview_group.setMinimumHeight(550)
 
@@ -1107,12 +1108,14 @@ class PreprocessPage(QWidget):
 
         # 噪声参数显示
         params_group = QGroupBox("提取的噪声参数")
-        params_group.setMinimumHeight(280)
+        params_group.setMinimumHeight(160)
         params_layout = QVBoxLayout(params_group)
+        params_layout.setSpacing(8)
+        params_layout.setContentsMargins(8, 8, 8, 8)
         self.extracted_params_text = QTextEdit()
         self.extracted_params_text.setReadOnly(True)
-        self.extracted_params_text.setMaximumHeight(280)
-        self.extracted_params_text.setMinimumHeight(240)
+        self.extracted_params_text.setMaximumHeight(140)
+        self.extracted_params_text.setMinimumHeight(120)
         self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
         self.extracted_params_text.setStyleSheet("""
             QTextEdit {
@@ -1121,7 +1124,7 @@ class PreprocessPage(QWidget):
                 background-color: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
-                padding: 10px;
+                padding: 8px;
                 color: #475569;
             }
         """)
