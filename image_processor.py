@@ -462,7 +462,16 @@ class ImageProcessor:
             # Check for denoise model
             denoise_dir = os.path.join(trained_model_dir, 'denoise')
             if os.path.isdir(denoise_dir) and os.path.exists(os.path.join(denoise_dir, 'model_ready.marker')):
-                methods.append(('trained_neural_denoise', 'Neural Network (Trained - Denoise)'))
+                # Read timestamp from marker file
+                timestamp = 'Unknown'
+                try:
+                    with open(os.path.join(denoise_dir, 'model_ready.marker'), 'r', encoding='utf-8') as f:
+                        first_line = f.readline().strip()
+                        if 'Integrated at' in first_line:
+                            timestamp = first_line.replace('Integrated at', '').strip()
+                except Exception:
+                    pass
+                methods.append(('trained_neural_denoise', f'Neural Network (Trained - Denoise) [{timestamp}]'))
 
             # Check for super resolution model (will be used after denoise)
             sr_dir = os.path.join(trained_model_dir, 'super_resolution')
