@@ -569,7 +569,7 @@ class DenoiseWidget(QWidget):
         method = self.algorithm_combo.currentData()
         self.nlm_group.setVisible(method == 'nlm')
         self.bilateral_group.setVisible(method == 'bilateral')
-        self.neural_group.setVisible(method in ['neural', 'trained_neural'])
+        self.neural_group.setVisible(method in ['neural', 'trained_neural_denoise'])
         self.bm3d_group.setVisible(method == 'bm3d')
         self.aniso_group.setVisible(method == 'anisotropic')
         self.iter_group.setVisible(method == 'iterative')
@@ -661,11 +661,10 @@ class DenoiseWidget(QWidget):
         elif method == 'neural':
             params['patch_size'] = self.neural_patch_spin.value()
             params['stride'] = self.neural_stride_spin.value()
-        elif method == 'trained_neural':
+        elif method == 'trained_neural_denoise':
             # Use trained neural model with same parameters
             params['patch_size'] = self.neural_patch_spin.value()
             params['stride'] = self.neural_stride_spin.value()
-            params['use_trained'] = True
         elif method == 'bm3d':
             params['sigma'] = self.bm3d_sigma_spin.value()
         elif method == 'anisotropic':
