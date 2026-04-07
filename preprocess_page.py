@@ -554,11 +554,11 @@ class PreprocessPage(QWidget):
 
         # Step 1: 噪音提取
         step1_widget = self._create_step1_widget()
-        self.tabs.addTab(step1_widget, "1. 噪音提取")
+        self.tabs.addTab(step1_widget, "噪音提取")
 
         # Step 2: 数据集生成
         step2_widget = self._create_step2_widget()
-        self.tabs.addTab(step2_widget, "2. 数据集生成")
+        self.tabs.addTab(step2_widget, "数据集生成")
 
         # 状态栏
         self.status_label = QLabel("就绪 - 请先完成步骤 1：噪音提取")
