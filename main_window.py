@@ -107,11 +107,11 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.1.3')
-        # 接近全屏的最小尺寸设置
-        # 宽度和高度增大，确保界面元素不压缩
-        self.setMinimumSize(1600, 1100)
-        self.resize(1920, 1200)
+        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v3.2.0')
+        # 窗口最小尺寸增加 0.5 倍（接近全屏展示）
+        # 1600 * 1.5 = 2400, 1100 * 1.5 = 1650
+        self.setMinimumSize(2400, 1650)
+        self.resize(2560, 1800)
 
         # 设置全局调色板
         palette = QPalette()

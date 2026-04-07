@@ -9,3 +9,6 @@ Pillow>=8.0.0
 # Optional: Training dependencies (for algorithm training page)
 torch>=1.9.0
 torchvision>=0.10.0
+
+# Optional: Visualization (for training loss plots)
+matplotlib>=3.4.0

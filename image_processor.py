@@ -157,6 +157,41 @@ class ImageProcessor:
                     stride=stride
                 )
 
+            elif method == 'trained_neural':
+                # Use trained neural model
+                patch_size = kwargs.get('patch_size', 256)
+                stride = kwargs.get('stride', 128)
+                use_trained = kwargs.get('use_trained', True)
+
+                # Load trained model from integrated_model directory
+                trained_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model')
+                model_file = os.path.join(trained_model_dir, 'denoiser.pth')
+
+                if use_trained and os.path.exists(model_file):
+                    # Load and use the trained PyTorch model
+                    try:
+                        import torch
+                        from denoise_algorithms import normalize_image, denormalize_image
+
+                        # Load model
+                        model = torch.load(model_file, map_location='cpu')
+                        model.eval()
+
+                        # Normalize input
+                        img_norm = normalize_image(self.original_image)
+                        img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
+
+                        # Run inference
+                        with torch.no_grad():
+                            result = model(img_tensor)
+                            self.denoised_image = denormalize_image(result.squeeze().numpy())
+                    except Exception as e:
+                        print(f"Failed to load trained model: {e}")
+                        self.denoised_image = hybrid_denoise(self.original_image)
+                else:
+                    # Fallback to hybrid
+                    self.denoised_image = hybrid_denoise(self.original_image)
+
             elif method == 'nlm':
                 # Pass NLM parameters from UI
                 h = kwargs.get('h', 10)
@@ -406,5 +441,10 @@ class ImageProcessor:
         # Add neural if available
         if self.neural_denoiser.is_available():
             methods.append(('neural', 'Neural Network'))
+
+        # Add trained neural model if available
+        trained_model_dir = os.path.join(os.path.dirname(__file__), 'integrated_model')
+        if os.path.isdir(trained_model_dir) and os.path.exists(os.path.join(trained_model_dir, 'model_ready.marker')):
+            methods.append(('trained_neural', 'Neural Network (Trained)'))
 
         return methods

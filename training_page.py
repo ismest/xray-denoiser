@@ -5,6 +5,7 @@
 import sys
 import os
 import json
+from datetime import datetime
 import numpy as np
 from pathlib import Path
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
@@ -14,6 +15,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QCheckBox, QTabWidget, QScrollArea)
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 import cv2
 
 # 尝试导入训练相关的库
@@ -67,9 +70,21 @@ class NoiseDataset(Dataset):
         self.patch_size = patch_size
         self.augment = augment
 
-        # 加载数据列表
-        self.noisy_dir = os.path.join(dataset_dir, 'noisy_patches')
-        self.clean_dir = os.path.join(dataset_dir, 'clean_patches')
+        # 支持新结构（图片预处理生成的格式）
+        self.noisy_dir = os.path.join(dataset_dir, 'train', 'noisy')
+        self.clean_dir = os.path.join(dataset_dir, 'train', 'clean')
+
+        # 如果新结构不存在，尝试旧结构（兼容旧版本）
+        if not os.path.isdir(self.noisy_dir) or not os.path.isdir(self.clean_dir):
+            self.noisy_dir = os.path.join(dataset_dir, 'noisy_patches')
+            self.clean_dir = os.path.join(dataset_dir, 'clean_patches')
+
+        # 检查目录是否存在
+        if not os.path.isdir(self.noisy_dir) or not os.path.isdir(self.clean_dir):
+            self.noisy_files = []
+            self.clean_files = []
+            self.pairs = []
+            return
 
         self.noisy_files = sorted([
             os.path.join(self.noisy_dir, f)
@@ -83,14 +98,17 @@ class NoiseDataset(Dataset):
             if f.endswith(('.png', '.jpg', '.jpeg'))
         ])
 
-        # 匹配文件
+        # 匹配文件对
         self.pairs = []
-        for nf in self.noisy_files:
-            base = os.path.basename(nf).replace('noisy_', '')
-            for cf in self.clean_files:
-                if base in cf:
-                    self.pairs.append((nf, cf))
-                    break
+        noisy_basenames = {os.path.basename(f): f for f in self.noisy_files}
+        for cf in self.clean_files:
+            base = os.path.basename(cf)
+            # 新结构：文件名相同
+            if base in noisy_basenames:
+                self.pairs.append((noisy_basenames[base], cf))
+            # 旧结构：文件名带 noisy_ 前缀
+            elif f'noisy_{base}' in noisy_basenames:
+                self.pairs.append((noisy_basenames[f'noisy_{base}'], cf))
 
     def __len__(self):
         return len(self.pairs)
@@ -270,17 +288,22 @@ class TrainingThread(QThread):
             model.eval()
             dummy_input = torch.randn(1, 1, self.patch_size, self.patch_size).to(device)
 
-            onnx_path = os.path.join(self.output_dir, 'models', 'denoiser.onnx')
-            torch.onnx.export(
-                model, dummy_input, onnx_path,
-                input_names=['input'],
-                output_names=['output'],
-                dynamic_axes={
-                    'input': {0: 'batch', 2: 'height', 3: 'width'},
-                    'output': {0: 'batch', 2: 'height', 3: 'width'}
-                },
-                opset_version=11
-            )
+            try:
+                onnx_path = os.path.join(self.output_dir, 'models', 'denoiser.onnx')
+                torch.onnx.export(
+                    model, dummy_input, onnx_path,
+                    input_names=['input'],
+                    output_names=['output'],
+                    dynamic_axes={
+                        'input': {0: 'batch', 2: 'height', 3: 'width'},
+                        'output': {0: 'batch', 2: 'height', 3: 'width'}
+                    },
+                    opset_version=11
+                )
+            except Exception as onnx_error:
+                # ONNX 导出失败，继续保存配置
+                print(f"ONNX 导出失败：{onnx_error}")
+                self.progress.emit(95, f"ONNX 导出失败：{str(onnx_error)}")
 
             # 保存训练配置
             config = {
@@ -312,7 +335,7 @@ class TrainingPage(QWidget):
         super().__init__()
         self.is_training = False
         self.current_epoch = 0
-        self.train_history = []
+        self.train_history = {'epoch': [], 'train_loss': [], 'val_loss': [], 'lr': []}
         self.init_ui()
 
     def init_ui(self):
@@ -324,10 +347,10 @@ class TrainingPage(QWidget):
         # 标题
         title = QLabel("算法训练 - 神经网络模型训练")
         title.setStyleSheet("""
-            font-size: 18px;
+            font-size: 24px;
             font-weight: 600;
             color: #1e293b;
-            padding: 8px 12px;
+            padding: 14px 18px;
             border-left: 4px solid #0ea5e9;
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
             border-radius: 8px;
@@ -379,23 +402,23 @@ class TrainingPage(QWidget):
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(10)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(12)
+        layout.setContentsMargins(14, 14, 14, 14)
 
         # 1. 数据集选择
         data_group = QGroupBox("1. 数据集目录")
         data_layout = QVBoxLayout(data_group)
-        data_layout.setSpacing(8)
+        data_layout.setSpacing(10)
 
         self.dataset_path_edit = QTextEdit()
         self.dataset_path_edit.setReadOnly(True)
-        self.dataset_path_edit.setMaximumHeight(45)
+        self.dataset_path_edit.setMaximumHeight(50)
         self.dataset_path_edit.setPlaceholderText("选择预处理生成的数据集目录...")
         data_layout.addWidget(self.dataset_path_edit)
 
         browse_btn = QPushButton("选择数据集目录")
         browse_btn.clicked.connect(self.browse_dataset)
-        browse_btn.setMinimumHeight(36)
+        browse_btn.setMinimumHeight(44)
         data_layout.addWidget(browse_btn)
 
         layout.addWidget(data_group)
@@ -403,36 +426,41 @@ class TrainingPage(QWidget):
         # 2. 训练参数
         param_group = QGroupBox("2. 训练参数")
         param_layout = QFormLayout(param_group)
-        param_layout.setSpacing(8)
+        param_layout.setSpacing(10)
 
         self.epochs_spin = QSpinBox()
         self.epochs_spin.setRange(10, 500)
         self.epochs_spin.setValue(50)
-        self.epochs_spin.setMinimumHeight(32)
+        self.epochs_spin.setMinimumHeight(40)
+        self.epochs_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("训练轮数 (Epochs):", self.epochs_spin)
 
         self.batch_size_spin = QSpinBox()
         self.batch_size_spin.setRange(1, 128)
         self.batch_size_spin.setValue(16)
-        self.batch_size_spin.setMinimumHeight(32)
+        self.batch_size_spin.setMinimumHeight(40)
+        self.batch_size_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("批次大小 (Batch Size):", self.batch_size_spin)
 
         self.lr_spin = QDoubleSpinBox()
         self.lr_spin.setRange(0.00001, 0.1)
         self.lr_spin.setValue(0.001)
         self.lr_spin.setDecimals(5)
-        self.lr_spin.setMinimumHeight(32)
+        self.lr_spin.setMinimumHeight(40)
+        self.lr_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("学习率 (Learning Rate):", self.lr_spin)
 
         self.patch_size_spin = QSpinBox()
         self.patch_size_spin.setRange(32, 256)
         self.patch_size_spin.setValue(64)
-        self.patch_size_spin.setMinimumHeight(32)
+        self.patch_size_spin.setMinimumHeight(40)
+        self.patch_size_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("块大小 (Patch Size):", self.patch_size_spin)
 
         self.model_type_combo = QComboBox()
         self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
-        self.model_type_combo.setMinimumHeight(32)
+        self.model_type_combo.setMinimumHeight(44)
+        self.model_type_combo.setStyleSheet("font-size: 15px; padding: 10px 14px;")
         param_layout.addRow("模型类型:", self.model_type_combo)
 
         layout.addWidget(param_group)
@@ -440,17 +468,17 @@ class TrainingPage(QWidget):
         # 3. 输出设置
         output_group = QGroupBox("3. 模型输出")
         output_layout = QVBoxLayout(output_group)
-        output_layout.setSpacing(8)
+        output_layout.setSpacing(10)
 
         self.output_path_edit = QTextEdit()
         self.output_path_edit.setReadOnly(True)
-        self.output_path_edit.setMaximumHeight(45)
+        self.output_path_edit.setMaximumHeight(50)
         self.output_path_edit.setPlaceholderText("模型保存目录...")
         output_layout.addWidget(self.output_path_edit)
 
         self.browse_output_btn = QPushButton("选择输出目录")
         self.browse_output_btn.clicked.connect(self.browse_output)
-        self.browse_output_btn.setMinimumHeight(36)
+        self.browse_output_btn.setMinimumHeight(44)
         output_layout.addWidget(self.browse_output_btn)
 
         layout.addWidget(output_group)
@@ -461,9 +489,9 @@ class TrainingPage(QWidget):
         self.train_btn.setStyleSheet("""
             QPushButton#primaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: 600;
-                padding: 12px 20px;
+                padding: 16px 32px;
                 border-radius: 8px;
             }
             QPushButton#primaryBtn:hover {
@@ -475,7 +503,7 @@ class TrainingPage(QWidget):
         """)
         self.train_btn.clicked.connect(self.start_training)
         self.train_btn.setEnabled(False)
-        self.train_btn.setMinimumHeight(40)
+        self.train_btn.setMinimumHeight(48)
         layout.addWidget(self.train_btn)
 
         # 停止按钮
@@ -484,9 +512,9 @@ class TrainingPage(QWidget):
             QPushButton {
                 background-color: #dc2626;
                 color: white;
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: 600;
-                padding: 12px 20px;
+                padding: 14px 28px;
                 border-radius: 8px;
             }
             QPushButton:hover { background-color: #b91c1c; }
@@ -494,8 +522,14 @@ class TrainingPage(QWidget):
         """)
         self.stop_btn.clicked.connect(self.stop_training)
         self.stop_btn.setEnabled(False)
-        self.stop_btn.setMinimumHeight(38)
+        self.stop_btn.setMinimumHeight(48)
         layout.addWidget(self.stop_btn)
+
+        # 集成选项
+        self.integrate_checkbox = QCheckBox("训练完成后自动集成到降噪与超分辨率算法")
+        self.integrate_checkbox.setChecked(True)
+        self.integrate_checkbox.setStyleSheet("font-size: 15px; font-weight: 500; padding: 8px;")
+        layout.addWidget(self.integrate_checkbox)
 
         layout.addStretch()
         return panel
@@ -508,11 +542,11 @@ class TrainingPage(QWidget):
                 background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
-                padding: 16px;
+                padding: 20px;
             }
         """)
         layout = QVBoxLayout(panel)
-        layout.setSpacing(14)
+        layout.setSpacing(16)
         layout.setContentsMargins(0, 0, 0, 0)
 
         # 进度显示
@@ -520,13 +554,14 @@ class TrainingPage(QWidget):
         progress_layout = QVBoxLayout(progress_group)
 
         self.progress = QProgressBar()
-        self.progress.setMinimumHeight(28)
+        self.progress.setMinimumHeight(36)
         self.progress.setStyleSheet("""
             QProgressBar {
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 text-align: center;
                 font-weight: 600;
+                font-size: 15px;
                 background-color: #f8fafc;
             }
             QProgressBar::chunk {
@@ -537,36 +572,10 @@ class TrainingPage(QWidget):
         progress_layout.addWidget(self.progress)
 
         self.status_label = QLabel("准备就绪")
-        self.status_label.setStyleSheet("color: #64748b; font-size: 13px;")
+        self.status_label.setStyleSheet("color: #64748b; font-size: 15px;")
         progress_layout.addWidget(self.status_label)
 
         layout.addWidget(progress_group)
-
-        # 训练指标
-        metrics_group = QGroupBox("训练指标")
-        metrics_layout = QGridLayout(metrics_group)
-
-        # 当前 Epoch
-        self.epoch_label = QLabel("Epoch: 0 / 0")
-        self.epoch_label.setStyleSheet("font-weight: 600; font-size: 14px;")
-        metrics_layout.addWidget(self.epoch_label, 0, 0)
-
-        # 训练损失
-        self.train_loss_label = QLabel("训练损失：--")
-        self.train_loss_label.setStyleSheet("color: #475569;")
-        metrics_layout.addWidget(self.train_loss_label, 0, 1)
-
-        # 验证损失
-        self.val_loss_label = QLabel("验证损失：--")
-        self.val_loss_label.setStyleSheet("color: #475569;")
-        metrics_layout.addWidget(self.val_loss_label, 1, 0)
-
-        # 学习率
-        self.lr_label = QLabel("学习率：--")
-        self.lr_label.setStyleSheet("color: #475569;")
-        metrics_layout.addWidget(self.lr_label, 1, 1)
-
-        layout.addWidget(metrics_group)
 
         # 日志输出
         log_group = QGroupBox("训练日志")
@@ -578,16 +587,38 @@ class TrainingPage(QWidget):
         self.log_text.setStyleSheet("""
             QTextEdit {
                 font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 11px;
+                font-size: 16px;
                 background-color: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
-                padding: 8px;
+                padding: 10px;
             }
         """)
         log_layout.addWidget(self.log_text)
 
         layout.addWidget(log_group)
+
+        # Loss 曲线图
+        chart_group = QGroupBox("训练 Loss 曲线")
+        chart_layout = QVBoxLayout(chart_group)
+
+        # 创建 matplotlib 图表
+        self.loss_figure = Figure(figsize=(5, 4), dpi=100)
+        self.loss_canvas = FigureCanvasQTAgg(self.loss_figure)
+        self.loss_canvas.setMinimumHeight(300)
+        self.loss_canvas.setStyleSheet("background-color: white;")
+
+        # 初始化图表
+        self.loss_ax = self.loss_figure.add_subplot(111)
+        self.loss_ax.set_xlabel('Epoch')
+        self.loss_ax.set_ylabel('Loss')
+        self.loss_ax.set_title('Training and Validation Loss')
+        self.loss_ax.grid(True, alpha=0.3)
+        self.train_loss_line = None
+        self.val_loss_line = None
+
+        chart_layout.addWidget(self.loss_canvas)
+        layout.addWidget(chart_group)
 
         return panel
 
@@ -604,14 +635,27 @@ class TrainingPage(QWidget):
                 self.train_btn.setEnabled(True)
                 self.log_text.append(f"✓ 数据集目录有效：{dir_path}")
             else:
-                self.log_text.append(f"⚠ 数据集目录可能不完整，请确认包含 noisy_patches 和 clean_patches 子目录")
+                self.log_text.append(f"⚠ 数据集目录可能不完整，请确认包含 train/clean 和 train/noisy 子目录")
 
     def _validate_dataset(self, dataset_dir):
         """验证数据集目录结构。"""
-        noisy_dir = os.path.join(dataset_dir, 'noisy_patches')
-        clean_dir = os.path.join(dataset_dir, 'clean_patches')
+        # 检查新结构（图片预处理生成的格式）
+        train_clean = os.path.join(dataset_dir, 'train', 'clean')
+        train_noisy = os.path.join(dataset_dir, 'train', 'noisy')
 
-        return os.path.isdir(noisy_dir) and os.path.isdir(clean_dir)
+        # 检查旧结构（兼容旧版本）
+        noisy_patches = os.path.join(dataset_dir, 'noisy_patches')
+        clean_patches = os.path.join(dataset_dir, 'clean_patches')
+
+        # 新结构：检查 train/clean 和 train/noisy 是否存在
+        if os.path.isdir(train_clean) and os.path.isdir(train_noisy):
+            return True
+
+        # 旧结构：检查 noisy_patches 和 clean_patches 是否存在
+        if os.path.isdir(noisy_patches) and os.path.isdir(clean_patches):
+            return True
+
+        return False
 
     def browse_output(self):
         """选择模型输出目录。"""
@@ -632,7 +676,11 @@ class TrainingPage(QWidget):
         output_dir = self.output_path_edit.toPlainText().strip()
         if not output_dir:
             output_dir = os.path.join(os.path.dirname(__file__), 'trained_models')
-            self.output_path_edit.setText(output_dir)
+
+        # 创建带时间戳的子目录
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_dir = os.path.join(output_dir, f'trained_models_{timestamp}')
+        self.output_path_edit.setText(output_dir)
 
         self.is_training = True
         self.train_history = []
@@ -675,19 +723,51 @@ class TrainingPage(QWidget):
     def update_epoch_metrics(self, epoch, metrics):
         """更新 Epoch 指标。"""
         self.current_epoch = epoch
-        self.epoch_label.setText(f"Epoch: {epoch} / {self.epochs_spin.value()}")
-        self.train_loss_label.setText(f"训练损失：{metrics['train_loss']:.6f}")
-        self.val_loss_label.setText(f"验证损失：{metrics['val_loss']:.6f}")
-        self.lr_label.setText(f"学习率：{metrics['lr']:.6f}")
+
+        # 记录历史数据
+        self.train_history['epoch'].append(epoch)
+        self.train_history['train_loss'].append(metrics['train_loss'])
+        self.train_history['val_loss'].append(metrics['val_loss'])
+        self.train_history['lr'].append(metrics['lr'])
 
         self.log_text.append(
             f"Epoch {epoch}: train_loss={metrics['train_loss']:.6f}, "
             f"val_loss={metrics['val_loss']:.6f}, lr={metrics['lr']:.6f}"
         )
 
+        # 更新图表
+        self.update_loss_chart()
+
         # 自动滚动到底部
         scrollbar = self.log_text.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
+
+    def update_loss_chart(self):
+        """更新 Loss 曲线图。"""
+        self.loss_ax.clear()
+        self.loss_ax.set_xlabel('Epoch')
+        self.loss_ax.set_ylabel('Loss')
+        self.loss_ax.set_title('Training and Validation Loss')
+        self.loss_ax.grid(True, alpha=0.3)
+
+        if len(self.train_history['epoch']) > 0:
+            self.loss_ax.plot(
+                self.train_history['epoch'],
+                self.train_history['train_loss'],
+                'b-',
+                label='Train Loss',
+                linewidth=2
+            )
+            self.loss_ax.plot(
+                self.train_history['epoch'],
+                self.train_history['val_loss'],
+                'r-',
+                label='Val Loss',
+                linewidth=2
+            )
+            self.loss_ax.legend(loc='upper right')
+
+        self.loss_canvas.draw()
 
     def training_finished(self, success, message):
         """训练完成回调。"""
@@ -698,11 +778,49 @@ class TrainingPage(QWidget):
         if success:
             QMessageBox.information(self, "成功", message)
             self.log_text.append(f"✓ {message}")
+
+            # 如果勾选了集成选项，执行集成逻辑
+            if self.integrate_checkbox.isChecked():
+                self._integrate_model()
         else:
             QMessageBox.warning(self, "提示", message)
             self.log_text.append(f"✗ {message}")
 
         self.status_label.setText("训练结束")
+
+    def _integrate_model(self):
+        """集成训练后的模型到降噪算法。"""
+        try:
+            output_dir = self.output_path_edit.toPlainText().strip()
+            if not output_dir:
+                return
+
+            # 查找最新的模型文件
+            model_dir = os.path.join(output_dir, 'models')
+            if not os.path.isdir(model_dir):
+                return
+
+            # 复制模型文件到集成目录
+            integrate_dir = os.path.join(os.path.dirname(__file__), 'integrated_model')
+            os.makedirs(integrate_dir, exist_ok=True)
+
+            # 复制所有模型文件
+            import shutil
+            for filename in os.listdir(model_dir):
+                if filename.endswith(('.pth', '.onnx', '.json')):
+                    src = os.path.join(model_dir, filename)
+                    dst = os.path.join(integrate_dir, filename)
+                    shutil.copy2(src, dst)
+
+            self.log_text.append(f"✓ 模型已集成到降噪算法：{integrate_dir}")
+
+            # 创建集成标记文件
+            marker_path = os.path.join(integrate_dir, 'model_ready.marker')
+            with open(marker_path, 'w', encoding='utf-8') as f:
+                f.write(f"Integrated at {datetime.now().isoformat()}")
+
+        except Exception as e:
+            self.log_text.append(f"⚠ 集成失败：{str(e)}")
 
     def apply_medical_style(self):
         """应用 Medical Minimalism 风格"""
@@ -710,10 +828,10 @@ class TrainingPage(QWidget):
         for label in self.findChildren(QLabel):
             if label.text().startswith("算法训练"):
                 label.setStyleSheet("""
-                    font-size: 20px;
+                    font-size: 24px;
                     font-weight: 600;
                     color: #1e293b;
-                    padding: 12px;
+                    padding: 14px 18px;
                     border-left: 4px solid #0ea5e9;
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
                     border-radius: 8px;
@@ -729,7 +847,7 @@ class TrainingPage(QWidget):
                     border-radius: 8px;
                     margin-top: 16px;
                     padding-top: 16px;
-                    font-size: 14px;
+                    font-size: 16px;
                 }
                 QGroupBox::title {
                     subcontrol-origin: margin;
@@ -737,6 +855,7 @@ class TrainingPage(QWidget):
                     padding: 0 8px;
                     color: #0ea5e9;
                     font-weight: 600;
+                    font-size: 16px;
                 }
             """)
 
@@ -748,10 +867,10 @@ class TrainingPage(QWidget):
                         background-color: #f1f5f9;
                         color: #475569;
                         border: 1px solid #cbd5e1;
-                        padding: 10px 20px;
+                        padding: 14px 28px;
                         border-radius: 8px;
-                        font-weight: 500;
-                        font-size: 14px;
+                        font-weight: 600;
+                        font-size: 16px;
                     }
                     QPushButton:hover {
                         background-color: #e2e8f0;
@@ -767,10 +886,10 @@ class TrainingPage(QWidget):
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
                         color: white;
                         border: none;
-                        padding: 12px 24px;
+                        padding: 16px 32px;
                         border-radius: 8px;
                         font-weight: 600;
-                        font-size: 14px;
+                        font-size: 16px;
                     }
                     QPushButton:hover {
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
@@ -786,10 +905,10 @@ class TrainingPage(QWidget):
                         background-color: #dc2626;
                         color: white;
                         border: none;
-                        padding: 12px 24px;
+                        padding: 14px 28px;
                         border-radius: 8px;
                         font-weight: 600;
-                        font-size: 14px;
+                        font-size: 16px;
                     }
                     QPushButton:hover {
                         background-color: #b91c1c;
@@ -807,9 +926,9 @@ class TrainingPage(QWidget):
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;
                     text-align: center;
-                    height: 28px;
+                    height: 36px;
                     font-weight: 600;
-                    font-size: 14px;
+                    font-size: 15px;
                     background-color: #f8fafc;
                     color: #475569;
                 }
@@ -825,11 +944,11 @@ class TrainingPage(QWidget):
                 text.setStyleSheet("""
                     QTextEdit {
                         font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 11px;
+                        font-size: 13px;
                         background-color: #f8fafc;
                         border: 1px solid #e2e8f0;
                         border-radius: 8px;
-                        padding: 8px;
+                        padding: 10px;
                         color: #475569;
                     }
                     QTextEdit:focus {
@@ -841,12 +960,13 @@ class TrainingPage(QWidget):
         for combo in self.findChildren(QComboBox):
             combo.setStyleSheet("""
                 QComboBox {
-                    padding: 8px 12px;
+                    padding: 10px 14px;
                     border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     background-color: white;
-                    min-height: 36px;
+                    min-height: 44px;
                     color: #1e293b;
+                    font-size: 15px;
                 }
                 QComboBox:hover {
                     border-color: #0ea5e9;
@@ -869,12 +989,13 @@ class TrainingPage(QWidget):
         for spin in self.findChildren(QSpinBox):
             spin.setStyleSheet("""
                 QSpinBox {
-                    padding: 8px 12px;
+                    padding: 10px 14px;
                     border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     background-color: white;
-                    min-height: 32px;
+                    min-height: 40px;
                     color: #1e293b;
+                    font-size: 15px;
                 }
                 QSpinBox:hover {
                     border-color: #0ea5e9;
@@ -884,7 +1005,7 @@ class TrainingPage(QWidget):
                 }
                 QSpinBox::up-button, QSpinBox::down-button {
                     border: none;
-                    width: 24px;
+                    width: 32px;
                     background: #f1f5f9;
                     border-radius: 6px;
                     margin: 2px;

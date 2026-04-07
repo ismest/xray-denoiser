@@ -77,7 +77,7 @@ class DenoiseWidget(QWidget):
         self.setStyleSheet("""
             QWidget {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-                font-size: 14px;
+                font-size: 15px;
                 color: #1e293b;
             }
             QFrame#card, QFrame#controlPanel {
@@ -89,19 +89,19 @@ class DenoiseWidget(QWidget):
                 background-color: #3b82f6;
                 color: white;
                 border: none;
-                padding: 10px 20px;
+                padding: 12px 24px;
                 border-radius: 8px;
-                font-weight: 500;
-                font-size: 13px;
+                font-weight: 600;
+                font-size: 15px;
             }
             QPushButton:hover { background-color: #2563eb; }
             QPushButton:pressed { background-color: #1d4ed8; }
             QPushButton:disabled { background-color: #cbd5e1; color: #94a3b8; }
             QPushButton#primaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 600;
-                padding: 14px 24px;
+                padding: 16px 28px;
             }
             QPushButton#primaryBtn:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
@@ -109,9 +109,9 @@ class DenoiseWidget(QWidget):
             QPushButton#primaryBtn:disabled { background: #cbd5e1; }
             QPushButton#secondaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8b5cf6, stop:1 #7c3aed);
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 600;
-                padding: 14px 24px;
+                padding: 16px 28px;
             }
             QPushButton#secondaryBtn:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7c3aed, stop:1 #6d28d9);
@@ -120,31 +120,34 @@ class DenoiseWidget(QWidget):
             QPushButton#saveBtn {
                 background-color: #0891b2;
                 font-weight: 600;
+                font-size: 16px;
             }
             QPushButton#saveBtn:hover { background-color: #0e7490; }
             QPushButton#saveBtn:disabled { background-color: #cbd5e1; }
             QComboBox {
-                padding: 8px 12px;
+                padding: 10px 14px;
                 border: 1px solid #cbd5e1;
                 border-radius: 8px;
                 background-color: white;
-                min-height: 36px;
+                min-height: 44px;
+                font-size: 15px;
             }
             QComboBox:hover { border: 1px solid #3b82f6; }
             QTextEdit {
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 background-color: #f8fafc;
-                padding: 8px;
-                font-size: 12px;
+                padding: 10px;
+                font-size: 13px;
                 font-family: 'Consolas', 'Courier New', 'Monaco', monospace;
             }
             QProgressBar {
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 text-align: center;
-                height: 28px;
+                height: 36px;
                 font-weight: 600;
+                font-size: 15px;
             }
             QProgressBar::chunk {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
@@ -156,14 +159,15 @@ class DenoiseWidget(QWidget):
                 background-color: #f8fafc;
                 color: #94a3b8;
                 font-style: italic;
-                font-size: 14px;
+                font-size: 16px;
             }
             QGroupBox {
                 font-weight: 600;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
-                margin-top: 12px;
-                padding-top: 12px;
+                margin-top: 16px;
+                padding-top: 16px;
+                font-size: 16px;
             }
         """)
 
@@ -175,10 +179,10 @@ class DenoiseWidget(QWidget):
         self.title_label = QLabel("降噪与超分辨率 - 图像处理工作流")
         self.title_label.setObjectName("pageTitle")
         self.title_label.setStyleSheet("""
-            font-size: 18px;
+            font-size: 24px;
             font-weight: 600;
             color: #1e293b;
-            padding: 8px 12px;
+            padding: 14px 18px;
             border-left: 4px solid #0ea5e9;
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
             border-radius: 8px;
@@ -279,7 +283,7 @@ class DenoiseWidget(QWidget):
         step1_layout.addWidget(self.denoise_progress)
 
         self.denoise_status = QLabel("等待处理...")
-        self.denoise_status.setStyleSheet("color: #64748b; font-size: 13px;")
+        self.denoise_status.setStyleSheet("color: #64748b; font-size: 15px;")
         step1_layout.addWidget(self.denoise_status)
 
         layout.addWidget(step1_group)
@@ -287,22 +291,22 @@ class DenoiseWidget(QWidget):
         # Step 2: Super-Resolution
         step2_group = QGroupBox("步骤 2: 超分辨率重构")
         step2_layout = QVBoxLayout(step2_group)
-        step2_layout.setSpacing(8)
+        step2_layout.setSpacing(10)
 
         sr_layout = QFormLayout()
-        sr_layout.setSpacing(8)
+        sr_layout.setSpacing(10)
 
         self.sr_method_combo = QComboBox()
         for key, name in get_supported_sr_methods():
             self.sr_method_combo.addItem(name, key)
         self.sr_method_combo.setCurrentIndex(1)
-        self.sr_method_combo.setMinimumHeight(32)
+        self.sr_method_combo.setMinimumHeight(44)
         sr_layout.addRow("插值方法:", self.sr_method_combo)
 
         self.sr_scale_combo = QComboBox()
         self.sr_scale_combo.addItems(["1.5x", "2.0x", "3.0x", "4.0x"])
         self.sr_scale_combo.setCurrentIndex(1)
-        self.sr_scale_combo.setMinimumHeight(32)
+        self.sr_scale_combo.setMinimumHeight(44)
         sr_layout.addRow("放大倍数:", self.sr_scale_combo)
 
         step2_layout.addLayout(sr_layout)
@@ -311,7 +315,7 @@ class DenoiseWidget(QWidget):
         self.sr_btn.setObjectName("secondaryBtn")
         self.sr_btn.clicked.connect(self.apply_sr)
         self.sr_btn.setEnabled(False)
-        self.sr_btn.setMinimumHeight(40)
+        self.sr_btn.setMinimumHeight(48)
         step2_layout.addWidget(self.sr_btn)
 
         self.sr_progress = QProgressBar()
@@ -319,7 +323,7 @@ class DenoiseWidget(QWidget):
         step2_layout.addWidget(self.sr_progress)
 
         self.sr_status = QLabel("等待降噪完成...")
-        self.sr_status.setStyleSheet("color: #64748b; font-size: 13px;")
+        self.sr_status.setStyleSheet("color: #64748b; font-size: 15px;")
         step2_layout.addWidget(self.sr_status)
 
         layout.addWidget(step2_group)
@@ -565,7 +569,7 @@ class DenoiseWidget(QWidget):
         method = self.algorithm_combo.currentData()
         self.nlm_group.setVisible(method == 'nlm')
         self.bilateral_group.setVisible(method == 'bilateral')
-        self.neural_group.setVisible(method == 'neural')
+        self.neural_group.setVisible(method in ['neural', 'trained_neural'])
         self.bm3d_group.setVisible(method == 'bm3d')
         self.aniso_group.setVisible(method == 'anisotropic')
         self.iter_group.setVisible(method == 'iterative')
@@ -657,6 +661,11 @@ class DenoiseWidget(QWidget):
         elif method == 'neural':
             params['patch_size'] = self.neural_patch_spin.value()
             params['stride'] = self.neural_stride_spin.value()
+        elif method == 'trained_neural':
+            # Use trained neural model with same parameters
+            params['patch_size'] = self.neural_patch_spin.value()
+            params['stride'] = self.neural_stride_spin.value()
+            params['use_trained'] = True
         elif method == 'bm3d':
             params['sigma'] = self.bm3d_sigma_spin.value()
         elif method == 'anisotropic':
@@ -854,10 +863,10 @@ class DenoiseWidget(QWidget):
                         background-color: #f1f5f9;
                         color: #475569;
                         border: 1px solid #cbd5e1;
-                        padding: 10px 20px;
+                        padding: 14px 28px;
                         border-radius: 8px;
-                        font-weight: 500;
-                        font-size: 13px;
+                        font-weight: 600;
+                        font-size: 16px;
                     }
                     QPushButton:hover {
                         background-color: #e2e8f0;
@@ -873,10 +882,10 @@ class DenoiseWidget(QWidget):
                         background-color: #0891b2;
                         color: white;
                         border: none;
-                        padding: 10px 20px;
+                        padding: 14px 28px;
                         border-radius: 8px;
                         font-weight: 600;
-                        font-size: 13px;
+                        font-size: 16px;
                     }
                     QPushButton#saveBtn:hover {
                         background-color: #0e7490;
@@ -895,7 +904,7 @@ class DenoiseWidget(QWidget):
                         padding: 12px 24px;
                         border-radius: 8px;
                         font-weight: 600;
-                        font-size: 14px;
+                        font-size: 16px;
                     }
                     QPushButton#primaryBtn:hover {
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
@@ -911,10 +920,10 @@ class DenoiseWidget(QWidget):
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
                         color: white;
                         border: none;
-                        padding: 12px 24px;
+                        padding: 16px 32px;
                         border-radius: 8px;
                         font-weight: 600;
-                        font-size: 14px;
+                        font-size: 16px;
                     }
                     QPushButton#secondaryBtn:hover {
                         background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0369a1);
@@ -932,9 +941,9 @@ class DenoiseWidget(QWidget):
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;
                     text-align: center;
-                    height: 28px;
+                    height: 36px;
                     font-weight: 600;
-                    font-size: 13px;
+                    font-size: 15px;
                     background-color: #f8fafc;
                     color: #475569;
                 }
@@ -954,7 +963,7 @@ class DenoiseWidget(QWidget):
                     border-radius: 8px;
                     margin-top: 16px;
                     padding-top: 16px;
-                    font-size: 14px;
+                    font-size: 16px;
                 }
                 QGroupBox::title {
                     subcontrol-origin: margin;
@@ -962,6 +971,7 @@ class DenoiseWidget(QWidget):
                     padding: 0 8px;
                     color: #0ea5e9;
                     font-weight: 600;
+                    font-size: 16px;
                 }
             """)
 
@@ -969,13 +979,13 @@ class DenoiseWidget(QWidget):
         for combo in self.findChildren(QComboBox):
             combo.setStyleSheet("""
                 QComboBox {
-                    padding: 8px 12px;
+                    padding: 10px 14px;
                     border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     background-color: white;
-                    min-height: 36px;
+                    min-height: 44px;
                     color: #1e293b;
-                    font-size: 14px;
+                    font-size: 15px;
                 }
                 QComboBox:hover {
                     border-color: #0ea5e9;
@@ -998,12 +1008,13 @@ class DenoiseWidget(QWidget):
         for spin in self.findChildren(QSpinBox):
             spin.setStyleSheet("""
                 QSpinBox {
-                    padding: 8px 12px;
+                    padding: 10px 14px;
                     border: 1px solid #cbd5e1;
                     border-radius: 8px;
                     background-color: white;
-                    min-height: 32px;
+                    min-height: 40px;
                     color: #1e293b;
+                    font-size: 15px;
                 }
                 QSpinBox:hover {
                     border-color: #0ea5e9;
@@ -1013,7 +1024,7 @@ class DenoiseWidget(QWidget):
                 }
                 QSpinBox::up-button, QSpinBox::down-button {
                     border: none;
-                    width: 24px;
+                    width: 32px;
                     background: #f1f5f9;
                     border-radius: 6px;
                     margin: 2px;
@@ -1032,7 +1043,7 @@ class DenoiseWidget(QWidget):
                     background-color: #f8fafc;
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;
-                    padding: 8px;
+                    padding: 10px;
                     color: #475569;
                 }
                 QTextEdit:focus {
@@ -1044,10 +1055,10 @@ class DenoiseWidget(QWidget):
         title_label = self.findChild(QLabel, "pageTitle")
         if title_label:
             title_label.setStyleSheet("""
-                font-size: 20px;
+                font-size: 24px;
                 font-weight: 600;
                 color: #1e293b;
-                padding: 12px;
+                padding: 14px 18px;
                 border-left: 4px solid #0ea5e9;
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
                 border-radius: 8px;
@@ -1063,7 +1074,7 @@ class DenoiseWidget(QWidget):
                         background-color: #f8fafc;
                         color: #94a3b8;
                         font-style: italic;
-                        font-size: 14px;
+                        font-size: 16px;
                     }
                     QLabel#imageBox:hover {
                         border-color: #0ea5e9;
