@@ -1,6 +1,6 @@
 """
 图片预处理页面 - 用于噪音提取和数据集构建
-两步流程：1. 噪音提取 2. 生成训练/测试/验证集
+三步流程：1. 噪音提取 2. 数据集生成 3. 算法训练
 """
 
 import sys
@@ -17,6 +17,14 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import cv2
+
+# 导入训练页面相关类
+try:
+    from training_page import TrainingPage
+    TRAINING_PAGE_AVAILABLE = True
+except ImportError:
+    TRAINING_PAGE_AVAILABLE = False
+    print("Warning: TrainingPage not available. Training features will be disabled.")
 
 
 class NoiseExtractionThread(QThread):
@@ -529,13 +537,13 @@ class PreprocessPage(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        """初始化用户界面 - 两步流程带标签页。"""
+        """初始化用户界面 - 三步流程带标签页（噪音提取、数据集生成、算法训练）。"""
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
 
         # 标题（与其他页面保持一致，不加版本号）
-        title = QLabel("图片预处理 - 噪音提取与数据集构建")
+        title = QLabel("图片预处理 - 噪音提取、数据集生成与算法训练")
         title.setStyleSheet("""
             font-size: 24px;
             font-weight: 600;
@@ -558,7 +566,7 @@ class PreprocessPage(QWidget):
         tabs_layout.setContentsMargins(0, 10, 0, 0)
         tabs_layout.setSpacing(10)
 
-        # 使用标签页分隔两步
+        # 使用标签页分隔三步
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
             QTabWidget::pane {
@@ -600,6 +608,16 @@ class PreprocessPage(QWidget):
         # Step 2: 数据集生成
         step2_widget = self._create_step2_widget()
         self.tabs.addTab(step2_widget, "数据集生成")
+
+        # Step 3: 算法训练（集成 TrainingPage）
+        if TRAINING_PAGE_AVAILABLE:
+            self.training_page = TrainingPage()
+            self.tabs.addTab(self.training_page, "算法训练")
+        else:
+            training_placeholder = QLabel("算法训练功能不可用")
+            training_placeholder.setStyleSheet("font-size: 16px; color: #64748b; padding: 20px;")
+            training_placeholder.setAlignment(Qt.AlignCenter)
+            self.tabs.addTab(training_placeholder, "算法训练")
 
         # 状态栏
         self.status_label = QLabel("就绪 - 请先完成步骤 1：噪音提取")

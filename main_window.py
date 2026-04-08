@@ -1,6 +1,6 @@
 """
 主窗口 - 多页面架构
-包含：图片预处理、算法训练、降噪与超分辨率三个页面
+包含：图片预处理（含噪音提取、数据集生成、算法训练）、Noise2Void、降噪与超分辨率三个页面
 Medical Minimalism 风格
 """
 
@@ -15,7 +15,6 @@ from PyQt5.QtCore import Qt, QSize
 
 # 导入页面模块
 from preprocess_page import PreprocessPage
-from training_page import TrainingPage
 from noise2void_page import Noise2VoidPage
 from denoise_app import DenoiseWidget
 
@@ -211,18 +210,13 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.btn_preprocess)
         self.nav_buttons.append(self.btn_preprocess)
 
-        self.btn_training = NavigationButton("算法训练")
-        self.btn_training.clicked.connect(lambda: self._switch_page(1))
-        layout.addWidget(self.btn_training)
-        self.nav_buttons.append(self.btn_training)
-
         self.btn_n2v = NavigationButton("Noise2Void")
-        self.btn_n2v.clicked.connect(lambda: self._switch_page(2))
+        self.btn_n2v.clicked.connect(lambda: self._switch_page(1))
         layout.addWidget(self.btn_n2v)
         self.nav_buttons.append(self.btn_n2v)
 
         self.btn_denoise = NavigationButton("降噪与超分")
-        self.btn_denoise.clicked.connect(lambda: self._switch_page(3))
+        self.btn_denoise.clicked.connect(lambda: self._switch_page(2))
         layout.addWidget(self.btn_denoise)
         self.nav_buttons.append(self.btn_denoise)
 
@@ -266,10 +260,6 @@ class MainWindow(QMainWindow):
         self.preprocess_page.apply_medical_style()
         self.page_stack.addWidget(self.preprocess_page)
 
-        self.training_page = TrainingPage()
-        self.training_page.apply_medical_style()
-        self.page_stack.addWidget(self.training_page)
-
         # Noise2Void 页面
         self.n2v_page = Noise2VoidPage()
         self.n2v_page.apply_medical_style()
@@ -293,7 +283,7 @@ class MainWindow(QMainWindow):
             btn.setChecked(i == index)
 
         # 更新状态栏
-        page_names = ['图片预处理', '算法训练', 'Noise2Void 自监督训练', '降噪与超分辨率']
+        page_names = ['图片预处理（噪音提取、数据集生成、算法训练）', 'Noise2Void 自监督训练', '降噪与超分辨率']
         self.status_bar.showMessage(f'当前页面：{page_names[index]}')
 
     def show_help_guide(self):

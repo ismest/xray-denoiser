@@ -1,0 +1,13 @@
+{
+  "algorithm": "Noise2Void",
+  "trained_at": "2026-04-08 10:24:07",
+  "params": {
+    "epochs": 50,
+    "batch_size": 16,
+    "patch_size": 64,
+    "lr": 1e-05,
+    "num_patches": 10000
+  },
+  "source_image": "G:/X射线降噪/KB+IP板/92.TIF",
+  "best_loss": 0.00010699794155937362
+}

@@ -24,7 +24,23 @@
       "Bash(git reset:*)",
       "Bash(git restore:*)",
       "Bash(git checkout:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(xargs git:*)",
+      "WebSearch",
+      "WebFetch(domain:aip.scitation.org)",
+      "WebFetch(domain:doi.org)",
+      "WebFetch(domain:www.researchgate.net)",
+      "WebFetch(domain:export.arxiv.org)",
+      "WebFetch(domain:pubmed.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:www.osti.gov)",
+      "WebFetch(domain:release.my.emsl.pnnl.gov)",
+      "WebFetch(domain:arxiv.org)",
+      "WebFetch(domain:ui.adsabs.harvard.edu)",
+      "WebFetch(domain:api.semanticscholar.org)",
+      "WebFetch(domain:www.semanticscholar.org)",
+      "Bash(dir *.pdf)",
+      "Bash(powershell:*)",
+      "Bash(tee pdf_output.txt)"
     ]
   }
 }
