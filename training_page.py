@@ -203,6 +203,10 @@ class TrainingThread(QThread):
             return
 
         try:
+            # 记录训练开始时间
+            import time
+            start_time = time.time()
+
             # 检测硬件资源
             hardware_info, device_type, estimated_time = self._detect_hardware()
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -360,7 +364,14 @@ class TrainingThread(QThread):
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
 
+            # 计算实际训练时间
+            end_time = time.time()
+            actual_time = int(end_time - start_time)
+            actual_mins = actual_time // 60
+            actual_secs = actual_time % 60
+
             self.progress.emit(100, "训练完成")
+            self.progress.emit(100, f"实际训练时间：{actual_mins}分{actual_secs}秒")
             self.finished.emit(True, f"训练完成！模型已保存到：{model_dir}")
 
         except Exception as e:

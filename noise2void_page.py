@@ -87,7 +87,11 @@ class Noise2VoidTrainingThread(QThread):
 
     def run(self):
         """执行 Noise2Void 训练"""
+        import time
         try:
+            # 记录训练开始时间
+            start_time = time.time()
+
             # 检测硬件资源
             hardware_info, device_type, estimated_time = self._detect_hardware()
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -195,7 +199,14 @@ class Noise2VoidTrainingThread(QThread):
                 f.write(f"Algorithm: Noise2Void (Self-Supervised)\n")
                 f.write(f"Source: {self.image_path}\n")
 
+            # 计算实际训练时间
+            end_time = time.time()
+            actual_time = int(end_time - start_time)
+            actual_mins = actual_time // 60
+            actual_secs = actual_time % 60
+
             self.progress.emit(100, "训练完成")
+            self.progress.emit(100, f"实际训练时间：{actual_mins}分{actual_secs}秒")
             self.finished.emit(True, f"模型已保存到：{self.output_dir}")
 
         except Exception as e:
@@ -831,6 +842,9 @@ class Noise2VoidPage(QWidget):
         """更新进度"""
         self.progress.setValue(value)
         self.status_label.setText(message)
+        # 将硬件检测、预计时间和实际训练时间信息添加到日志
+        if "硬件检测" in message or "预计训练时间" in message or "实际训练时间" in message:
+            self.log_text.append(message)
 
     def update_epoch_stats(self, epoch, stats):
         """更新 epoch 统计"""
