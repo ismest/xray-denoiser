@@ -184,18 +184,30 @@ class NoiseExtractionThread(QThread):
 
         # 根据论文：AWGN 约为 5%，Poisson λ 在 5-20 范围
         # 限制估计值在合理范围内
-        poisson_lambda = max(5, min(100, poisson_lambda))
+        poisson_lambda = max(5, min(50, poisson_lambda))
 
-        # AWGN sigma = 5% （论文标准值）
-        awgn_sigma = 0.05
-
-        # 根据噪声标准差调整 AWGN 比例
+        # AWGN sigma：论文标准值为 5%，根据估计的噪声标准差调整
+        # 约 50% 的噪声标准差来自 AWGN
         awgn_ratio = noise_std * 0.5  # 约 50% 的噪声标准差来自 AWGN
-        awgn_sigma = max(0.02, min(0.1, awgn_ratio))
+        awgn_sigma = max(0.02, min(0.10, awgn_ratio))  # 限制在 2%-10%
+
+        # 记录噪声参数范围用于训练数据生成（论文方法：使用随机噪声参数增加泛化性）
+        lambda_range = {
+            'min': max(5, poisson_lambda - 5),
+            'max': min(50, poisson_lambda + 10),
+            'nominal': poisson_lambda
+        }
+        awgn_range = {
+            'min': max(0.02, awgn_sigma - 0.03),
+            'max': min(0.10, awgn_sigma + 0.05),
+            'nominal': awgn_sigma
+        }
 
         return {
             'poisson_lambda': float(poisson_lambda),
+            'poisson_lambda_range': lambda_range,  # 用于训练数据生成
             'awgn_sigma': float(awgn_sigma),
+            'awgn_sigma_range': awgn_range,  # 用于训练数据生成
             'gaussian_blur_sigma': 1.0,  # 论文中固定值
             'estimated_noise_std': float(noise_std),
             'image_dtype': str(image.dtype),
@@ -204,6 +216,8 @@ class NoiseExtractionThread(QThread):
             'lambda_min': float(np.min(lambda_estimates)) if lambda_estimates else 0,
             'lambda_max': float(np.max(lambda_estimates)) if lambda_estimates else 0,
             'box_coords': box_coords,  # 区域盒坐标列表
+            'method': 'homogeneous_region_box',
+            'reference': 'Rev. Sci. Instrum. 95, 063508 (2024)',
         }
 
     def _extract_noise_local_std(self, image):
@@ -430,13 +444,31 @@ class DatasetGenerationThread(QThread):
         return images
 
     def _add_noise(self, clean_patch):
-        """根据论文方法添加合成噪声：Poisson(λ) + AWGN(σ) + Gaussian Blur(σ=1)。"""
-        # 获取噪声参数
-        poisson_lambda = self.noise_params.get('poisson_lambda', 0)
-        awgn_sigma = self.noise_params.get('awgn_sigma', 0)
-        blur_sigma = self.noise_params.get('gaussian_blur_sigma', 0)
+        """根据论文方法添加合成噪声：Poisson(λ) + AWGN(σ) + Gaussian Blur(σ=1)。
 
-        # 如果所有噪声参数都为 0，直接返回原始图像（干净和噪声图像保持一致）
+        参考 Levesque 等 (2024) 的方法：
+        - 在训练数据中使用随机噪声参数以增加泛化性
+        - Poisson λ ∈ [5, 50]，AWGN ∈ [0%, 10%]
+        - 每个 patch 使用独特的随机种子，避免重复
+        """
+        # 获取噪声参数（支持范围和标量）
+        poisson_lambda = self.noise_params.get('poisson_lambda', 10)
+        awgn_sigma = self.noise_params.get('awgn_sigma', 0.05)
+        blur_sigma = self.noise_params.get('gaussian_blur_sigma', 1.0)
+
+        # 获取噪声参数范围（论文方法：使用范围增加泛化性）
+        lambda_range = self.noise_params.get('poisson_lambda_range', None)
+        awgn_range = self.noise_params.get('awgn_sigma_range', None)
+
+        # 如果有范围，随机选择噪声参数（论文方法）
+        if lambda_range and isinstance(lambda_range, dict):
+            # 在范围内随机选择λ值
+            poisson_lambda = np.random.uniform(lambda_range['min'], lambda_range['max'])
+        if awgn_range and isinstance(awgn_range, dict):
+            # 在范围内随机选择 AWGN σ值
+            awgn_sigma = np.random.uniform(awgn_range['min'], awgn_range['max'])
+
+        # 如果所有噪声参数都为 0，直接返回原始图像
         if poisson_lambda == 0 and awgn_sigma == 0 and blur_sigma == 0:
             return clean_patch.copy()
 
@@ -446,20 +478,29 @@ class DatasetGenerationThread(QThread):
         else:
             img_float = clean_patch.astype(np.float64) / 255.0
 
+        # ========== 论文噪声添加流程 ==========
+        # 1. Poisson 噪声（信号相关）
+        # 2. AWGN（加性噪声）
+        # 3. Gaussian Blur（空间扩展）
+
         # 1. Poisson 噪声
         if poisson_lambda > 0:
-            # 缩放以匹配 Poisson 分布的典型范围
+            # 论文方法：缩放以匹配 Poisson 分布的典型范围
+            # scaled = img_float * λ
+            # 应用 Poisson 分布，然后缩放回 [0, 1]
             scaled = img_float * poisson_lambda
             noisy = np.random.poisson(scaled).astype(np.float64) / poisson_lambda
         else:
             noisy = img_float.copy()
 
-        # 2. AWGN
+        # 2. AWGN（加性高斯白噪声）
         if awgn_sigma > 0:
+            # 论文标准值：5% AWGN
             noisy += np.random.normal(0, awgn_sigma, noisy.shape)
 
-        # 3. Gaussian Blur
+        # 3. Gaussian Blur（模拟噪声的空间扩展）
         if blur_sigma > 0:
+            # 论文标准值：σ = 1
             kernel_size = int(6 * blur_sigma + 1)
             if kernel_size % 2 == 0:
                 kernel_size += 1
