@@ -494,28 +494,8 @@ class Noise2VoidPage(QWidget):
         integrate_layout = QVBoxLayout(integrate_group)
         integrate_layout.setSpacing(DesignTokens.SPACING_10)
 
-        # 模型类型选择
-        model_type_layout = QHBoxLayout()
-        model_type_label = QLabel("模型类型:")
-        model_type_label.setStyleSheet(f"font-size: 15px; font-weight: 500; color: {DesignTokens.TEXT_SECONDARY};")
-        model_type_layout.addWidget(model_type_label)
-
-        self.model_type_combo = QComboBox()
-        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
-        self.model_type_combo.setMinimumHeight(40)
-        self.model_type_combo.setStyleSheet(f"""
-            QComboBox {{
-                font-size: 15px;
-                padding: 10px 14px;
-                border: 1px solid {DesignTokens.BORDER};
-                border-radius: 6px;
-            }}
-        """)
-        model_type_layout.addWidget(self.model_type_combo, 1)
-        integrate_layout.addLayout(model_type_layout)
-
         # 集成按钮
-        self.integrate_model_btn = QPushButton("添加")
+        self.integrate_model_btn = QPushButton("添加到降噪模型")
         self.integrate_model_btn.setObjectName("integrateModelBtn")
         self.integrate_model_btn.setMinimumHeight(48)
         self.integrate_model_btn.clicked.connect(self.integrate_model)
@@ -867,20 +847,11 @@ class Noise2VoidPage(QWidget):
             import shutil
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            algo_key = f"trained_neural_denoise_n2v_{timestamp}"
+            algo_name = f"Noise2Void (Self-Supervised) [{timestamp}]"
 
-            # 根据选择的模型类型决定目标目录
-            model_type = self.model_type_combo.currentText()
-            if "降噪" in model_type:
-                target_subdir = "denoise"
-                algo_key = f"trained_neural_denoise_n2v_{timestamp}"
-                algo_name = f"Noise2Void (Self-Supervised) [{timestamp}]"
-            else:
-                target_subdir = "super_resolution"
-                algo_key = f"trained_sr_n2v_{timestamp}"
-                algo_name = f"Noise2Void SR [{timestamp}]"
-
-            # 复制模型到 integrated_model 目录
-            target_base = os.path.join(os.path.dirname(__file__), 'integrated_model', target_subdir, timestamp)
+            # 复制模型到 integrated_model/denoise 目录
+            target_base = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise', timestamp)
             os.makedirs(target_base, exist_ok=True)
 
             # 复制模型文件
@@ -891,8 +862,8 @@ class Noise2VoidPage(QWidget):
                     shutil.copy2(src, dst)
 
             # 添加到算法配置
-            if add_algorithm('denoise' if '降噪' in model_type else 'super_resolution', algo_key, algo_name, enabled=True):
-                QMessageBox.information(self, "成功", f"模型已集成到算法列表:\n{algo_name}")
+            if add_algorithm('denoise', algo_key, algo_name, enabled=True):
+                QMessageBox.information(self, "成功", f"模型已集成到降噪算法列表:\n{algo_name}")
                 self.append_log(f"模型已集成：{algo_name}")
                 self.integrate_model_btn.setEnabled(False)
             else:

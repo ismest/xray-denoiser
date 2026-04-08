@@ -227,7 +227,7 @@ class TrainingThread(QThread):
             best_val_loss = float('inf')
 
             for epoch in range(self.epochs):
-                if not self.isRunning():
+                if self.isInterruptionRequested():
                     break
 
                 # 训练阶段
