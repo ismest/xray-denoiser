@@ -691,18 +691,6 @@ class PreprocessPage(QWidget):
             training_placeholder.setAlignment(Qt.AlignCenter)
             self.tabs.addTab(training_placeholder, "算法训练")
 
-        # 状态栏
-        self.status_label = QLabel("就绪 - 请先完成步骤 1：噪音提取")
-        self.status_label.setStyleSheet("""
-            color: #64748b;
-            font-size: 15px;
-            font-weight: 500;
-            padding: 12px 14px;
-            background-color: #f8fafc;
-            border-radius: 8px;
-        """)
-        layout.addWidget(self.status_label)
-
     def _create_step1_widget(self):
         """创建步骤 1：噪音提取界面。"""
         widget = QWidget()
@@ -735,6 +723,31 @@ class PreprocessPage(QWidget):
         info_label.setWordWrap(True)
         info_label.setStyleSheet("color: #475569; font-size: 15px; font-weight: 500; padding: 8px;")
         left_layout.addWidget(info_label)
+
+        # 图像预览（移到左侧上方）
+        preview_group = QGroupBox("源图像预览")
+        preview_layout = QVBoxLayout(preview_group)
+        preview_layout.setSpacing(3)
+        preview_layout.setContentsMargins(3, 3, 3, 3)
+        preview_group.setMinimumHeight(400)
+
+        self.source_image_label = QLabel("未加载图像")
+        self.source_image_label.setObjectName("imageBox")
+        self.source_image_label.setStyleSheet("""
+            QLabel#imageBox {
+                border: 2px dashed #cbd5e1;
+                border-radius: 12px;
+                background-color: #f8fafc;
+                color: #94a3b8;
+                font-style: italic;
+                font-size: 16px;
+            }
+        """)
+        self.source_image_label.setAlignment(Qt.AlignCenter)
+        self.source_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.source_image_label.setMinimumSize(350, 350)
+        preview_layout.addWidget(self.source_image_label)
+        left_layout.addWidget(preview_group)
 
         # 1. 加载图像
         load_group = QGroupBox("1. 加载 X 光图像")
@@ -846,15 +859,55 @@ class PreprocessPage(QWidget):
         """)
         left_layout.addWidget(self.step1_progress)
 
-        left_layout.addStretch()
-
-        # 右侧图像显示
-        right_panel = self._create_image_preview()
+        # 右侧：噪声参数显示
+        right_panel = self._create_params_only_panel()
         right_panel.setMinimumWidth(500)
         layout.addWidget(left_panel, 1)
         layout.addWidget(right_panel, 2)
 
         return widget
+
+    def _create_params_only_panel(self):
+        """创建仅显示噪声参数的面板（步骤 1 右侧）。"""
+        panel = QFrame()
+        panel.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                padding: 4px;
+            }
+        """)
+        layout = QVBoxLayout(panel)
+        layout.setSpacing(3)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # 噪声参数显示
+        params_group = QGroupBox("提取的噪声参数")
+        params_group.setMinimumHeight(500)
+        params_layout = QVBoxLayout(params_group)
+        params_layout.setSpacing(4)
+        params_layout.setContentsMargins(4, 4, 4, 4)
+        self.extracted_params_text = QTextEdit()
+        self.extracted_params_text.setReadOnly(True)
+        self.extracted_params_text.setMaximumHeight(560)
+        self.extracted_params_text.setMinimumHeight(480)
+        self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
+        self.extracted_params_text.setStyleSheet("""
+            QTextEdit {
+                font-family: 'Consolas', monospace;
+                font-size: 14px;
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 8px;
+                color: #475569;
+            }
+        """)
+        params_layout.addWidget(self.extracted_params_text)
+        layout.addWidget(params_group)
+
+        return panel
 
     def _create_step2_widget(self):
         """创建步骤 2：数据集生成界面。"""
@@ -1209,76 +1262,6 @@ class PreprocessPage(QWidget):
         layout.addWidget(right_panel, 2)
 
         return widget
-
-    def _create_image_preview(self):
-        """创建图像预览面板（步骤 1 右侧）。"""
-        panel = QFrame()
-        panel.setStyleSheet("""
-            QFrame {
-                background-color: white;
-                border-radius: 12px;
-                border: 1px solid #e2e8f0;
-                padding: 4px;
-            }
-        """)
-        layout = QVBoxLayout(panel)
-        layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
-
-        # 图像预览
-        preview_group = QGroupBox("源图像预览")
-        preview_layout = QVBoxLayout(preview_group)
-        preview_layout.setSpacing(3)
-        preview_layout.setContentsMargins(3, 3, 3, 3)
-        # 根据 X 光图片尺寸（最大约 2333x1608）设定最小高度
-        preview_group.setMinimumHeight(550)
-
-        self.source_image_label = QLabel("未加载图像")
-        self.source_image_label.setObjectName("imageBox")
-        self.source_image_label.setStyleSheet("""
-            QLabel#imageBox {
-                border: 2px dashed #cbd5e1;
-                border-radius: 12px;
-                background-color: #f8fafc;
-                color: #94a3b8;
-                font-style: italic;
-                font-size: 16px;
-            }
-        """)
-        self.source_image_label.setAlignment(Qt.AlignCenter)
-        self.source_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        # 根据图片尺寸设定最小预览区域
-        self.source_image_label.setMinimumSize(500, 500)
-        preview_layout.addWidget(self.source_image_label)
-
-        layout.addWidget(preview_group)
-
-        # 噪声参数显示
-        params_group = QGroupBox("提取的噪声参数")
-        params_group.setMinimumHeight(500)
-        params_layout = QVBoxLayout(params_group)
-        params_layout.setSpacing(4)
-        params_layout.setContentsMargins(4, 4, 4, 4)
-        self.extracted_params_text = QTextEdit()
-        self.extracted_params_text.setReadOnly(True)
-        self.extracted_params_text.setMaximumHeight(560)
-        self.extracted_params_text.setMinimumHeight(480)
-        self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
-        self.extracted_params_text.setStyleSheet("""
-            QTextEdit {
-                font-family: 'Consolas', monospace;
-                font-size: 14px;
-                background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 8px;
-                color: #475569;
-            }
-        """)
-        params_layout.addWidget(self.extracted_params_text)
-        layout.addWidget(params_group)
-
-        return panel
 
     def _create_dataset_info_panel(self):
         """创建数据集信息面板（步骤 2 右侧）。"""
