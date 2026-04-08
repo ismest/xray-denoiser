@@ -370,15 +370,17 @@ class Noise2VoidPage(QWidget):
         self.load_image_btn.setMinimumHeight(40)
         self.load_image_btn.setStyleSheet(f"""
             QPushButton#loadBtn {{
-                background-color: {DesignTokens.PRIMARY_500};
-                color: white;
-                font-size: 16px;
-                font-weight: 600;
+                background-color: #f1f5f9;
+                color: {DesignTokens.TEXT_SECONDARY};
+                border: 1px solid {DesignTokens.BORDER};
                 padding: 10px 20px;
                 border-radius: {DesignTokens.RADIUS_MEDIUM}px;
+                font-weight: 600;
+                font-size: 16px;
             }}
             QPushButton#loadBtn:hover {{
-                background-color: {DesignTokens.PRIMARY_600};
+                background-color: #e2e8f0;
+                border-color: {DesignTokens.PRIMARY_500};
             }}
         """)
         image_layout.addWidget(self.load_image_btn)
@@ -450,6 +452,7 @@ class Noise2VoidPage(QWidget):
         self.train_btn.setObjectName("primaryBtn")
         self.train_btn.setMinimumHeight(48)
         self.train_btn.clicked.connect(self.start_training)
+        self.train_btn.setEnabled(False)
         self.train_btn.setStyleSheet(f"""
             QPushButton#primaryBtn {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.PRIMARY_500}, stop:1 {DesignTokens.PRIMARY_600});
@@ -664,12 +667,23 @@ class Noise2VoidPage(QWidget):
 
                     # 显示图像预览
                     self._show_image_preview(img)
+
+                    # 检查是否可以启用开始训练按钮
+                    self._check_can_train()
                 else:
                     self.image_info_label.setText(f"无法加载图像：{os.path.basename(file_path)}")
                     self.image_info_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 14px;")
             except Exception as e:
                 self.image_info_label.setText(f"加载失败：{str(e)}")
                 self.image_info_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 14px;")
+
+    def _check_can_train(self):
+        """检查是否可以开始训练（图像和输出目录都已选择）"""
+        if hasattr(self, 'image_path') and self.image_path and \
+           hasattr(self, 'output_dir') and self.output_dir:
+            self.train_btn.setEnabled(True)
+        else:
+            self.train_btn.setEnabled(False)
 
     def _show_image_preview(self, img):
         """显示图像预览"""
@@ -708,6 +722,8 @@ class Noise2VoidPage(QWidget):
             self.output_dir = dir_path
             self.output_dir_edit.setText(dir_path)
             self.output_dir_edit.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 14px;")
+            # 检查是否可以启用开始训练按钮
+            self._check_can_train()
 
     def start_training(self):
         """开始训练"""
@@ -910,5 +926,8 @@ class Noise2VoidPage(QWidget):
                 subcontrol-origin: margin;
                 left: 16px;
                 padding: 0 8px;
+                color: {DesignTokens.PRIMARY_500};
+                font-weight: 600;
+                font-size: 16px;
             }}
         """)
