@@ -788,14 +788,6 @@ class TrainingPage(QWidget):
             self.stop_btn.setEnabled(False)
             return
 
-        reply = QMessageBox.question(
-            self, "确认停止",
-            "确定要停止训练吗？\n\n当前 epoch 完成后会停止训练，已保存的最佳模型文件会保留。",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if reply != QMessageBox.Yes:
-            return
-
         self.thread.requestInterruption()
         self.log_text.append("正在停止训练...")
         self.status_label.setText("正在停止...")
