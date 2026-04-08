@@ -583,6 +583,7 @@ class PreprocessPage(QWidget):
         self.extraction_output_dir = None
         self.current_file_index = 0
         self.is_processing = False
+        self.selected_boxes = []  # 保存选中的均匀区域盒坐标用于显示
         self.init_ui()
 
     def init_ui(self):
@@ -1503,12 +1504,16 @@ class PreprocessPage(QWidget):
             self.blur_sigma_spin.setValue(self.noise_params.get('gaussian_blur_sigma', 1.0))
 
             # 显示简要信息（步骤 1 页面右侧）
+            box_count = self.noise_params.get('lambda_estimates_count', len(self.noise_params.get('box_coords', [])))
             self.extracted_params_text.setPlainText(
                 f"Poisson λ = {self.noise_params['poisson_lambda']:.1f}\n"
                 f"AWGN σ = {self.noise_params['awgn_sigma']:.4f}\n"
                 f"Gaussian Blur σ = 1.0\n"
-                f"(基于 {self.noise_params.get('lambda_estimates_count', 'N/A')} 个区域盒估计)"
+                f"(基于 {box_count} 个均匀区域盒估计)"
             )
+
+            # 保存 box_coords 用于显示
+            self.selected_boxes = self.noise_params.get('box_coords', [])
 
     def get_current_noise_params(self):
         """从可编辑控件获取当前的噪声参数。"""
@@ -1631,21 +1636,30 @@ class PreprocessPage(QWidget):
             # 转换为 RGB
             rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            # 获取区域盒坐标
-            box_coords = self.noise_params.get('box_coords', [])
+            # 获取区域盒坐标（从 selected_boxes 或 noise_params）
+            box_coords = self.selected_boxes if hasattr(self, 'selected_boxes') and self.selected_boxes else self.noise_params.get('box_coords', [])
+
+            print(f"Box coords to display: {len(box_coords)} boxes")
+            print(f"Box coords: {box_coords}")
 
             if not box_coords:
+                print("No box coords to display")
                 return
 
             # 获取图像尺寸
             img_h, img_w = rgb_img.shape[:2]
+            print(f"Image size: {img_w}x{img_h}")
 
-            # 在图像上绘制区域盒（绿色边框，2 像素粗）
-            for box in box_coords:
+            # 在图像上绘制区域盒（绿色边框，3 像素粗，带编号）
+            for idx, box in enumerate(box_coords):
                 x1, y1 = box['x1'], box['y1']
                 x2, y2 = box['x2'], box['y2']
-                # 绘制矩形框
-                cv2.rectangle(rgb_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                # 绘制矩形框（绿色，3 像素粗）
+                cv2.rectangle(rgb_img, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                # 添加编号标签
+                label = f"Box {idx+1}"
+                cv2.putText(rgb_img, label, (x1, y1 - 5),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
             # 转换为 QImage 显示
             h, w = rgb_img.shape[:2]
@@ -1666,7 +1680,7 @@ class PreprocessPage(QWidget):
                 self.source_image_label.setPixmap(pixmap)
 
             self.source_image_label.setText("")
-            print(f"Displayed {len(box_coords)} noise estimation boxes")
+            print(f"Successfully displayed {len(box_coords)} noise estimation boxes")
         except Exception as e:
             print(f"Error displaying noise boxes: {e}")
             import traceback
