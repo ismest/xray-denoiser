@@ -726,7 +726,7 @@ class PreprocessPage(QWidget):
 
         # 图像预览（在加载按钮上方）
         self.source_image_label = QLabel()
-        self.source_image_label.setFixedHeight(220)
+        self.source_image_label.setFixedHeight(440)
         self.source_image_label.setStyleSheet("""
             QLabel {
                 background-color: #f8fafc;
