@@ -129,45 +129,63 @@ class NoiseExtractionThread(QThread):
         local_var = cv2.GaussianBlur((img_gray - local_mean) ** 2, (kernel_size, kernel_size), 0)
 
         # ========== 步骤 2: 找到最均匀的区域 ==========
-        # 选择局部方差最小的前 5% 区域作为候选均匀区域
-        flat_threshold = np.percentile(local_var, 5)
+        # 选择局部方差最小的前 1% 区域作为候选均匀区域（更严格）
+        flat_threshold = np.percentile(local_var, 1)
         flat_mask = local_var < flat_threshold
 
         # ========== 步骤 3: 在均匀区域内选择盒子 ==========
-        # 盒子大小：约图像的 1/8 × 1/8
-        box_h, box_w = h // 8, w // 8
-        min_box_h, min_box_w = 32, 32  # 最小盒子尺寸
-        box_h = max(box_h, min_box_h)
-        box_w = max(box_w, min_box_w)
+        # 盒子大小：固定 100x100（适合大多数图像）
+        box_h, box_w = 100, 100
+        # 如果图像太小，调整盒子大小
+        if h < 200 or w < 200:
+            box_h, box_w = min(50, h // 4), min(50, w // 4)
 
         lambda_estimates = []
         noise_std_estimates = []
         box_coords = []  # 保存有效区域盒的坐标
 
         # 在平坦区域内采样盒子
-        # 策略：在平坦区域上均匀采样，确保盒子中心位于平坦区域内
+        # 策略：使用较小的步长（50 像素）密集采样
         num_samples = 8  # 最多选择 8 个盒子
-        step_y, step_x = h // 10, w // 10  # 采样步长
+        step_y, step_x = 50, 50  # 采样步长（固定值，不依赖图像大小）
 
-        candidates = []
+        # 收集所有候选区域
+        all_candidates = []
         for i in range(0, h - box_h, step_y):
             for j in range(0, w - box_w, step_x):
-                # 检查这个区域是否足够平坦（至少 50% 的像素在 flat_mask 内）
-                region = flat_mask[i:i+box_h, j:j+box_w]
-                flat_ratio = np.sum(region) / region.size
-                if flat_ratio >= 0.5:
-                    # 计算这个区域的平均方差
-                    avg_var = np.mean(local_var[i:i+box_h, j:j+box_w])
-                    candidates.append((i, j, avg_var, flat_ratio))
+                avg_var = np.mean(local_var[i:i+box_h, j:j+box_w])
+                box_mean = np.mean(img_gray[i:i+box_h, j:j+box_w])
+                all_candidates.append((i, j, avg_var, box_mean))
+
+        # 计算亮度分位数（25%-75%）
+        brightness_values = [c[3] for c in all_candidates]
+        p25 = np.percentile(brightness_values, 25)
+        p75 = np.percentile(brightness_values, 75)
+
+        # 选择亮度适中且方差较小的区域
+        candidates = [(cy, cx, var, br) for cy, cx, var, br in all_candidates
+                      if p25 <= br <= p75]
+
+        # 按方差排序，选择最均匀的区域
+        candidates.sort(key=lambda x: x[2])
+
+        # 如果没有找到候选区域，放宽亮度范围
+        if len(candidates) < 4:
+            # 放宽到 10%-90%
+            p10 = np.percentile(brightness_values, 10)
+            p90 = np.percentile(brightness_values, 90)
+            candidates = [(cy, cx, var, br) for cy, cx, var, br in all_candidates
+                          if p10 <= br <= p90]
+            candidates.sort(key=lambda x: x[2])
 
         # 按平均方差排序，选择最均匀的区域
         candidates.sort(key=lambda x: x[2])  # 按平均方差升序排序
 
         # 选择前 num_samples 个盒子，但要确保它们之间有足够的距离
         selected_boxes = []
-        min_distance = min(box_h, box_w)  # 盒子中心最小距离
+        min_distance = box_h // 2  # 盒子中心最小距离（放宽到一半）
 
-        for cy, cx, avg_var, flat_ratio in candidates:
+        for cy, cx, avg_var, box_mean in candidates:
             # 检查与已选盒子的距离
             too_close = False
             for sy, sx, _, _ in selected_boxes:
@@ -176,7 +194,7 @@ class NoiseExtractionThread(QThread):
                     too_close = True
                     break
             if not too_close:
-                selected_boxes.append((cy, cx, avg_var, flat_ratio))
+                selected_boxes.append((cy, cx, avg_var, box_mean))
                 if len(selected_boxes) >= num_samples:
                     break
 
