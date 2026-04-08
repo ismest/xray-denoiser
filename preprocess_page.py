@@ -600,7 +600,7 @@ class PreprocessPage(QWidget):
         left_layout.setSpacing(16)
 
         # 说明
-        info_label = QLabel("从单张 X 光图像提取噪声特征，生成噪声参数配置文件（noise_params.json）")
+        info_label = QLabel("从单张 X 光图像提取噪声特征")
         info_label.setWordWrap(True)
         info_label.setStyleSheet("color: #475569; font-size: 15px; font-weight: 500; padding: 8px;")
         left_layout.addWidget(info_label)
