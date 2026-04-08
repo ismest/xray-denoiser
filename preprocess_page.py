@@ -726,7 +726,7 @@ class PreprocessPage(QWidget):
 
         # 1. 加载 X 光图像
         load_group = QGroupBox("1. 加载 X 光图像")
-        load_group.setMinimumHeight(400)
+        load_group.setMinimumHeight(300)
         load_layout = QVBoxLayout(load_group)
 
         # 图像预览（在加载按钮上方）
@@ -744,7 +744,7 @@ class PreprocessPage(QWidget):
         """)
         self.source_image_label.setAlignment(Qt.AlignCenter)
         self.source_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.source_image_label.setMinimumSize(450, 200)
+        self.source_image_label.setMinimumSize(450, 100)
         load_layout.addWidget(self.source_image_label)
 
         # 加载按钮
