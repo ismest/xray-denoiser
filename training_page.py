@@ -228,13 +228,20 @@ class TrainingThread(QThread):
 
             for epoch in range(self.epochs):
                 if self.isInterruptionRequested():
-                    break
+                    self.progress.emit(0, "训练已停止")
+                    self.finished.emit(False, "用户停止训练")
+                    return
 
                 # 训练阶段
                 model.train()
                 train_loss = 0.0
 
                 for batch_idx, (noisy, clean) in enumerate(train_loader):
+                    if self.isInterruptionRequested():
+                        self.progress.emit(0, "训练已停止")
+                        self.finished.emit(False, "用户停止训练")
+                        return
+
                     noisy = noisy.to(device)
                     clean = clean.to(device)
 
@@ -254,6 +261,11 @@ class TrainingThread(QThread):
 
                 with torch.no_grad():
                     for noisy, clean in val_loader:
+                        if self.isInterruptionRequested():
+                            self.progress.emit(0, "训练已停止")
+                            self.finished.emit(False, "用户停止训练")
+                            return
+
                         noisy = noisy.to(device)
                         clean = clean.to(device)
                         output = model(noisy)
@@ -767,30 +779,41 @@ class TrainingPage(QWidget):
 
     def stop_training(self):
         """停止训练。"""
-        if hasattr(self, 'thread') and self.thread.isRunning():
-            reply = QMessageBox.question(
-                self, "确认停止",
-                "确定要停止训练吗？\n\n已训练的数据将会丢失，但已保存的最佳模型文件仍会保留。",
-                QMessageBox.Yes | QMessageBox.No
-            )
-            if reply != QMessageBox.Yes:
-                return
+        if not self.is_training:
+            return
 
-            self.thread.requestInterruption()
-            self.log_text.append("正在停止训练...")
-            self.status_label.setText("正在停止...")
+        if not hasattr(self, 'thread') or not self.thread.isRunning():
+            self.is_training = False
+            self.train_btn.setEnabled(True)
+            self.stop_btn.setEnabled(False)
+            return
 
-            # 等待线程结束
-            finished = self.thread.wait(5000)  # 最多等待 5 秒
-            if finished:
-                self.log_text.append("训练已停止")
-                self.is_training = False
-                self.train_btn.setEnabled(True)
-                self.stop_btn.setEnabled(False)
-                self.progress.setValue(0)
-                self.status_label.setText("训练已停止")
-            else:
-                self.log_text.append("警告：线程未能在预期时间内停止")
+        reply = QMessageBox.question(
+            self, "确认停止",
+            "确定要停止训练吗？\n\n当前 epoch 完成后会停止训练，已保存的最佳模型文件会保留。",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        self.thread.requestInterruption()
+        self.log_text.append("正在停止训练...")
+        self.status_label.setText("正在停止...")
+
+        # 等待线程结束（最多 10 秒）
+        finished = self.thread.wait(10000)
+
+        # 无论是否超时，都重置状态
+        self.is_training = False
+        self.train_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.progress.setValue(0)
+        self.status_label.setText("训练已停止")
+
+        if finished:
+            self.log_text.append("训练已停止")
+        else:
+            self.log_text.append("警告：线程未能在预期时间内停止")
 
     def update_progress(self, value, message):
         """更新进度。"""
