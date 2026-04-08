@@ -396,19 +396,6 @@ class TrainingPage(QWidget):
         layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        # 标题
-        title = QLabel("算法训练 - 神经网络模型训练")
-        title.setStyleSheet("""
-            font-size: 24px;
-            font-weight: 600;
-            color: #1e293b;
-            padding: 14px 18px;
-            border-left: 4px solid #0ea5e9;
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
-            border-radius: 8px;
-        """)
-        layout.addWidget(title)
-
         # 提示信息
         if not TORCH_AVAILABLE:
             warning = QLabel("⚠ PyTorch 未安装，训练功能不可用。请安装 PyTorch: pip install torch")
