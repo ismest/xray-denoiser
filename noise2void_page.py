@@ -66,10 +66,40 @@ class Noise2VoidTrainingThread(QThread):
         self.output_dir = output_dir
         self.params = params
 
+    def _detect_hardware(self):
+        """检测硬件资源并返回设备信息和预估时间"""
+        # 检测 GPU
+        if torch.cuda.is_available():
+            device_name = torch.cuda.get_device_name(0)
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
+            hardware_info = f"GPU: {device_name} ({gpu_memory:.1f} GB)"
+            # GPU 训练时间估算（基于经验值）
+            estimated_time_per_epoch = 3  # 秒
+        else:
+            hardware_info = f"CPU: {torch.get_num_threads()} 线程"
+            # CPU 训练时间估算（基于经验值，约慢 10 倍）
+            estimated_time_per_epoch = 30  # 秒
+
+        epochs = self.params.get('epochs', 50)
+        estimated_total = epochs * estimated_time_per_epoch
+
+        return hardware_info, device_name if torch.cuda.is_available() else "CPU", estimated_total
+
     def run(self):
         """执行 Noise2Void 训练"""
         try:
-            self.progress.emit(10, "正在加载图像...")
+            # 检测硬件资源
+            hardware_info, device_type, estimated_time = self._detect_hardware()
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+            self.progress.emit(10, f"硬件检测：{hardware_info}")
+            if estimated_time > 0:
+                mins = estimated_time // 60
+                secs = estimated_time % 60
+                self.progress.emit(15, f"预计训练时间：约{mins}分{secs}秒")
+            self.log_signal.emit(f"使用设备：{device}")
+
+            self.progress.emit(20, "正在加载图像...")
 
             # 加载图像
             img = self._load_image(self.image_path)
@@ -85,7 +115,7 @@ class Noise2VoidTrainingThread(QThread):
             self.progress.emit(30, "正在初始化网络...")
 
             # 创建 N2V 网络
-            net = Noise2VoidNet()
+            net = Noise2VoidNet().to(device)
             optimizer = torch.optim.Adam(net.parameters(), lr=self.params.get('lr', 0.001))
             criterion = nn.MSELoss()
 
@@ -121,8 +151,9 @@ class Noise2VoidTrainingThread(QThread):
                     masked_input, target = self._n2v_mask(batch)
 
                     optimizer.zero_grad()
-                    output = net(torch.from_numpy(masked_input).float().unsqueeze(1))
-                    loss = criterion(output, torch.from_numpy(target).float().unsqueeze(1))
+                    output = net(torch.from_numpy(masked_input).float().to(device).unsqueeze(1))
+                    target = torch.from_numpy(target).float().to(device).unsqueeze(1)
+                    loss = criterion(output, target)
                     loss.backward()
                     optimizer.step()
 

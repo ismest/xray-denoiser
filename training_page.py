@@ -175,14 +175,43 @@ class TrainingThread(QThread):
         self.patch_size = patch_size
         self.model_type = model_type
 
+    def _detect_hardware(self):
+        """检测硬件资源并返回设备信息和预估时间"""
+        if not TORCH_AVAILABLE:
+            return "未知", "未知", 0
+
+        # 检测 GPU
+        if torch.cuda.is_available():
+            device_name = torch.cuda.get_device_name(0)
+            gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
+            hardware_info = f"GPU: {device_name} ({gpu_memory:.1f} GB)"
+            # GPU 训练时间估算（基于经验值）
+            estimated_time_per_epoch = 5  # 秒
+        else:
+            hardware_info = f"CPU: {torch.get_num_threads()} 线程"
+            # CPU 训练时间估算（基于经验值，约慢 10 倍）
+            estimated_time_per_epoch = 50  # 秒
+
+        total_samples = self.epochs * self.batch_size
+        estimated_total = self.epochs * estimated_time_per_epoch
+
+        return hardware_info, device_name if torch.cuda.is_available() else "CPU", estimated_total
+
     def run(self):
         if not TORCH_AVAILABLE:
             self.finished.emit(False, "PyTorch 不可用，无法进行训练")
             return
 
         try:
+            # 检测硬件资源
+            hardware_info, device_type, estimated_time = self._detect_hardware()
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-            self.progress.emit(10, f"使用设备：{device}")
+
+            self.progress.emit(10, f"硬件检测：{hardware_info}")
+            if estimated_time > 0:
+                mins = estimated_time // 60
+                secs = estimated_time % 60
+                self.progress.emit(15, f"预计训练时间：约{mins}分{secs}秒")
 
             # 创建输出目录
             os.makedirs(self.output_dir, exist_ok=True)
