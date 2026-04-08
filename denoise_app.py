@@ -238,23 +238,6 @@ class DenoiseWidget(QWidget):
         self.info_text.setPlaceholderText("加载图像后显示信息...")
         file_layout.addWidget(self.info_text)
 
-        save_layout = QHBoxLayout()
-        save_layout.setSpacing(8)
-        self.save_denoise_btn = QPushButton("💾 保存降噪图")
-        self.save_denoise_btn.setObjectName("saveBtn")
-        self.save_denoise_btn.clicked.connect(lambda: self.save_result(use_sr=False))
-        self.save_denoise_btn.setEnabled(False)
-        self.save_denoise_btn.setMinimumHeight(34)
-        save_layout.addWidget(self.save_denoise_btn)
-
-        self.save_sr_btn = QPushButton("💾 保存 SR 图")
-        self.save_sr_btn.setObjectName("saveBtn")
-        self.save_sr_btn.clicked.connect(lambda: self.save_result(use_sr=True))
-        self.save_sr_btn.setEnabled(False)
-        self.save_sr_btn.setMinimumHeight(34)
-        save_layout.addWidget(self.save_sr_btn)
-        file_layout.addLayout(save_layout)
-
         layout.addWidget(file_group)
 
         # 2. 降噪处理
@@ -388,6 +371,27 @@ class DenoiseWidget(QWidget):
         step2_layout.addWidget(self.sr_status)
 
         layout.addWidget(step2_group)
+
+        # 4. 图片保存
+        save_group = QGroupBox("4. 图片保存")
+        save_layout = QHBoxLayout(save_group)
+        save_layout.setSpacing(8)
+
+        self.save_denoise_btn = QPushButton("💾 保存降噪图")
+        self.save_denoise_btn.setObjectName("saveBtn")
+        self.save_denoise_btn.clicked.connect(lambda: self.save_result(use_sr=False))
+        self.save_denoise_btn.setEnabled(False)
+        self.save_denoise_btn.setMinimumHeight(40)
+        save_layout.addWidget(self.save_denoise_btn)
+
+        self.save_sr_btn = QPushButton("💾 保存 SR 图")
+        self.save_sr_btn.setObjectName("saveBtn")
+        self.save_sr_btn.clicked.connect(lambda: self.save_result(use_sr=True))
+        self.save_sr_btn.setEnabled(False)
+        self.save_sr_btn.setMinimumHeight(40)
+        save_layout.addWidget(self.save_sr_btn)
+
+        layout.addWidget(save_group)
 
         layout.addStretch()
         return panel
@@ -587,6 +591,7 @@ class DenoiseWidget(QWidget):
         self.denoise_metrics_text.setMaximumHeight(280)
         self.denoise_metrics_text.setMinimumHeight(240)
         self.denoise_metrics_text.setText("降噪后显示 PSNR、SSIM、MSE 指标")
+        self.denoise_metrics_text.setStyleSheet("font-size: 16px;")
         dm_layout.addWidget(self.denoise_metrics_text)
         metrics_layout.addWidget(denoise_metrics_widget, 1)
 
@@ -599,6 +604,7 @@ class DenoiseWidget(QWidget):
         self.sr_metrics_text.setMaximumHeight(280)
         self.sr_metrics_text.setMinimumHeight(240)
         self.sr_metrics_text.setText("超分辨率后显示指标")
+        self.sr_metrics_text.setStyleSheet("font-size: 16px;")
         smr_layout.addWidget(self.sr_metrics_text)
         metrics_layout.addWidget(sr_metrics_widget, 1)
 
