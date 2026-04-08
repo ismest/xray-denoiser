@@ -768,10 +768,29 @@ class TrainingPage(QWidget):
     def stop_training(self):
         """停止训练。"""
         if hasattr(self, 'thread') and self.thread.isRunning():
+            reply = QMessageBox.question(
+                self, "确认停止",
+                "确定要停止训练吗？\n\n已训练的数据将会丢失，但已保存的最佳模型文件仍会保留。",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            if reply != QMessageBox.Yes:
+                return
+
             self.thread.requestInterruption()
-            self.thread.wait(2000)
-            self.log_text.append("训练已停止")
-            self.training_finished(False, "用户停止训练")
+            self.log_text.append("正在停止训练...")
+            self.status_label.setText("正在停止...")
+
+            # 等待线程结束
+            finished = self.thread.wait(5000)  # 最多等待 5 秒
+            if finished:
+                self.log_text.append("训练已停止")
+                self.is_training = False
+                self.train_btn.setEnabled(True)
+                self.stop_btn.setEnabled(False)
+                self.progress.setValue(0)
+                self.status_label.setText("训练已停止")
+            else:
+                self.log_text.append("警告：线程未能在预期时间内停止")
 
     def update_progress(self, value, message):
         """更新进度。"""
