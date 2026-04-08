@@ -372,7 +372,7 @@ class Noise2VoidPage(QWidget):
             QPushButton#loadBtn {{
                 background-color: {DesignTokens.PRIMARY_500};
                 color: white;
-                font-size: 15px;
+                font-size: 16px;
                 font-weight: 600;
                 padding: 10px 20px;
                 border-radius: {DesignTokens.RADIUS_MEDIUM}px;
@@ -632,7 +632,7 @@ class Noise2VoidPage(QWidget):
                 padding: 12px 24px;
                 border-radius: {DesignTokens.RADIUS_MEDIUM}px;
                 font-weight: 600;
-                font-size: 15px;
+                font-size: 16px;
             }}
             QPushButton:hover {{
                 background-color: #e2e8f0;
@@ -899,7 +899,7 @@ class Noise2VoidPage(QWidget):
             QGroupBox {{
                 font-weight: 600;
                 font-size: 16px;
-                color: {DesignTokens.TEXT_SECONDARY};
+                color: #475569;
                 margin-top: 12px;
                 padding-top: 12px;
                 border: 1px solid {DesignTokens.BORDER};
