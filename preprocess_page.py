@@ -97,11 +97,12 @@ class NoiseExtractionThread(QThread):
     def _estimate_noise_params(self, image):
         """估计噪声参数（Poisson + AWGN）- 基于论文 Rev. Sci. Instrum. 95, 063508 (2024) 方法。
 
-        使用分区域盒（box）方法估计噪声参数：
-        1. 将图像分割成多个区域盒
-        2. 在每个盒内归一化到最大值
-        3. 使用泊松分布的方差/均值关系估计λ值
-        4. AWGN 设为 5%（论文标准值）
+        使用均匀区域盒（homogeneous region box）方法估计噪声参数：
+        1. 计算全图每个位置的局部方差
+        2. 选择局部方差最小的区域（最均匀的区域）
+        3. 在均匀区域内放置盒子
+        4. 在每个盒内归一化到最大值，使用泊松分布的方差/均值关系估计λ值
+        5. 从平坦区域估计 AWGN
         """
         # 转换到 float [0, 1]
         if image.dtype == np.uint16:
@@ -119,60 +120,108 @@ class NoiseExtractionThread(QThread):
         else:
             img_gray = img_float
 
-        # 论文方法：分区域盒估计
-        # 将图像分割成 4x4 的区域盒
         h, w = img_gray.shape
-        box_h, box_w = h // 4, w // 4
+
+        # ========== 步骤 1: 计算全图局部方差图 ==========
+        # 使用滑动窗口计算每个像素位置的局部方差
+        kernel_size = 15  # 滑动窗口大小
+        local_mean = cv2.GaussianBlur(img_gray, (kernel_size, kernel_size), 0)
+        local_var = cv2.GaussianBlur((img_gray - local_mean) ** 2, (kernel_size, kernel_size), 0)
+
+        # ========== 步骤 2: 找到最均匀的区域 ==========
+        # 选择局部方差最小的前 5% 区域作为候选均匀区域
+        flat_threshold = np.percentile(local_var, 5)
+        flat_mask = local_var < flat_threshold
+
+        # ========== 步骤 3: 在均匀区域内选择盒子 ==========
+        # 盒子大小：约图像的 1/8 × 1/8
+        box_h, box_w = h // 8, w // 8
+        min_box_h, min_box_w = 32, 32  # 最小盒子尺寸
+        box_h = max(box_h, min_box_h)
+        box_w = max(box_w, min_box_w)
 
         lambda_estimates = []
         noise_std_estimates = []
         box_coords = []  # 保存有效区域盒的坐标
 
-        for i in range(4):
-            for j in range(4):
-                y1, y2 = i * box_h, (i + 1) * box_h
-                x1, x2 = j * box_w, (j + 1) * box_w
+        # 在平坦区域内采样盒子
+        # 策略：在平坦区域上均匀采样，确保盒子中心位于平坦区域内
+        num_samples = 8  # 最多选择 8 个盒子
+        step_y, step_x = h // 10, w // 10  # 采样步长
 
-                # 跳过过小的区域
-                if y2 > h or x2 > w:
-                    continue
+        candidates = []
+        for i in range(0, h - box_h, step_y):
+            for j in range(0, w - box_w, step_x):
+                # 检查这个区域是否足够平坦（至少 50% 的像素在 flat_mask 内）
+                region = flat_mask[i:i+box_h, j:j+box_w]
+                flat_ratio = np.sum(region) / region.size
+                if flat_ratio >= 0.5:
+                    # 计算这个区域的平均方差
+                    avg_var = np.mean(local_var[i:i+box_h, j:j+box_w])
+                    candidates.append((i, j, avg_var, flat_ratio))
 
-                box = img_gray[y1:y2, x1:x2]
+        # 按平均方差排序，选择最均匀的区域
+        candidates.sort(key=lambda x: x[2])  # 按平均方差升序排序
 
-                # 归一化到盒内最大值（论文方法）
-                box_max = box.max()
-                if box_max < 0.1:  # 跳过太暗的区域
-                    continue
+        # 选择前 num_samples 个盒子，但要确保它们之间有足够的距离
+        selected_boxes = []
+        min_distance = min(box_h, box_w)  # 盒子中心最小距离
 
-                # 记录有效区域盒坐标
-                box_coords.append({'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2)})
+        for cy, cx, avg_var, flat_ratio in candidates:
+            # 检查与已选盒子的距离
+            too_close = False
+            for sy, sx, _, _ in selected_boxes:
+                dist = np.sqrt((cy - sy) ** 2 + (cx - sx) ** 2)
+                if dist < min_distance:
+                    too_close = True
+                    break
+            if not too_close:
+                selected_boxes.append((cy, cx, avg_var, flat_ratio))
+                if len(selected_boxes) >= num_samples:
+                    break
 
-                box_normalized = box / box_max
+        # ========== 步骤 4: 在选中的盒子内估计噪声参数 ==========
+        for cy, cx, _, _ in selected_boxes:
+            y1, y2 = cy, min(cy + box_h, h)
+            x1, x2 = cx, min(cx + box_w, w)
 
-                # 计算盒内统计量
-                box_mean = np.mean(box_normalized)
-                box_var = np.var(box_normalized)
+            box = img_gray[y1:y2, x1:x2]
 
-                # 泊松噪声：variance ≈ mean / λ
-                # 所以 λ ≈ mean / variance
-                if box_var > 0 and box_mean > 0:
-                    box_lambda = box_mean / box_var
-                    # 限制λ在合理范围内（论文中λ≈5-20）
-                    if 2 < box_lambda < 200:
-                        lambda_estimates.append(box_lambda)
+            # 记录区域盒坐标
+            box_coords.append({'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2)})
 
-                # 计算局部方差用于估计 AWGN
-                kernel_size = 5
-                local_mean = cv2.GaussianBlur(box, (kernel_size, kernel_size), 0)
-                local_var = cv2.GaussianBlur((box - local_mean) ** 2, (kernel_size, kernel_size), 0)
+            # 归一化到盒内最大值（论文方法）
+            box_max = box.max()
+            if box_max < 0.1:  # 跳过太暗的区域
+                continue
 
-                # 取最小方差区域（平坦区域）用于估计 AWGN
-                flat_threshold = np.percentile(local_var, 20)
-                flat_mask = local_var < flat_threshold
-                if np.sum(flat_mask) > 10:
-                    noise_std = np.sqrt(np.mean(local_var[flat_mask]))
-                    noise_std_estimates.append(noise_std)
+            box_normalized = box / box_max
 
+            # 计算盒内统计量
+            box_mean = np.mean(box_normalized)
+            box_var = np.var(box_normalized)
+
+            # 泊松噪声：variance ≈ mean / λ
+            # 所以 λ ≈ mean / variance
+            if box_var > 0 and box_mean > 0:
+                box_lambda = box_mean / box_var
+                # 限制λ在合理范围内（论文中λ≈5-20）
+                if 2 < box_lambda < 200:
+                    lambda_estimates.append(box_lambda)
+
+            # 计算局部方差用于估计 AWGN
+            kernel_size_box = 5
+            local_mean_box = cv2.GaussianBlur(box, (kernel_size_box, kernel_size_box), 0)
+            local_var_box = cv2.GaussianBlur((box - local_mean_box) ** 2, (kernel_size_box, kernel_size_box), 0)
+
+            # 取最小方差区域（平坦区域）用于估计 AWGN
+            flat_threshold_box = np.percentile(local_var_box, 20)
+            flat_mask_box = local_var_box < flat_threshold_box
+            if np.sum(flat_mask_box) > 10:
+                noise_std = np.sqrt(np.mean(local_var_box[flat_mask_box]))
+                noise_std_estimates.append(noise_std)
+
+        # ========== 步骤 5: 聚合估计结果 ==========
         # 使用中位数作为最终估计（对异常值更鲁棒）
         if lambda_estimates:
             poisson_lambda = np.median(lambda_estimates)
