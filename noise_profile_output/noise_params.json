@@ -1,9 +1,9 @@
 {
-  "poisson_lambda": 5.400460873892307,
+  "poisson_lambda": 5.0,
   "poisson_lambda_range": {
     "min": 5,
-    "max": 15.400460873892307,
-    "nominal": 5.400460873892307
+    "max": 15,
+    "nominal": 5
   },
   "awgn_sigma": 0.02,
   "awgn_sigma_range": {
@@ -12,16 +12,65 @@
     "nominal": 0.02
   },
   "gaussian_blur_sigma": 1.0,
-  "estimated_noise_std": 0.009350182051070754,
+  "estimated_noise_std": 0.0096777956610553,
   "image_dtype": "uint16",
   "image_shape": [
-    2167,
+    2200,
     2309
   ],
   "lambda_estimates_count": 0,
   "lambda_min": 0,
   "lambda_max": 0,
-  "box_coords": [],
+  "box_coords": [
+    {
+      "x1": 500,
+      "y1": 0,
+      "x2": 600,
+      "y2": 100
+    },
+    {
+      "x1": 50,
+      "y1": 1650,
+      "x2": 150,
+      "y2": 1750
+    },
+    {
+      "x1": 1900,
+      "y1": 50,
+      "x2": 2000,
+      "y2": 150
+    },
+    {
+      "x1": 50,
+      "y1": 600,
+      "x2": 150,
+      "y2": 700
+    },
+    {
+      "x1": 200,
+      "y1": 250,
+      "x2": 300,
+      "y2": 350
+    },
+    {
+      "x1": 1100,
+      "y1": 1300,
+      "x2": 1200,
+      "y2": 1400
+    },
+    {
+      "x1": 1900,
+      "y1": 0,
+      "x2": 2000,
+      "y2": 100
+    },
+    {
+      "x1": 50,
+      "y1": 1400,
+      "x2": 150,
+      "y2": 1500
+    }
+  ],
   "method": "homogeneous_region_box",
   "reference": "Rev. Sci. Instrum. 95, 063508 (2024)"
 }

@@ -128,26 +128,21 @@ class NoiseExtractionThread(QThread):
         local_mean = cv2.GaussianBlur(img_gray, (kernel_size, kernel_size), 0)
         local_var = cv2.GaussianBlur((img_gray - local_mean) ** 2, (kernel_size, kernel_size), 0)
 
-        # ========== 步骤 2: 找到最均匀的区域 ==========
-        # 选择局部方差最小的前 1% 区域作为候选均匀区域（更严格）
-        flat_threshold = np.percentile(local_var, 1)
-        flat_mask = local_var < flat_threshold
-
-        # ========== 步骤 3: 在均匀区域内选择盒子 ==========
-        # 盒子大小：固定 100x100（适合大多数图像）
-        box_h, box_w = 100, 100
+        # ========== 步骤 2: 在均匀区域内选择盒子 ==========
+        # 盒子大小：固定 50x50（更小的盒子，便于显示）
+        box_h, box_w = 50, 50
         # 如果图像太小，调整盒子大小
-        if h < 200 or w < 200:
-            box_h, box_w = min(50, h // 4), min(50, w // 4)
+        if h < 100 or w < 100:
+            box_h, box_w = min(25, h // 8), min(25, w // 8)
 
         lambda_estimates = []
         noise_std_estimates = []
         box_coords = []  # 保存有效区域盒的坐标
 
         # 在平坦区域内采样盒子
-        # 策略：使用较小的步长（50 像素）密集采样
+        # 策略：使用较小的步长（25 像素）密集采样
         num_samples = 8  # 最多选择 8 个盒子
-        step_y, step_x = 50, 50  # 采样步长（固定值，不依赖图像大小）
+        step_y, step_x = 25, 25  # 采样步长
 
         # 收集所有候选区域
         all_candidates = []
@@ -162,24 +157,41 @@ class NoiseExtractionThread(QThread):
         p25 = np.percentile(brightness_values, 25)
         p75 = np.percentile(brightness_values, 75)
 
-        # 选择亮度适中且方差较小的区域
-        candidates = [(cy, cx, var, br) for cy, cx, var, br in all_candidates
-                      if p25 <= br <= p75]
+        # 策略：分亮度层级选择，确保暗部、中等、亮部都有代表
+        # 将候选区域按亮度分为 3 层：暗部 (0-33%)、中等 (33%-66%)、亮部 (66%-100%)
+        p33 = np.percentile(brightness_values, 33)
+        p66 = np.percentile(brightness_values, 66)
 
-        # 按方差排序，选择最均匀的区域
-        candidates.sort(key=lambda x: x[2])
+        # 每层按方差排序选择 2-3 个区域
+        dark_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br <= p33]
+        mid_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if p33 < br <= p66]
+        bright_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br > p66]
 
-        # 如果没有找到候选区域，放宽亮度范围
-        if len(candidates) < 4:
-            # 放宽到 10%-90%
-            p10 = np.percentile(brightness_values, 10)
-            p90 = np.percentile(brightness_values, 90)
-            candidates = [(cy, cx, var, br) for cy, cx, var, br in all_candidates
-                          if p10 <= br <= p90]
-            candidates.sort(key=lambda x: x[2])
+        # 各层按方差排序
+        dark_regions.sort(key=lambda x: x[2])
+        mid_regions.sort(key=lambda x: x[2])
+        bright_regions.sort(key=lambda x: x[2])
 
-        # 按平均方差排序，选择最均匀的区域
-        candidates.sort(key=lambda x: x[2])  # 按平均方差升序排序
+        # 合并：每层选 2-3 个，共 8 个
+        candidates = []
+        per_layer = num_samples // 3  # 每层约 2-3 个
+        candidates.extend(dark_regions[:per_layer])
+        candidates.extend(mid_regions[:per_layer])
+        candidates.extend(bright_regions[:per_layer])
+        # 如果不足 8 个，从各层补充
+        while len(candidates) < num_samples:
+            remaining = num_samples - len(candidates)
+            if remaining > 0 and len(dark_regions) > per_layer:
+                candidates.append(dark_regions[per_layer])
+                per_layer += 1
+            elif remaining > 0 and len(mid_regions) > per_layer:
+                candidates.append(mid_regions[per_layer])
+                per_layer += 1
+            elif remaining > 0 and len(bright_regions) > per_layer:
+                candidates.append(bright_regions[per_layer])
+                per_layer += 1
+            else:
+                break
 
         # 选择前 num_samples 个盒子，但要确保它们之间有足够的距离
         selected_boxes = []
@@ -792,18 +804,6 @@ class PreprocessPage(QWidget):
         """)
         param_layout.addRow("提取方法:", self.extraction_method_combo)
 
-        self.patch_size_spin = QSpinBox()
-        self.patch_size_spin.setRange(16, 256)
-        self.patch_size_spin.setValue(64)
-        self.patch_size_spin.setMinimumHeight(40)
-        self.patch_size_spin.setStyleSheet("""
-            QSpinBox {
-                font-size: 15px;
-                padding: 10px 14px;
-            }
-        """)
-        param_layout.addRow("块大小:", self.patch_size_spin)
-
         left_layout.addWidget(param_group)
 
         # 3. 执行按钮
@@ -1070,6 +1070,19 @@ class PreprocessPage(QWidget):
             }
         """)
         dataset_layout.addRow("验证集 (%):", self.val_split_spin)
+
+        self.dataset_patch_size_spin = QSpinBox()
+        self.dataset_patch_size_spin.setRange(32, 256)
+        self.dataset_patch_size_spin.setValue(64)
+        self.dataset_patch_size_spin.setMinimumHeight(40)
+        self.dataset_patch_size_spin.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.dataset_patch_size_spin.setStyleSheet("""
+            QSpinBox {
+                font-size: 15px;
+                padding: 10px 14px;
+            }
+        """)
+        dataset_layout.addRow("块大小:", self.dataset_patch_size_spin)
 
         left_layout.addWidget(dataset_group)
 
@@ -1464,7 +1477,6 @@ class PreprocessPage(QWidget):
         self.extraction_output_dir = os.path.join(os.path.dirname(__file__), 'noise_profile_output')
 
         extraction_method = 'local_std' if self.extraction_method_combo.currentIndex() == 0 else 'homogeneous_region'
-        patch_size = self.patch_size_spin.value()
 
         self.step1_progress.setVisible(True)
         self.step1_progress.setValue(0)
@@ -1474,8 +1486,7 @@ class PreprocessPage(QWidget):
         self.thread = NoiseExtractionThread(
             self.source_image_path,
             self.extraction_output_dir,
-            extraction_method,
-            patch_size
+            extraction_method
         )
         self.thread.progress.connect(self.update_step1_progress)
         self.thread.finished.connect(self.noise_extraction_finished)
@@ -1807,7 +1818,7 @@ class PreprocessPage(QWidget):
             self.dataset_output_edit.setText(output_dir)
         print(f"输出目录：{output_dir}")
 
-        patch_size = self.patch_size_spin.value()
+        patch_size = self.dataset_patch_size_spin.value()
         train_split = self.train_split_spin.value()
         test_split = self.test_split_spin.value()
         val_split = self.val_split_spin.value()
