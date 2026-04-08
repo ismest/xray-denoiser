@@ -100,7 +100,8 @@ class Noise2VoidTrainingThread(QThread):
 
             for epoch in range(epochs):
                 if self.isInterruptionRequested():
-                    self.finished.emit(False, "训练已取消")
+                    self.progress.emit(0, "训练已停止")
+                    self.finished.emit(False, "用户停止训练")
                     return
 
                 # 训练一个 epoch
@@ -109,6 +110,11 @@ class Noise2VoidTrainingThread(QThread):
                 num_batches = 0
 
                 for i in range(0, len(train_data) - batch_size, batch_size):
+                    if self.isInterruptionRequested():
+                        self.progress.emit(0, "训练已停止")
+                        self.finished.emit(False, "用户停止训练")
+                        return
+
                     batch = np.array(train_data[i:i+batch_size])
 
                     # N2V 盲点训练
@@ -722,27 +728,13 @@ class Noise2VoidPage(QWidget):
             'num_patches': 10000
         }
 
-        # 确认
-        reply = QMessageBox.question(
-            self, "确认开始训练",
-            f"确定要开始 Noise2Void 训练吗？\n\n"
-            f"<b>参数配置:</b><br>"
-            f"- Epochs: {params['epochs']}<br>"
-            f"- Batch Size: {params['batch_size']}<br>"
-            f"- Patch Size: {params['patch_size']}<br>"
-            f"- Learning Rate: {params['lr']}<br><br>"
-            f"<b>预计训练时间：</b>5-30 分钟（取决于 GPU）",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if reply != QMessageBox.Yes:
-            return
+        self.is_training = True
+        self.train_history = {'epoch': [], 'loss': [], 'best_loss': []}
 
         # 禁用/启用按钮
         self.train_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
         self.progress.setValue(0)
-        self.is_training = True
 
         # 创建并启动训练线程
         self.training_thread = Noise2VoidTrainingThread(
@@ -760,16 +752,33 @@ class Noise2VoidPage(QWidget):
 
     def stop_training(self):
         """停止训练"""
-        if self.training_thread and self.training_thread.isRunning():
-            self.training_thread.requestInterruption()
-            self.training_thread.wait(3000)  # 等待最多 3 秒
+        if not self.is_training:
+            return
 
+        if not hasattr(self, 'training_thread') or not self.training_thread.isRunning():
+            self.is_training = False
             self.train_btn.setEnabled(True)
             self.stop_btn.setEnabled(False)
-            self.is_training = False
-            self.status_label.setText("训练已停止")
-            self.status_label.setStyleSheet(f"color: {DesignTokens.WARNING}; font-size: 15px;")
-            self.append_log("训练已被用户停止")
+            return
+
+        self.training_thread.requestInterruption()
+        self.append_log("正在停止训练...")
+        self.status_label.setText("正在停止...")
+
+        # 等待线程结束（最多 10 秒）
+        finished = self.training_thread.wait(10000)
+
+        # 无论是否超时，都重置状态
+        self.is_training = False
+        self.train_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.progress.setValue(0)
+        self.status_label.setText("训练已停止")
+
+        if finished:
+            self.append_log("训练已停止")
+        else:
+            self.append_log("警告：线程未能在预期时间内停止")
 
     def update_progress(self, value, message):
         """更新进度"""
