@@ -726,7 +726,7 @@ class PreprocessPage(QWidget):
 
         # 1. 加载 X 光图像
         load_group = QGroupBox("1. 加载 X 光图像")
-        load_group.setMinimumHeight(550)
+        load_group.setMinimumHeight(400)
         load_layout = QVBoxLayout(load_group)
 
         # 图像预览（在加载按钮上方）
@@ -744,7 +744,7 @@ class PreprocessPage(QWidget):
         """)
         self.source_image_label.setAlignment(Qt.AlignCenter)
         self.source_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.source_image_label.setMinimumSize(450, 400)
+        self.source_image_label.setMinimumSize(450, 200)
         load_layout.addWidget(self.source_image_label)
 
         # 加载按钮
@@ -863,7 +863,7 @@ class PreprocessPage(QWidget):
         return widget
 
     def _create_params_only_panel(self):
-        """创建右侧面板：噪声参数 + 噪音分析说明（步骤 1 右侧）。"""
+        """创建右侧面板：噪音分析说明 + 噪声参数（步骤 1 右侧）。"""
         panel = QFrame()
         panel.setStyleSheet("""
             QFrame {
@@ -877,32 +877,7 @@ class PreprocessPage(QWidget):
         layout.setSpacing(3)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        # 噪声参数显示
-        params_group = QGroupBox("提取的噪声参数")
-        params_group.setMinimumHeight(280)
-        params_layout = QVBoxLayout(params_group)
-        params_layout.setSpacing(4)
-        params_layout.setContentsMargins(4, 4, 4, 4)
-        self.extracted_params_text = QTextEdit()
-        self.extracted_params_text.setReadOnly(True)
-        self.extracted_params_text.setMaximumHeight(320)
-        self.extracted_params_text.setMinimumHeight(260)
-        self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
-        self.extracted_params_text.setStyleSheet("""
-            QTextEdit {
-                font-family: 'Consolas', monospace;
-                font-size: 14px;
-                background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 8px;
-                color: #475569;
-            }
-        """)
-        params_layout.addWidget(self.extracted_params_text)
-        layout.addWidget(params_group)
-
-        # 噪音分析说明
+        # 噪音分析说明（放在上方）
         analysis_group = QGroupBox("噪音分析 - 参数计算原理")
         analysis_group.setMinimumHeight(450)
         analysis_layout = QVBoxLayout(analysis_group)
@@ -928,6 +903,31 @@ class PreprocessPage(QWidget):
         """)
         analysis_layout.addWidget(analysis_text)
         layout.addWidget(analysis_group)
+
+        # 噪声参数显示（放在下方）
+        params_group = QGroupBox("提取的噪声参数")
+        params_group.setMinimumHeight(280)
+        params_layout = QVBoxLayout(params_group)
+        params_layout.setSpacing(4)
+        params_layout.setContentsMargins(4, 4, 4, 4)
+        self.extracted_params_text = QTextEdit()
+        self.extracted_params_text.setReadOnly(True)
+        self.extracted_params_text.setMaximumHeight(320)
+        self.extracted_params_text.setMinimumHeight(260)
+        self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
+        self.extracted_params_text.setStyleSheet("""
+            QTextEdit {
+                font-family: 'Consolas', monospace;
+                font-size: 14px;
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 8px;
+                color: #475569;
+            }
+        """)
+        params_layout.addWidget(self.extracted_params_text)
+        layout.addWidget(params_group)
 
         return panel
 
@@ -1516,7 +1516,6 @@ class PreprocessPage(QWidget):
         self.step1_progress.setVisible(True)
         self.step1_progress.setValue(0)
         self.extract_btn.setEnabled(False)
-        self.status_label.setText("正在提取噪声特征...")
 
         self.thread = NoiseExtractionThread(
             self.source_image_path,
@@ -1530,7 +1529,6 @@ class PreprocessPage(QWidget):
     def update_step1_progress(self, value, message):
         """更新步骤 1 进度。"""
         self.step1_progress.setValue(value)
-        self.status_label.setText(message)
 
     def noise_extraction_finished(self, success, message):
         """噪音提取完成回调。"""
@@ -1539,7 +1537,6 @@ class PreprocessPage(QWidget):
 
         if success:
             QMessageBox.information(self, "成功", message)
-            self.status_label.setText("步骤 1 完成 - 可以进行数据集生成")
             # 加载噪声参数
             self._load_noise_params()
             # 在预览图像上显示区域盒
@@ -1549,7 +1546,6 @@ class PreprocessPage(QWidget):
             # 不再自动跳转，让用户手动切换
         else:
             QMessageBox.critical(self, "错误", message)
-            self.status_label.setText("步骤 1 失败 - 请重试")
 
     def _load_noise_params(self):
         """加载提取的噪声参数到可编辑控件。"""
@@ -1891,7 +1887,6 @@ class PreprocessPage(QWidget):
     def update_step2_progress(self, value, message):
         """更新步骤 2 进度。"""
         self.step2_progress.setValue(value)
-        self.status_label.setText(message)
         self.dataset_log_text.append(message)
         # 更新状态显示
         self._set_generation_status("processing", message)
