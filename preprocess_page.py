@@ -743,8 +743,9 @@ class PreprocessPage(QWidget):
             }
         """)
         self.source_image_label.setAlignment(Qt.AlignCenter)
-        self.source_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.source_image_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
         self.source_image_label.setMinimumSize(450, 100)
+        self.source_image_label.setMaximumSize(450, 200)
         load_layout.addWidget(self.source_image_label)
 
         # 加载按钮
