@@ -34,6 +34,7 @@ class DesignTokens:
     TEXT_MUTED = "#94a3b8"
     SUCCESS = "#10b981"
     WARNING = "#f59e0b"
+    ERROR = "#ef4444"
     SPACING_8 = 8
     SPACING_10 = 10
     SPACING_12 = 12
@@ -566,7 +567,9 @@ class Noise2VoidPage(QWidget):
             # 显示图像信息
             try:
                 import cv2
-                img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
+                # 使用 imdecode 读取中文路径文件
+                img_data = np.fromfile(file_path, dtype=np.uint8)
+                img = cv2.imdecode(img_data, cv2.IMREAD_GRAYSCALE)
                 if img is not None:
                     h, w = img.shape
                     dtype = str(img.dtype)
