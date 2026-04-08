@@ -697,8 +697,9 @@ class Noise2VoidPage(QWidget):
             # 显示图像信息
             try:
                 # 使用 imdecode 读取中文路径文件
+                # 使用 IMREAD_ANYDEPTH 保留原始位深度（8 位或 16 位）
                 img_data = np.fromfile(file_path, dtype=np.uint8)
-                img = cv2.imdecode(img_data, cv2.IMREAD_GRAYSCALE)
+                img = cv2.imdecode(img_data, cv2.IMREAD_GRAYSCALE | cv2.IMREAD_ANYDEPTH)
                 if img is not None:
                     h, w = img.shape
                     dtype = str(img.dtype)
