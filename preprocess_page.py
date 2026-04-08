@@ -708,130 +708,103 @@ class PreprocessPage(QWidget):
         left_panel.setObjectName("step1ControlPanel")
         left_panel.setStyleSheet("""
             QFrame#step1ControlPanel {
-                background-color: #f8fafc;
+                background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
-                padding: 20px;
             }
         """)
-        left_panel.setMinimumWidth(400)
+        left_panel.setMinimumWidth(350)
         left_layout = QVBoxLayout(left_panel)
-        left_layout.setSpacing(16)
-
-        # 说明
-        info_label = QLabel("从单张 X 光图像提取噪声特征")
-        info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #475569; font-size: 15px; font-weight: 500; padding: 8px;")
-        left_layout.addWidget(info_label)
+        left_layout.setSpacing(12)
+        left_layout.setContentsMargins(14, 14, 14, 14)
 
         # 1. 加载 X 光图像
         load_group = QGroupBox("1. 加载 X 光图像")
-        load_group.setMinimumHeight(300)
         load_layout = QVBoxLayout(load_group)
+        load_layout.setSpacing(8)
+        load_layout.setContentsMargins(10, 10, 10, 10)
 
         # 图像预览（在加载按钮上方）
-        self.source_image_label = QLabel("未加载图像")
-        self.source_image_label.setObjectName("imageBox")
+        self.source_image_label = QLabel()
+        self.source_image_label.setFixedHeight(220)
         self.source_image_label.setStyleSheet("""
-            QLabel#imageBox {
-                border: 2px dashed #cbd5e1;
-                border-radius: 12px;
+            QLabel {
                 background-color: #f8fafc;
-                color: #94a3b8;
-                font-style: italic;
-                font-size: 16px;
+                border: 2px dashed #e2e8f0;
+                border-radius: 8px;
             }
         """)
         self.source_image_label.setAlignment(Qt.AlignCenter)
-        self.source_image_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Ignored)
-        self.source_image_label.setMinimumSize(450, 100)
-        self.source_image_label.setMaximumSize(450, 200)
+        self.source_image_label.setText("图像预览")
         load_layout.addWidget(self.source_image_label)
 
-        # 加载按钮
+        # 加载按钮（样式与 Noise2Void 页面一致）
         self.load_btn = QPushButton("加载")
+        self.load_btn.setObjectName("loadBtn")
         self.load_btn.clicked.connect(self.load_source_image)
-        self.load_btn.setMinimumHeight(48)
+        self.load_btn.setMinimumHeight(40)
         self.load_btn.setStyleSheet("""
-            QPushButton {
+            QPushButton#loadBtn {
                 background-color: #f1f5f9;
-                color: #475569;
-                border: 1px solid #cbd5e1;
-                padding: 14px 28px;
+                color: #64748b;
+                border: 1px solid #e2e8f0;
+                padding: 10px 20px;
                 border-radius: 8px;
                 font-weight: 600;
                 font-size: 16px;
             }
-            QPushButton:hover {
+            QPushButton#loadBtn:hover {
                 background-color: #e2e8f0;
                 border-color: #0ea5e9;
             }
         """)
         load_layout.addWidget(self.load_btn)
 
-        # 图像信息
-        self.source_info_text = QTextEdit()
-        self.source_info_text.setReadOnly(True)
-        self.source_info_text.setMaximumHeight(90)
-        self.source_info_text.setMinimumHeight(80)
-        self.source_info_text.setPlaceholderText("加载图像后显示信息...")
-        self.source_info_text.setStyleSheet("""
-            QTextEdit {
-                font-size: 14px;
-                color: #64748b;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-                padding: 8px 12px;
-                background-color: #f8fafc;
-            }
-        """)
-        load_layout.addWidget(self.source_info_text)
+        # 文件信息显示
+        self.source_info_label = QLabel("未加载图像")
+        self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 14px;")
+        self.source_info_label.setWordWrap(True)
+        load_layout.addWidget(self.source_info_label)
+
         left_layout.addWidget(load_group)
 
         # 2. 提取参数
         param_group = QGroupBox("2. 提取参数")
-        param_group.setMinimumHeight(120)
-        param_layout = QFormLayout(param_group)
-        param_layout.setSpacing(12)
+        param_layout = QVBoxLayout(param_group)
+        param_layout.setSpacing(8)
+        param_layout.setContentsMargins(10, 10, 10, 10)
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
-        method_label.setStyleSheet("""
-            QLabel {
-                font-size: 15px;
-                color: #475569;
-                font-weight: 500;
-                padding: 8px;
-            }
-        """)
-        param_layout.addRow("", method_label)
+        method_label.setStyleSheet("color: #64748b; font-size: 14px;")
+        method_label.setWordWrap(True)
+        param_layout.addWidget(method_label)
 
         left_layout.addWidget(param_group)
 
         # 3. 执行按钮
-        self.extract_btn = QPushButton("开始提取噪声")
-        self.extract_btn.setObjectName("step1PrimaryBtn")
+        self.extract_btn = QPushButton("▶ 开始提取噪声")
+        self.extract_btn.setObjectName("primaryBtn")
         self.extract_btn.setStyleSheet("""
-            QPushButton#step1PrimaryBtn {
+            QPushButton#primaryBtn {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
                 color: white;
-                border: none;
-                padding: 16px 32px;
-                border-radius: 8px;
-                font-weight: 600;
                 font-size: 16px;
+                font-weight: 600;
+                padding: 14px 28px;
+                border-radius: 12px;
             }
-            QPushButton#step1PrimaryBtn:hover {
+            QPushButton#primaryBtn:hover {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0369a1);
             }
-            QPushButton#step1PrimaryBtn:disabled {
+            QPushButton#primaryBtn:disabled {
                 background: #cbd5e1;
                 color: #94a3b8;
             }
         """)
         self.extract_btn.clicked.connect(self.start_noise_extraction)
         self.extract_btn.setEnabled(False)
-        self.extract_btn.setMinimumHeight(52)
+        self.extract_btn.setMinimumHeight(48)
         left_layout.addWidget(self.extract_btn)
 
         # 进度条
@@ -842,9 +815,9 @@ class PreprocessPage(QWidget):
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
                 text-align: center;
-                height: 36px;
+                height: 24px;
                 font-weight: 600;
-                font-size: 15px;
+                font-size: 14px;
                 background-color: #f8fafc;
                 color: #475569;
             }
@@ -1496,8 +1469,8 @@ class PreprocessPage(QWidget):
                 bit_depth = "8 位" if dtype == "uint8" else "16 位" if dtype == "uint16" else dtype
 
                 # 显示图像信息
-                info_text = f"文件名：{file_name}\n形状：({h}, {w})\n数据类型：{dtype}\n位深度：{bit_depth}"
-                self.source_info_text.setText(info_text)
+                info_text = f"文件名：{file_name} | 形状：({h}, {w}) | 数据类型：{dtype} | 位深度：{bit_depth}"
+                self.source_info_label.setText(info_text)
 
             self.extract_btn.setEnabled(True)
             self._display_source_preview(file_path)
