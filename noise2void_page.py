@@ -161,12 +161,15 @@ class Noise2VoidTrainingThread(QThread):
         """加载图像"""
         try:
             import cv2
-            img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+            # 使用 imdecode 读取中文路径文件
+            img_data = np.fromfile(path, dtype=np.uint8)
+            img = cv2.imdecode(img_data, cv2.IMREAD_GRAYSCALE)
             if img is None:
                 return None
             img = img.astype('float64') / 255.0
             return img
-        except:
+        except Exception as e:
+            print(f"Failed to load image: {e}")
             return None
 
     def _prepare_n2v_data(self, img):
