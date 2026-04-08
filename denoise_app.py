@@ -1140,7 +1140,7 @@ class DenoiseWidget(QWidget):
             text.setStyleSheet("""
                 QTextEdit {
                     font-family: 'Consolas', 'Courier New', monospace;
-                    font-size: 13px;
+                    font-size: 16px;
                     background-color: #f8fafc;
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;
