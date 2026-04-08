@@ -1,5 +1,5 @@
 """
-图片预处理页面 - 用于噪音提取和数据集构建
+DenseNet页面 - 用于噪音提取和数据集构建
 三步流程：1. 噪音提取 2. 数据集生成 3. 算法训练
 """
 
@@ -525,7 +525,7 @@ class DatasetGenerationThread(QThread):
 
 
 class PreprocessPage(QWidget):
-    """图片预处理页面 - 噪音提取和数据集构建（两步流程）。"""
+    """DenseNet页面 - 噪音提取和数据集构建（两步流程）。"""
 
     def __init__(self):
         super().__init__()
@@ -543,7 +543,7 @@ class PreprocessPage(QWidget):
         layout.setContentsMargins(12, 12, 12, 12)
 
         # 标题（与其他页面保持一致，不加版本号）
-        title = QLabel("图片预处理 - 噪音提取、数据集生成与算法训练")
+        title = QLabel("DenseNet - 噪音提取、数据集生成与算法训练")
         title.setStyleSheet("""
             font-size: 24px;
             font-weight: 600;
@@ -1978,7 +1978,7 @@ class PreprocessPage(QWidget):
         """应用 Medical Minimalism 风格"""
         # 主标题
         for label in self.findChildren(QLabel):
-            if label.text().startswith("图片预处理"):
+            if label.text().startswith("DenseNet"):
                 label.setStyleSheet("""
                     font-size: 24px;
                     font-weight: 600;

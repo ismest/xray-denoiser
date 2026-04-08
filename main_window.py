@@ -1,6 +1,6 @@
 """
 主窗口 - 多页面架构
-包含：图片预处理（含噪音提取、数据集生成、算法训练）、Noise2Void、降噪与超分辨率三个页面
+包含：DenseNet（含噪音提取、数据集生成、算法训练）、Noise2Void、降噪与超分辨率三个页面
 Medical Minimalism 风格
 """
 
@@ -205,7 +205,7 @@ class MainWindow(QMainWindow):
         # 导航按钮 - 从顶部向上分布
         self.nav_buttons = []
 
-        self.btn_preprocess = NavigationButton("图片预处理")
+        self.btn_preprocess = NavigationButton("DenseNet")
         self.btn_preprocess.clicked.connect(lambda: self._switch_page(0))
         layout.addWidget(self.btn_preprocess)
         self.nav_buttons.append(self.btn_preprocess)
@@ -283,7 +283,7 @@ class MainWindow(QMainWindow):
             btn.setChecked(i == index)
 
         # 更新状态栏
-        page_names = ['图片预处理（噪音提取、数据集生成、算法训练）', 'Noise2Void 自监督训练', '降噪与超分辨率']
+        page_names = ['DenseNet（噪音提取、数据集生成、算法训练）', 'Noise2Void 自监督训练', '降噪与超分辨率']
         self.status_bar.showMessage(f'当前页面：{page_names[index]}')
 
     def show_help_guide(self):
@@ -319,7 +319,7 @@ class HelpGuideDialog(QDialog):
 
 ## 功能模块
 
-### 1. 图片预处理
+### 1. DenseNet
 **用途**: 从单张 X 光图像提取噪声参数，生成训练数据集。
 
 **操作步骤**:
@@ -464,8 +464,8 @@ integrated_model/
 ## 快捷操作流程
 
 ### 完整训练流程
-1. 图片预处理 → 噪音提取 → 生成 noise_params.json
-2. 图片预处理 → 数据集生成 → 生成训练数据集
+1. DenseNet → 噪音提取 → 生成 noise_params.json
+2. DenseNet → 数据集生成 → 生成训练数据集
 3. 算法训练 → 选择数据集 → 开始训练 → 添加模型
 4. 降噪与超分 → 加载图像 → 降噪 → 超分 → 保存
 
