@@ -129,20 +129,26 @@ class NoiseExtractionThread(QThread):
         local_var = cv2.GaussianBlur((img_gray - local_mean) ** 2, (kernel_size, kernel_size), 0)
 
         # ========== 步骤 2: 在均匀区域内选择盒子 ==========
-        # 盒子大小：固定 50x50（更小的盒子，便于显示）
-        box_h, box_w = 50, 50
-        # 如果图像太小，调整盒子大小
-        if h < 100 or w < 100:
-            box_h, box_w = min(25, h // 8), min(25, w // 8)
+        # 盒子大小：根据图像大小动态调整（约图像的 3%-5%，最小 30x30，最大 80x80）
+        min_dim = min(h, w)
+        box_ratio = 0.04  # 盒子大小约占图像的 4%
+        box_h = int(min_dim * box_ratio)
+        box_w = int(min_dim * box_ratio)
+        box_h = max(30, min(80, box_h))  # 限制在 30-80 之间
+        box_w = max(30, min(80, box_w))
+
+        # 采样步长：根据图像大小动态调整（约盒子大小的一半）
+        step_y = max(15, box_h // 2)
+        step_x = max(15, box_w // 2)
+
+        print(f"图像尺寸：{w}x{h}, 盒子大小：{box_w}x{box_h}, 采样步长：{step_x}x{step_y}")
 
         lambda_estimates = []
         noise_std_estimates = []
         box_coords = []  # 保存有效区域盒的坐标
 
         # 在平坦区域内采样盒子
-        # 策略：使用较小的步长（25 像素）密集采样
-        num_samples = 8  # 最多选择 8 个盒子
-        step_y, step_x = 25, 25  # 采样步长
+        num_samples = 9  # 最多选择 9 个盒子（每层 3 个）
 
         # 收集所有候选区域
         all_candidates = []
@@ -152,46 +158,32 @@ class NoiseExtractionThread(QThread):
                 box_mean = np.mean(img_gray[i:i+box_h, j:j+box_w])
                 all_candidates.append((i, j, avg_var, box_mean))
 
-        # 计算亮度分位数（25%-75%）
-        brightness_values = [c[3] for c in all_candidates]
-        p25 = np.percentile(brightness_values, 25)
-        p75 = np.percentile(brightness_values, 75)
-
         # 策略：分亮度层级选择，确保暗部、中等、亮部都有代表
         # 将候选区域按亮度分为 3 层：暗部 (0-33%)、中等 (33%-66%)、亮部 (66%-100%)
+        brightness_values = [c[3] for c in all_candidates]
         p33 = np.percentile(brightness_values, 33)
         p66 = np.percentile(brightness_values, 66)
 
-        # 每层按方差排序选择 2-3 个区域
+        print(f"亮度分位数：33%={p33:.4f}, 66%={p66:.4f}")
+
+        # 每层按方差排序选择 3 个区域
         dark_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br <= p33]
         mid_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if p33 < br <= p66]
         bright_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br > p66]
+
+        print(f"候选区域：暗部={len(dark_regions)}, 中等={len(mid_regions)}, 亮部={len(bright_regions)}")
 
         # 各层按方差排序
         dark_regions.sort(key=lambda x: x[2])
         mid_regions.sort(key=lambda x: x[2])
         bright_regions.sort(key=lambda x: x[2])
 
-        # 合并：每层选 2-3 个，共 8 个
+        # 合并：每层选 3 个，共 9 个
         candidates = []
-        per_layer = num_samples // 3  # 每层约 2-3 个
+        per_layer = 3
         candidates.extend(dark_regions[:per_layer])
         candidates.extend(mid_regions[:per_layer])
         candidates.extend(bright_regions[:per_layer])
-        # 如果不足 8 个，从各层补充
-        while len(candidates) < num_samples:
-            remaining = num_samples - len(candidates)
-            if remaining > 0 and len(dark_regions) > per_layer:
-                candidates.append(dark_regions[per_layer])
-                per_layer += 1
-            elif remaining > 0 and len(mid_regions) > per_layer:
-                candidates.append(mid_regions[per_layer])
-                per_layer += 1
-            elif remaining > 0 and len(bright_regions) > per_layer:
-                candidates.append(bright_regions[per_layer])
-                per_layer += 1
-            else:
-                break
 
         # 选择前 num_samples 个盒子，但要确保它们之间有足够的距离
         selected_boxes = []
@@ -789,20 +781,21 @@ class PreprocessPage(QWidget):
 
         # 2. 提取参数
         param_group = QGroupBox("2. 提取参数")
-        param_group.setMinimumHeight(150)
+        param_group.setMinimumHeight(120)
         param_layout = QFormLayout(param_group)
         param_layout.setSpacing(12)
 
-        self.extraction_method_combo = QComboBox()
-        self.extraction_method_combo.addItems(["局部标准差法", "均匀区域法"])
-        self.extraction_method_combo.setMinimumHeight(40)
-        self.extraction_method_combo.setStyleSheet("""
-            QComboBox {
+        # 提取方法说明（固定使用均匀区域法）
+        method_label = QLabel("使用均匀区域法提取噪音")
+        method_label.setStyleSheet("""
+            QLabel {
                 font-size: 15px;
-                padding: 10px 14px;
+                color: #475569;
+                font-weight: 500;
+                padding: 8px;
             }
         """)
-        param_layout.addRow("提取方法:", self.extraction_method_combo)
+        param_layout.addRow("", method_label)
 
         left_layout.addWidget(param_group)
 
@@ -1476,7 +1469,8 @@ class PreprocessPage(QWidget):
         # 使用默认输出目录（步骤 1 和步骤 2 共用）
         self.extraction_output_dir = os.path.join(os.path.dirname(__file__), 'noise_profile_output')
 
-        extraction_method = 'local_std' if self.extraction_method_combo.currentIndex() == 0 else 'homogeneous_region'
+        # 固定使用均匀区域法
+        extraction_method = 'homogeneous_region'
 
         self.step1_progress.setVisible(True)
         self.step1_progress.setValue(0)
