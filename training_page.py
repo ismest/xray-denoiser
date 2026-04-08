@@ -880,10 +880,11 @@ class TrainingPage(QWidget):
     def update_loss_chart(self):
         """更新 Loss 曲线图。"""
         self.loss_ax.clear()
-        self.loss_ax.set_xlabel('Epoch')
-        self.loss_ax.set_ylabel('Loss')
-        self.loss_ax.set_title('Training and Validation Loss')
+        self.loss_ax.set_xlabel('Epoch', fontsize=12)
+        self.loss_ax.set_ylabel('Loss', fontsize=12)
+        self.loss_ax.set_title('Training and Validation Loss', fontsize=14)
         self.loss_ax.grid(True, alpha=0.3)
+        self.loss_ax.tick_params(labelsize=11)
 
         if len(self.train_history['epoch']) > 0:
             self.loss_ax.plot(
@@ -900,7 +901,7 @@ class TrainingPage(QWidget):
                 label='Val Loss',
                 linewidth=2
             )
-            self.loss_ax.legend(loc='upper right')
+            self.loss_ax.legend(loc='upper right', fontsize=11)
 
         self.loss_canvas.draw()
 
@@ -1092,7 +1093,7 @@ class TrainingPage(QWidget):
                 text.setStyleSheet("""
                     QTextEdit {
                         font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 13px;
+                        font-size: 16px;
                         background-color: #f8fafc;
                         border: 1px solid #e2e8f0;
                         border-radius: 8px;
