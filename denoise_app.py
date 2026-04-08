@@ -374,7 +374,7 @@ class DenoiseWidget(QWidget):
 
         # 4. 图片保存
         save_group = QGroupBox("4. 图片保存")
-        save_layout = QHBoxLayout(save_group)
+        save_layout = QVBoxLayout(save_group)
         save_layout.setSpacing(8)
 
         self.save_denoise_btn = QPushButton("💾 保存降噪图")
