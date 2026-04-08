@@ -490,7 +490,7 @@ class TrainingPage(QWidget):
         output_layout.addWidget(self.browse_output_btn)
 
         # 训练按钮
-        self.train_btn = QPushButton("开始训练")
+        self.train_btn = QPushButton("▶ 开始训练")
         self.train_btn.setObjectName("primaryBtn")
         self.train_btn.setStyleSheet("""
             QPushButton#primaryBtn {
@@ -513,7 +513,7 @@ class TrainingPage(QWidget):
         output_layout.addWidget(self.train_btn)
 
         # 停止按钮
-        self.stop_btn = QPushButton("停止训练")
+        self.stop_btn = QPushButton("⏹ 停止训练")
         self.stop_btn.setStyleSheet("""
             QPushButton {
                 background-color: #dc2626;
