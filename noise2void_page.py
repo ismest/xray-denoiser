@@ -7,17 +7,26 @@ import sys
 import os
 import json
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QFileDialog, QProgressBar, QGroupBox,
                              QTextEdit, QMessageBox, QSpinBox, QDoubleSpinBox,
-                             QFrame, QScrollArea)
+                             QFrame, QScrollArea, QFormLayout, QComboBox,
+                             QGridLayout, QSplitter)
+from PyQt5.QtGui import QPixmap, QImage, QFont
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
+
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+
+import cv2
 
 
 # 医疗极简主义设计令牌
@@ -340,80 +349,90 @@ class Noise2VoidPage(QWidget):
         self.image_path_edit.setPlaceholderText("选择单张噪声图像进行训练...")
         image_layout.addWidget(self.image_path_edit)
 
-        self.load_image_btn = QPushButton("选择噪声图像")
+        # 加载按钮和图像预览
+        btn_preview_layout = QHBoxLayout()
+        btn_preview_layout.setSpacing(DesignTokens.SPACING_8)
+
+        self.load_image_btn = QPushButton("加载")
+        self.load_image_btn.setObjectName("loadBtn")
         self.load_image_btn.clicked.connect(self.load_image)
         self.load_image_btn.setMinimumHeight(40)
-        self.load_image_btn.setStyleSheet(self._get_button_style())
-        image_layout.addWidget(self.load_image_btn)
+        self.load_image_btn.setStyleSheet(f"""
+            QPushButton#loadBtn {{
+                background-color: {DesignTokens.PRIMARY_500};
+                color: white;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 10px 20px;
+                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
+            }}
+            QPushButton#loadBtn:hover {{
+                background-color: {DesignTokens.PRIMARY_600};
+            }}
+        """)
+        btn_preview_layout.addWidget(self.load_image_btn)
 
         self.image_info_label = QLabel("未加载图像")
         self.image_info_label.setStyleSheet(f"color: {DesignTokens.TEXT_MUTED}; font-size: 14px;")
-        image_layout.addWidget(self.image_info_label)
+        self.image_info_label.setWordWrap(True)
+        btn_preview_layout.addWidget(self.image_info_label, 1)
+
+        image_layout.addLayout(btn_preview_layout)
+
+        # 图像预览
+        self.image_preview_label = QLabel()
+        self.image_preview_label.setFixedHeight(200)
+        self.image_preview_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: #f8fafc;
+                border: 2px dashed {DesignTokens.BORDER};
+                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
+            }}
+        """)
+        self.image_preview_label.setAlignment(Qt.AlignCenter)
+        self.image_preview_label.setText("图像预览")
+        image_layout.addWidget(self.image_preview_label)
 
         layout.addWidget(image_group)
 
         # 2. 训练参数配置
-        params_group = QGroupBox("2. 训练参数配置")
-        params_layout = QVBoxLayout(params_group)
+        params_group = QGroupBox("2. 训练参数")
+        params_layout = QFormLayout(params_group)
         params_layout.setSpacing(DesignTokens.SPACING_10)
 
-        # 训练轮数
-        epochs_layout = QHBoxLayout()
-        epochs_label = QLabel("训练轮数 (Epochs):")
-        epochs_label.setStyleSheet(f"font-size: 14px; color: {DesignTokens.TEXT_SECONDARY};")
-        epochs_layout.addWidget(epochs_label)
         self.epochs_spin = QSpinBox()
         self.epochs_spin.setRange(10, 500)
         self.epochs_spin.setValue(50)
         self.epochs_spin.setMinimumHeight(40)
         self.epochs_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
-        epochs_layout.addWidget(self.epochs_spin)
-        params_layout.addLayout(epochs_layout)
+        params_layout.addRow("训练轮数 (Epochs):", self.epochs_spin)
 
-        # 批次大小
-        batch_layout = QHBoxLayout()
-        batch_label = QLabel("批次大小 (Batch Size):")
-        batch_label.setStyleSheet(f"font-size: 14px; color: {DesignTokens.TEXT_SECONDARY};")
-        batch_layout.addWidget(batch_label)
         self.batch_spin = QSpinBox()
         self.batch_spin.setRange(1, 64)
         self.batch_spin.setValue(16)
         self.batch_spin.setMinimumHeight(40)
         self.batch_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
-        batch_layout.addWidget(self.batch_spin)
-        params_layout.addLayout(batch_layout)
+        params_layout.addRow("批次大小 (Batch Size):", self.batch_spin)
 
-        # 块大小
-        patch_layout = QHBoxLayout()
-        patch_label = QLabel("块大小 (Patch Size):")
-        patch_label.setStyleSheet(f"font-size: 14px; color: {DesignTokens.TEXT_SECONDARY};")
-        patch_layout.addWidget(patch_label)
         self.patch_spin = QSpinBox()
         self.patch_spin.setRange(32, 256)
         self.patch_spin.setValue(64)
         self.patch_spin.setMinimumHeight(40)
         self.patch_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
-        patch_layout.addWidget(self.patch_spin)
-        params_layout.addLayout(patch_layout)
+        params_layout.addRow("块大小 (Patch Size):", self.patch_spin)
 
-        # 学习率
-        lr_layout = QHBoxLayout()
-        lr_label = QLabel("学习率:")
-        lr_label.setStyleSheet(f"font-size: 14px; color: {DesignTokens.TEXT_SECONDARY};")
-        lr_layout.addWidget(lr_label)
         self.lr_spin = QDoubleSpinBox()
         self.lr_spin.setRange(0.00001, 0.01)
         self.lr_spin.setValue(0.001)
         self.lr_spin.setDecimals(5)
         self.lr_spin.setMinimumHeight(40)
         self.lr_spin.setStyleSheet("font-size: 15px; padding: 10px 14px;")
-        lr_layout.addWidget(self.lr_spin)
-        params_layout.addLayout(lr_layout)
+        params_layout.addRow("学习率 (Learning Rate):", self.lr_spin)
 
         layout.addWidget(params_group)
 
         # 3. 模型输出目录
-        output_group = QGroupBox("3. 模型输出目录")
+        output_group = QGroupBox("3. 模型输出")
         output_layout = QVBoxLayout(output_group)
         output_layout.setSpacing(DesignTokens.SPACING_8)
         output_layout.setContentsMargins(10, 10, 10, 10)
@@ -432,10 +451,10 @@ class Noise2VoidPage(QWidget):
 
         layout.addWidget(output_group)
 
-        # 4. 开始训练按钮
-        train_group = QGroupBox("4. 开始训练")
-        train_layout = QVBoxLayout(train_group)
-        train_layout.setSpacing(DesignTokens.SPACING_12)
+        # 4. 训练控制
+        control_group = QGroupBox("4. 训练控制")
+        control_layout = QVBoxLayout(control_group)
+        control_layout.setSpacing(DesignTokens.SPACING_12)
 
         self.train_btn = QPushButton("▶ 开始训练")
         self.train_btn.setObjectName("primaryBtn")
@@ -458,33 +477,33 @@ class Noise2VoidPage(QWidget):
                 color: {DesignTokens.TEXT_MUTED};
             }}
         """)
-        train_layout.addWidget(self.train_btn)
+        control_layout.addWidget(self.train_btn)
 
-        # 进度条
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        self.progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                background-color: #f1f5f9;
-                border: 1px solid {DesignTokens.BORDER};
-                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
-                text-align: center;
-                font-size: 14px;
-                color: {DesignTokens.TEXT_SECONDARY};
+        self.stop_btn = QPushButton("⏹ 停止训练")
+        self.stop_btn.setObjectName("stopBtn")
+        self.stop_btn.setMinimumHeight(48)
+        self.stop_btn.clicked.connect(self.stop_training)
+        self.stop_btn.setStyleSheet(f"""
+            QPushButton#stopBtn {{
+                background-color: #dc2626;
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                padding: 14px 28px;
+                border-radius: {DesignTokens.RADIUS_LARGE}px;
             }}
-            QProgressBar::chunk {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.SUCCESS}, stop:1 #059669);
-                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
+            QPushButton#stopBtn:hover {{
+                background-color: #b91c1c;
+            }}
+            QPushButton#stopBtn:disabled {{
+                background-color: {DesignTokens.BORDER};
+                color: {DesignTokens.TEXT_MUTED};
             }}
         """)
-        train_layout.addWidget(self.progress_bar)
+        self.stop_btn.setEnabled(False)
+        control_layout.addWidget(self.stop_btn)
 
-        # 状态标签
-        self.status_label = QLabel("等待开始训练...")
-        self.status_label.setStyleSheet(f"color: {DesignTokens.TEXT_SECONDARY}; font-size: 14px;")
-        train_layout.addWidget(self.status_label)
-
-        layout.addWidget(train_group)
+        layout.addWidget(control_group)
 
         return panel
 
@@ -503,39 +522,81 @@ class Noise2VoidPage(QWidget):
         layout.setContentsMargins(DesignTokens.SPACING_14, DesignTokens.SPACING_14,
                                    DesignTokens.SPACING_14, DesignTokens.SPACING_14)
 
+        # 训练进度
+        progress_group = QGroupBox("训练进度")
+        progress_layout = QVBoxLayout(progress_group)
+        progress_layout.setSpacing(DesignTokens.SPACING_8)
+        progress_layout.setContentsMargins(10, 10, 10, 10)
+
+        self.progress = QProgressBar()
+        self.progress.setMinimumHeight(36)
+        self.progress.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid {DesignTokens.BORDER};
+                border-radius: 8px;
+                text-align: center;
+                font-weight: 600;
+                font-size: 15px;
+                background-color: #f8fafc;
+            }}
+            QProgressBar::chunk {{
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {DesignTokens.PRIMARY_500}, stop:1 {DesignTokens.PRIMARY_600});
+                border-radius: 7px;
+            }}
+        """)
+        progress_layout.addWidget(self.progress)
+
+        self.status_label = QLabel("准备就绪")
+        self.status_label.setStyleSheet(f"color: {DesignTokens.TEXT_SECONDARY}; font-size: 15px;")
+        progress_layout.addWidget(self.status_label)
+
+        layout.addWidget(progress_group)
+
         # 训练日志
         log_group = QGroupBox("训练日志")
         log_layout = QVBoxLayout(log_group)
-        log_layout.setSpacing(DesignTokens.SPACING_8)
+        log_layout.setSpacing(0)
+        log_layout.setContentsMargins(0, 0, 0, 0)
 
         self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
-        self.log_text.setMinimumHeight(300)
+        self.log_text.setPlaceholderText("训练日志将显示在这里...")
         self.log_text.setStyleSheet(f"""
             QTextEdit {{
                 font-family: 'Consolas', 'Courier New', monospace;
-                font-size: 13px;
-                background-color: #1e293b;
-                color: #e2e8f0;
-                border: 1px solid #334155;
-                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
-                padding: 12px;
+                font-size: 16px;
+                background-color: #f8fafc;
+                border: none;
+                padding: 10px;
             }}
         """)
+        self.log_text.setMinimumHeight(250)
         log_layout.addWidget(self.log_text)
 
         layout.addWidget(log_group)
 
-        # 训练统计
-        stats_group = QGroupBox("训练统计")
-        stats_layout = QVBoxLayout(stats_group)
-        stats_layout.setSpacing(DesignTokens.SPACING_8)
+        # Loss 曲线图
+        chart_group = QGroupBox("训练 Loss 曲线")
+        chart_layout = QVBoxLayout(chart_group)
+        chart_layout.setSpacing(0)
+        chart_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.stats_label = QLabel("等待训练开始...")
-        self.stats_label.setStyleSheet(f"color: {DesignTokens.TEXT_SECONDARY}; font-size: 14px;")
-        stats_layout.addWidget(self.stats_label)
+        # 创建 matplotlib 图表
+        self.loss_figure = Figure(figsize=(10, 8), dpi=100)
+        self.loss_canvas = FigureCanvasQTAgg(self.loss_figure)
+        self.loss_canvas.setMinimumHeight(300)
+        self.loss_canvas.setStyleSheet("background-color: white;")
 
-        layout.addWidget(stats_group)
+        # 初始化图表
+        self.loss_ax = self.loss_figure.add_subplot(111)
+        self.loss_ax.set_xlabel('Epoch')
+        self.loss_ax.set_ylabel('Loss')
+        self.loss_ax.set_title('Training Loss')
+        self.loss_ax.grid(True, alpha=0.3)
+        self.loss_line = None
+
+        chart_layout.addWidget(self.loss_canvas)
+        layout.addWidget(chart_group)
 
         return panel
 
@@ -569,7 +630,6 @@ class Noise2VoidPage(QWidget):
 
             # 显示图像信息
             try:
-                import cv2
                 # 使用 imdecode 读取中文路径文件
                 img_data = np.fromfile(file_path, dtype=np.uint8)
                 img = cv2.imdecode(img_data, cv2.IMREAD_GRAYSCALE)
@@ -580,12 +640,42 @@ class Noise2VoidPage(QWidget):
                     info = f"文件名：{os.path.basename(file_path)} | 形状：({h}, {w}) | 数据类型：{dtype} | 位深度：{bit_depth}"
                     self.image_info_label.setText(info)
                     self.image_info_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 14px;")
+
+                    # 显示图像预览
+                    self._show_image_preview(img)
                 else:
                     self.image_info_label.setText(f"无法加载图像：{os.path.basename(file_path)}")
                     self.image_info_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 14px;")
             except Exception as e:
                 self.image_info_label.setText(f"加载失败：{str(e)}")
                 self.image_info_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 14px;")
+
+    def _show_image_preview(self, img):
+        """显示图像预览"""
+        try:
+            # 归一化到 0-255
+            if img.dtype == np.uint16:
+                img_display = (img.astype(np.float64) / 65535.0 * 255).astype(np.uint8)
+            else:
+                img_display = img
+
+            # 创建 QPixmap 用于显示
+            h, w = img_display.shape
+            bytes_per_line = w
+            qimg = QImage(img_display.data, w, h, bytes_per_line, QImage.Format_Grayscale8)
+            pixmap = QPixmap.fromImage(qimg)
+
+            # 缩放到适合显示的大小
+            scaled_pixmap = pixmap.scaled(
+                self.image_preview_label.width() - 20,
+                self.image_preview_label.height() - 20,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.image_preview_label.setPixmap(scaled_pixmap)
+            self.image_preview_label.setText("")
+        except Exception as e:
+            self.image_preview_label.setText(f"预览失败：{str(e)}")
 
     def browse_output(self):
         """选择输出目录"""
@@ -633,10 +723,10 @@ class Noise2VoidPage(QWidget):
         if reply != QMessageBox.Yes:
             return
 
-        # 禁用按钮
+        # 禁用/启用按钮
         self.train_btn.setEnabled(False)
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setValue(0)
+        self.stop_btn.setEnabled(True)
+        self.progress.setValue(0)
         self.is_training = True
 
         # 创建并启动训练线程
@@ -650,36 +740,71 @@ class Noise2VoidPage(QWidget):
         self.training_thread.start()
 
         self.status_label.setText("正在训练...")
-        self.status_label.setStyleSheet(f"color: {DesignTokens.TEXT_SECONDARY}; font-size: 14px;")
         self.append_log(f"开始训练 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        self.append_log(f"参数：{params}")
+        self.append_log(f"参数：epochs={params['epochs']}, batch_size={params['batch_size']}, patch_size={params['patch_size']}, lr={params['lr']}")
+
+    def stop_training(self):
+        """停止训练"""
+        if self.training_thread and self.training_thread.isRunning():
+            self.training_thread.requestInterruption()
+            self.training_thread.wait(3000)  # 等待最多 3 秒
+
+            self.train_btn.setEnabled(True)
+            self.stop_btn.setEnabled(False)
+            self.is_training = False
+            self.status_label.setText("训练已停止")
+            self.status_label.setStyleSheet(f"color: {DesignTokens.WARNING}; font-size: 15px;")
+            self.append_log("训练已被用户停止")
 
     def update_progress(self, value, message):
         """更新进度"""
-        self.progress_bar.setValue(value)
+        self.progress.setValue(value)
         self.status_label.setText(message)
 
     def update_epoch_stats(self, epoch, stats):
         """更新 epoch 统计"""
         self.train_history['epoch'].append(epoch)
         self.train_history['loss'].append(stats.get('loss', 0))
-        self.train_history['best_loss'].append(stats.get('best_loss', 0))
 
-        self.stats_label.setText(
-            f"Epoch: {epoch} | "
-            f"Loss: {stats.get('loss', 0):.6f} | "
-            f"Best Loss: {stats.get('best_loss', 0):.6f}"
+        self.status_label.setText(
+            f"Epoch: {epoch} | Loss: {stats.get('loss', 0):.6f} | Best Loss: {stats.get('best_loss', 0):.6f}"
         )
-        self.stats_label.setStyleSheet(f"color: {DesignTokens.TEXT_PRIMARY}; font-size: 14px; font-weight: 600;")
+
+        # 更新 Loss 曲线图
+        self.update_loss_chart()
+
+    def update_loss_chart(self):
+        """更新 Loss 曲线图"""
+        try:
+            self.loss_ax.clear()
+            self.loss_ax.set_xlabel('Epoch')
+            self.loss_ax.set_ylabel('Loss')
+            self.loss_ax.set_title('Training Loss')
+            self.loss_ax.grid(True, alpha=0.3)
+
+            if len(self.train_history['epoch']) > 0:
+                self.loss_ax.plot(
+                    self.train_history['epoch'],
+                    self.train_history['loss'],
+                    'b-',
+                    linewidth=2,
+                    label='Training Loss'
+                )
+                self.loss_ax.legend()
+
+            self.loss_canvas.draw()
+        except Exception as e:
+            print(f"Failed to update loss chart: {e}")
 
     def training_finished(self, success, message):
         """训练完成"""
         self.train_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
         self.is_training = False
 
         if success:
             self.status_label.setText("训练完成")
-            self.status_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 14px; font-weight: 600;")
+            self.status_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 15px; font-weight: 600;")
             self.append_log(f"训练成功完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
             # 询问是否集成到算法列表
@@ -694,7 +819,7 @@ class Noise2VoidPage(QWidget):
                 self.integrate_model()
         else:
             self.status_label.setText("训练失败")
-            self.status_label.setStyleSheet(f"color: #ef4444; font-size: 14px;")
+            self.status_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 15px;")
             self.append_log(f"训练失败：{message}")
             QMessageBox.warning(self, "训练失败", message)
 
@@ -731,7 +856,11 @@ class Noise2VoidPage(QWidget):
 
     def append_log(self, message):
         """添加日志"""
-        self.log_text.append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        self.log_text.append(f"[{timestamp}] {message}")
+        # 自动滚动到底部
+        scrollbar = self.log_text.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 
     def apply_medical_style(self):
         """应用 Medical Minimalism 风格"""
