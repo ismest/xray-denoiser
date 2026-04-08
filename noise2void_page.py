@@ -343,16 +343,21 @@ class Noise2VoidPage(QWidget):
         image_layout.setSpacing(DesignTokens.SPACING_8)
         image_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.image_path_edit = QTextEdit()
-        self.image_path_edit.setReadOnly(True)
-        self.image_path_edit.setMaximumHeight(40)
-        self.image_path_edit.setPlaceholderText("选择单张噪声图像进行训练...")
-        image_layout.addWidget(self.image_path_edit)
+        # 图像预览（最上方）
+        self.image_preview_label = QLabel()
+        self.image_preview_label.setFixedHeight(220)
+        self.image_preview_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: #f8fafc;
+                border: 2px dashed {DesignTokens.BORDER};
+                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
+            }}
+        """)
+        self.image_preview_label.setAlignment(Qt.AlignCenter)
+        self.image_preview_label.setText("图像预览")
+        image_layout.addWidget(self.image_preview_label)
 
-        # 加载按钮和图像预览
-        btn_preview_layout = QHBoxLayout()
-        btn_preview_layout.setSpacing(DesignTokens.SPACING_8)
-
+        # 加载按钮（样式与降噪与超分页面一致）
         self.load_image_btn = QPushButton("加载")
         self.load_image_btn.setObjectName("loadBtn")
         self.load_image_btn.clicked.connect(self.load_image)
@@ -370,28 +375,13 @@ class Noise2VoidPage(QWidget):
                 background-color: {DesignTokens.PRIMARY_600};
             }}
         """)
-        btn_preview_layout.addWidget(self.load_image_btn)
+        image_layout.addWidget(self.load_image_btn)
 
+        # 文件信息显示
         self.image_info_label = QLabel("未加载图像")
         self.image_info_label.setStyleSheet(f"color: {DesignTokens.TEXT_MUTED}; font-size: 14px;")
         self.image_info_label.setWordWrap(True)
-        btn_preview_layout.addWidget(self.image_info_label, 1)
-
-        image_layout.addLayout(btn_preview_layout)
-
-        # 图像预览
-        self.image_preview_label = QLabel()
-        self.image_preview_label.setFixedHeight(200)
-        self.image_preview_label.setStyleSheet(f"""
-            QLabel {{
-                background-color: #f8fafc;
-                border: 2px dashed {DesignTokens.BORDER};
-                border-radius: {DesignTokens.RADIUS_MEDIUM}px;
-            }}
-        """)
-        self.image_preview_label.setAlignment(Qt.AlignCenter)
-        self.image_preview_label.setText("图像预览")
-        image_layout.addWidget(self.image_preview_label)
+        image_layout.addWidget(self.image_info_label)
 
         layout.addWidget(image_group)
 
@@ -431,7 +421,7 @@ class Noise2VoidPage(QWidget):
 
         layout.addWidget(params_group)
 
-        # 3. 模型输出目录
+        # 3. 模型输出和集成
         output_group = QGroupBox("3. 模型输出")
         output_layout = QVBoxLayout(output_group)
         output_layout.setSpacing(DesignTokens.SPACING_8)
@@ -449,13 +439,7 @@ class Noise2VoidPage(QWidget):
         self.browse_output_btn.setStyleSheet(self._get_button_style())
         output_layout.addWidget(self.browse_output_btn)
 
-        layout.addWidget(output_group)
-
-        # 4. 训练控制
-        control_group = QGroupBox("4. 训练控制")
-        control_layout = QVBoxLayout(control_group)
-        control_layout.setSpacing(DesignTokens.SPACING_12)
-
+        # 训练控制按钮
         self.train_btn = QPushButton("▶ 开始训练")
         self.train_btn.setObjectName("primaryBtn")
         self.train_btn.setMinimumHeight(48)
@@ -477,7 +461,7 @@ class Noise2VoidPage(QWidget):
                 color: {DesignTokens.TEXT_MUTED};
             }}
         """)
-        control_layout.addWidget(self.train_btn)
+        output_layout.addWidget(self.train_btn)
 
         self.stop_btn = QPushButton("⏹ 停止训练")
         self.stop_btn.setObjectName("stopBtn")
@@ -501,10 +485,62 @@ class Noise2VoidPage(QWidget):
             }}
         """)
         self.stop_btn.setEnabled(False)
-        control_layout.addWidget(self.stop_btn)
+        output_layout.addWidget(self.stop_btn)
 
-        layout.addWidget(control_group)
+        layout.addWidget(output_group)
 
+        # 4. 模型集成
+        integrate_group = QGroupBox("4. 模型集成")
+        integrate_layout = QVBoxLayout(integrate_group)
+        integrate_layout.setSpacing(DesignTokens.SPACING_10)
+
+        # 模型类型选择
+        model_type_layout = QHBoxLayout()
+        model_type_label = QLabel("模型类型:")
+        model_type_label.setStyleSheet(f"font-size: 15px; font-weight: 500; color: {DesignTokens.TEXT_SECONDARY};")
+        model_type_layout.addWidget(model_type_label)
+
+        self.model_type_combo = QComboBox()
+        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
+        self.model_type_combo.setMinimumHeight(40)
+        self.model_type_combo.setStyleSheet(f"""
+            QComboBox {{
+                font-size: 15px;
+                padding: 10px 14px;
+                border: 1px solid {DesignTokens.BORDER};
+                border-radius: 6px;
+            }}
+        """)
+        model_type_layout.addWidget(self.model_type_combo, 1)
+        integrate_layout.addLayout(model_type_layout)
+
+        # 集成按钮
+        self.integrate_model_btn = QPushButton("添加")
+        self.integrate_model_btn.setObjectName("integrateModelBtn")
+        self.integrate_model_btn.setMinimumHeight(48)
+        self.integrate_model_btn.clicked.connect(self.integrate_model)
+        self.integrate_model_btn.setEnabled(False)
+        self.integrate_model_btn.setStyleSheet(f"""
+            QPushButton#integrateModelBtn {{
+                background-color: {DesignTokens.PRIMARY_500};
+                color: white;
+                font-size: 16px;
+                font-weight: 600;
+                padding: 14px 28px;
+                border-radius: {DesignTokens.RADIUS_LARGE}px;
+            }}
+            QPushButton#integrateModelBtn:hover {{
+                background-color: {DesignTokens.PRIMARY_600};
+            }}
+            QPushButton#integrateModelBtn:disabled {{
+                background-color: {DesignTokens.BORDER};
+            }}
+        """)
+        integrate_layout.addWidget(self.integrate_model_btn)
+
+        layout.addWidget(integrate_group)
+
+        layout.addStretch()
         return panel
 
     def _create_monitor_panel(self):
@@ -626,7 +662,6 @@ class Noise2VoidPage(QWidget):
         )
         if file_path:
             self.image_path = file_path
-            self.image_path_edit.setText(file_path)
 
             # 显示图像信息
             try:
@@ -637,9 +672,9 @@ class Noise2VoidPage(QWidget):
                     h, w = img.shape
                     dtype = str(img.dtype)
                     bit_depth = "8 位" if dtype == "uint8" else "16 位" if dtype == "uint16" else dtype
-                    info = f"文件名：{os.path.basename(file_path)} | 形状：({h}, {w}) | 数据类型：{dtype} | 位深度：{bit_depth}"
+                    info = f"文件名：{os.path.basename(file_path)}\n形状：({h}, {w})\n数据类型：{dtype}\n位深度：{bit_depth}"
                     self.image_info_label.setText(info)
-                    self.image_info_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 14px;")
+                    self.image_info_label.setStyleSheet(f"color: {DesignTokens.TEXT_PRIMARY}; font-size: 14px;")
 
                     # 显示图像预览
                     self._show_image_preview(img)
@@ -807,16 +842,8 @@ class Noise2VoidPage(QWidget):
             self.status_label.setStyleSheet(f"color: {DesignTokens.SUCCESS}; font-size: 15px; font-weight: 600;")
             self.append_log(f"训练成功完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
-            # 询问是否集成到算法列表
-            reply = QMessageBox.question(
-                self, "训练完成",
-                f"{message}\n\n"
-                f"是否要将训练的模型集成到降噪与超分辨率页面的算法列表中？",
-                QMessageBox.Yes | QMessageBox.No
-            )
-
-            if reply == QMessageBox.Yes:
-                self.integrate_model()
+            # 启用集成按钮
+            self.integrate_model_btn.setEnabled(True)
         else:
             self.status_label.setText("训练失败")
             self.status_label.setStyleSheet(f"color: {DesignTokens.ERROR}; font-size: 15px;")
@@ -825,16 +852,35 @@ class Noise2VoidPage(QWidget):
 
     def integrate_model(self):
         """集成模型到算法列表"""
+        if not hasattr(self, 'output_dir') or not self.output_dir:
+            QMessageBox.warning(self, "警告", "请先选择模型输出目录")
+            return
+
+        # 检查模型文件是否存在
+        model_file = os.path.join(self.output_dir, 'noise2void_model.pth')
+        if not os.path.exists(model_file):
+            QMessageBox.warning(self, "警告", "未找到训练好的模型文件")
+            return
+
         try:
             from algorithm_config import add_algorithm
             import shutil
 
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            algo_key = f"trained_neural_denoise_n2v_{timestamp}"
-            algo_name = f"Noise2Void (Self-Supervised) [{timestamp}]"
 
-            # 复制模型到 integrated_model/denoise 目录
-            target_base = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise', timestamp)
+            # 根据选择的模型类型决定目标目录
+            model_type = self.model_type_combo.currentText()
+            if "降噪" in model_type:
+                target_subdir = "denoise"
+                algo_key = f"trained_neural_denoise_n2v_{timestamp}"
+                algo_name = f"Noise2Void (Self-Supervised) [{timestamp}]"
+            else:
+                target_subdir = "super_resolution"
+                algo_key = f"trained_sr_n2v_{timestamp}"
+                algo_name = f"Noise2Void SR [{timestamp}]"
+
+            # 复制模型到 integrated_model 目录
+            target_base = os.path.join(os.path.dirname(__file__), 'integrated_model', target_subdir, timestamp)
             os.makedirs(target_base, exist_ok=True)
 
             # 复制模型文件
@@ -845,13 +891,15 @@ class Noise2VoidPage(QWidget):
                     shutil.copy2(src, dst)
 
             # 添加到算法配置
-            if add_algorithm('denoise', algo_key, algo_name, enabled=True):
+            if add_algorithm('denoise' if '降噪' in model_type else 'super_resolution', algo_key, algo_name, enabled=True):
                 QMessageBox.information(self, "成功", f"模型已集成到算法列表:\n{algo_name}")
                 self.append_log(f"模型已集成：{algo_name}")
+                self.integrate_model_btn.setEnabled(False)
             else:
                 QMessageBox.warning(self, "警告", "添加到算法列表失败")
 
         except Exception as e:
+            QMessageBox.warning(self, "错误", f"集成失败：{str(e)}")
             QMessageBox.warning(self, "错误", f"集成失败：{str(e)}")
 
     def append_log(self, message):
