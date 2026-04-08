@@ -724,13 +724,12 @@ class PreprocessPage(QWidget):
         info_label.setStyleSheet("color: #475569; font-size: 15px; font-weight: 500; padding: 8px;")
         left_layout.addWidget(info_label)
 
-        # 图像预览（移到左侧上方）
-        preview_group = QGroupBox("源图像预览")
-        preview_layout = QVBoxLayout(preview_group)
-        preview_layout.setSpacing(3)
-        preview_layout.setContentsMargins(3, 3, 3, 3)
-        preview_group.setMinimumHeight(400)
+        # 1. 加载 X 光图像
+        load_group = QGroupBox("1. 加载 X 光图像")
+        load_group.setMinimumHeight(550)
+        load_layout = QVBoxLayout(load_group)
 
+        # 图像预览（在加载按钮上方）
         self.source_image_label = QLabel("未加载图像")
         self.source_image_label.setObjectName("imageBox")
         self.source_image_label.setStyleSheet("""
@@ -745,14 +744,10 @@ class PreprocessPage(QWidget):
         """)
         self.source_image_label.setAlignment(Qt.AlignCenter)
         self.source_image_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.source_image_label.setMinimumSize(350, 350)
-        preview_layout.addWidget(self.source_image_label)
-        left_layout.addWidget(preview_group)
+        self.source_image_label.setMinimumSize(450, 400)
+        load_layout.addWidget(self.source_image_label)
 
-        # 1. 加载图像
-        load_group = QGroupBox("1. 加载 X 光图像")
-        load_group.setMinimumHeight(180)
-        load_layout = QVBoxLayout(load_group)
+        # 加载按钮
         self.load_btn = QPushButton("加载")
         self.load_btn.clicked.connect(self.load_source_image)
         self.load_btn.setMinimumHeight(48)
@@ -868,7 +863,7 @@ class PreprocessPage(QWidget):
         return widget
 
     def _create_params_only_panel(self):
-        """创建仅显示噪声参数的面板（步骤 1 右侧）。"""
+        """创建右侧面板：噪声参数 + 噪音分析说明（步骤 1 右侧）。"""
         panel = QFrame()
         panel.setStyleSheet("""
             QFrame {
@@ -884,14 +879,14 @@ class PreprocessPage(QWidget):
 
         # 噪声参数显示
         params_group = QGroupBox("提取的噪声参数")
-        params_group.setMinimumHeight(500)
+        params_group.setMinimumHeight(280)
         params_layout = QVBoxLayout(params_group)
         params_layout.setSpacing(4)
         params_layout.setContentsMargins(4, 4, 4, 4)
         self.extracted_params_text = QTextEdit()
         self.extracted_params_text.setReadOnly(True)
-        self.extracted_params_text.setMaximumHeight(560)
-        self.extracted_params_text.setMinimumHeight(480)
+        self.extracted_params_text.setMaximumHeight(320)
+        self.extracted_params_text.setMinimumHeight(260)
         self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
         self.extracted_params_text.setStyleSheet("""
             QTextEdit {
@@ -907,7 +902,70 @@ class PreprocessPage(QWidget):
         params_layout.addWidget(self.extracted_params_text)
         layout.addWidget(params_group)
 
+        # 噪音分析说明
+        analysis_group = QGroupBox("噪音分析 - 参数计算原理")
+        analysis_group.setMinimumHeight(450)
+        analysis_layout = QVBoxLayout(analysis_group)
+        analysis_layout.setSpacing(10)
+        analysis_layout.setContentsMargins(12, 12, 12, 12)
+
+        analysis_text = QTextEdit()
+        analysis_text.setReadOnly(True)
+        analysis_text.setMaximumHeight(500)
+        analysis_text.setMinimumHeight(430)
+        analysis_text.setHtml(self._get_noise_analysis_html())
+        analysis_text.setStyleSheet("""
+            QTextEdit {
+                font-family: 'Microsoft YaHei', sans-serif;
+                font-size: 13px;
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                color: #475569;
+                line-height: 1.6;
+            }
+        """)
+        analysis_layout.addWidget(analysis_text)
+        layout.addWidget(analysis_group)
+
         return panel
+
+    def _get_noise_analysis_html(self):
+        """获取噪音分析说明的 HTML 内容。"""
+        return """
+        <h3 style="color: #0ea5e9; margin-bottom: 12px; font-size: 16px;">基于均匀区域法的噪声估计</h3>
+
+        <div style="background: #e0f2fe; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+        <strong>噪声模型：</strong>Poisson(λ) + AWGN(σ) + Gaussian Blur(σ)
+        </div>
+
+        <h4 style="color: #0284c7; margin-top: 10px;">步骤 1: 计算局部方差图</h4>
+        <p style="margin: 6px 0;">使用 15×15 滑动窗口，对每个像素位置计算邻域方差：</p>
+        <code style="display: block; background: #1e293b; color: #e2e8f0; padding: 8px; border-radius: 4px; margin: 6px 0;">
+        local_var = GaussianBlur((img - local_mean)², kernel=15)
+        </code>
+
+        <h4 style="color: #0284c7; margin-top: 10px;">步骤 2: 选择均匀区域盒</h4>
+        <p style="margin: 6px 0;">按亮度分层（33%/66% 分位数），每层选方差最小的 3 个区域：</p>
+        <ul style="margin: 6px 0; padding-left: 20px;">
+        <li><strong style="color: #64748b;">暗部区域</strong> (0-33%)：3 个盒</li>
+        <li><strong style="color: #64748b;">中等区域</strong> (33%-66%)：3 个盒</li>
+        <li><strong style="color: #64748b;">亮部区域</strong> (66%-100%)：3 个盒</li>
+        </ul>
+
+        <h4 style="color: #0284c7; margin-top: 10px;">步骤 3: 估计 Poisson λ</h4>
+        <p style="margin: 6px 0;">在每个均匀盒内，利用泊松分布的方差/均值关系：</p>
+        <code style="display: block; background: #1e293b; color: #e2e8f0; padding: 8px; border-radius: 4px; margin: 6px 0;">
+        λ = mean² / (variance - AWGN_σ²)
+        </code>
+
+        <h4 style="color: #0284c7; margin-top: 10px;">步骤 4: 估计 AWGN σ</h4>
+        <p style="margin: 6px 0;">从最平坦区域的残差噪声计算标准差：</p>
+        <code style="display: block; background: #1e293b; color: #e2e8f0; padding: 8px; border-radius: 4px; margin: 6px 0;">
+        AWGN_σ = std(residual)
+        </code>
+        """
 
     def _create_step2_widget(self):
         """创建步骤 2：数据集生成界面。"""
