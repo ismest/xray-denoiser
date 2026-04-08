@@ -778,6 +778,11 @@ class Noise2VoidPage(QWidget):
             QMessageBox.warning(self, "警告", "请先选择模型输出目录")
             return
 
+        # 创建带时间戳的子目录（与 DenseNet 训练页面逻辑一致）
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_dir = os.path.join(self.output_dir, f'noise2void_{timestamp}')
+        self.output_dir_edit.setText(output_dir)
+
         # 获取参数
         params = {
             'epochs': self.epochs_spin.value(),
@@ -797,7 +802,7 @@ class Noise2VoidPage(QWidget):
 
         # 创建并启动训练线程
         self.training_thread = Noise2VoidTrainingThread(
-            self.image_path, self.output_dir, params
+            self.image_path, output_dir, params
         )
         self.training_thread.progress.connect(self.update_progress)
         self.training_thread.finished.connect(self.training_finished)
