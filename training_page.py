@@ -840,6 +840,9 @@ class TrainingPage(QWidget):
         """更新进度。"""
         self.progress.setValue(value)
         self.status_label.setText(message)
+        # 将硬件检测和预计时间信息添加到日志
+        if "硬件检测" in message or "预计训练时间" in message:
+            self.log_text.append(message)
 
     def update_epoch_metrics(self, epoch, metrics):
         """更新 Epoch 指标。"""
