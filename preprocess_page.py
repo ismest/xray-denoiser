@@ -772,9 +772,10 @@ class PreprocessPage(QWidget):
 
         # 2. 提取参数
         param_group = QGroupBox("2. 提取参数")
+        param_group.setObjectName("compactParamGroup")
         param_layout = QVBoxLayout(param_group)
-        param_layout.setSpacing(8)
-        param_layout.setContentsMargins(10, 10, 10, 10)
+        param_layout.setSpacing(4)
+        param_layout.setContentsMargins(8, 8, 8, 8)
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
@@ -2103,25 +2104,47 @@ class PreprocessPage(QWidget):
 
         # GroupBox 样式
         for group in self.findChildren(QGroupBox):
-            group.setStyleSheet("""
-                QGroupBox {
-                    font-weight: 600;
-                    color: #475569;
-                    border: 1px solid #e2e8f0;
-                    border-radius: 8px;
-                    margin-top: 16px;
-                    padding-top: 16px;
-                    font-size: 16px;
-                }
-                QGroupBox::title {
-                    subcontrol-origin: margin;
-                    left: 12px;
-                    padding: 0 8px;
-                    color: #0ea5e9;
-                    font-weight: 600;
-                    font-size: 16px;
-                }
-            """)
+            if group.objectName() == "compactParamGroup":
+                # 紧凑参数组 - 使用更小的内边距
+                group.setStyleSheet("""
+                    QGroupBox {
+                        font-weight: 600;
+                        color: #475569;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        margin-top: 8px;
+                        padding-top: 8px;
+                        font-size: 14px;
+                    }
+                    QGroupBox::title {
+                        subcontrol-origin: margin;
+                        left: 10px;
+                        padding: 0 6px;
+                        color: #0ea5e9;
+                        font-weight: 600;
+                        font-size: 14px;
+                    }
+                """)
+            else:
+                group.setStyleSheet("""
+                    QGroupBox {
+                        font-weight: 600;
+                        color: #475569;
+                        border: 1px solid #e2e8f0;
+                        border-radius: 8px;
+                        margin-top: 16px;
+                        padding-top: 16px;
+                        font-size: 16px;
+                    }
+                    QGroupBox::title {
+                        subcontrol-origin: margin;
+                        left: 12px;
+                        padding: 0 8px;
+                        color: #0ea5e9;
+                        font-weight: 600;
+                        font-size: 16px;
+                    }
+                """)
 
         # 按钮样式
         for btn in self.findChildren(QPushButton):
