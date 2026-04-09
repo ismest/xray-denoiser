@@ -721,8 +721,8 @@ class PreprocessPage(QWidget):
         # 1. 加载 X 光图像
         load_group = QGroupBox("1. 加载 X 光图像")
         load_layout = QVBoxLayout(load_group)
-        load_layout.setSpacing(6)
-        load_layout.setContentsMargins(8, 8, 8, 8)
+        load_layout.setSpacing(8)
+        load_layout.setContentsMargins(10, 10, 10, 14)
 
         # 图像预览（在加载按钮上方）
         self.source_image_label = QLabel()
@@ -773,10 +773,10 @@ class PreprocessPage(QWidget):
         # 2. 提取参数
         param_group = QGroupBox("2. 提取参数")
         param_group.setObjectName("compactParamGroup")
-        param_group.setMaximumHeight(90)
+        param_group.setMaximumHeight(100)
         param_layout = QVBoxLayout(param_group)
-        param_layout.setSpacing(4)
-        param_layout.setContentsMargins(8, 0, 8, 0)
+        param_layout.setSpacing(6)
+        param_layout.setContentsMargins(10, 10, 10, 10)
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
@@ -2127,10 +2127,10 @@ class PreprocessPage(QWidget):
                         color: #475569;
                         border: 1px solid #e2e8f0;
                         border-radius: 8px;
-                        margin-top: 4px;
-                        padding-top: 0px;
+                        margin-top: 12px;
+                        padding-top: 10px;
                         font-size: 14px;
-                        max-height: 90px;
+                        max-height: 100px;
                     }
                     QGroupBox::title {
                         subcontrol-origin: margin;
