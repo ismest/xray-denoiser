@@ -773,7 +773,7 @@ class PreprocessPage(QWidget):
         # 2. 提取参数
         param_group = QGroupBox("2. 提取参数")
         param_group.setObjectName("compactParamGroup")
-        param_group.setMaximumHeight(60)
+        param_group.setMaximumHeight(90)
         param_layout = QVBoxLayout(param_group)
         param_layout.setSpacing(4)
         param_layout.setContentsMargins(8, 0, 8, 0)
@@ -2130,7 +2130,7 @@ class PreprocessPage(QWidget):
                         margin-top: 4px;
                         padding-top: 0px;
                         font-size: 14px;
-                        max-height: 60px;
+                        max-height: 90px;
                     }
                     QGroupBox::title {
                         subcontrol-origin: margin;
