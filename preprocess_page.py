@@ -762,10 +762,9 @@ class PreprocessPage(QWidget):
 
         # 文件信息显示
         self.source_info_label = QLabel("未加载图像")
-        self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 13px; line-height: 1.4;")
+        self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 13px;")
         self.source_info_label.setWordWrap(True)
-        self.source_info_label.setMinimumHeight(20)
-        self.source_info_label.setMaximumHeight(40)
+        self.source_info_label.setMinimumHeight(18)
         load_layout.addWidget(self.source_info_label)
 
         left_layout.addWidget(load_group)
@@ -778,10 +777,9 @@ class PreprocessPage(QWidget):
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
-        method_label.setStyleSheet("color: #64748b; font-size: 13px; line-height: 1.3;")
+        method_label.setStyleSheet("color: #64748b; font-size: 13px;")
         method_label.setWordWrap(True)
-        method_label.setMinimumHeight(10)
-        method_label.setMaximumHeight(15)
+        method_label.setFixedHeight(18)
         param_layout.addWidget(method_label)
 
         left_layout.addWidget(param_group)
