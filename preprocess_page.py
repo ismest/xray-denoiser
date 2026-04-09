@@ -779,6 +779,7 @@ class PreprocessPage(QWidget):
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
+        method_label.setObjectName("methodLabel")
         method_label.setStyleSheet("color: #64748b; font-size: 12px;")
         method_label.setWordWrap(False)
         method_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
@@ -2089,6 +2090,17 @@ class PreprocessPage(QWidget):
                     background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
                     border-radius: 8px;
                 """)
+
+        # 方法说明标签 - 特殊处理，确保紧凑高度
+        method_label = self.findChild(QLabel, "methodLabel")
+        if method_label:
+            method_label.setStyleSheet("""
+                color: #64748b;
+                font-size: 12px;
+                padding: 0px;
+                margin: 0px;
+            """)
+            method_label.adjustSize()
 
         # 控制面板
         for panel in self.findChildren(QFrame):
