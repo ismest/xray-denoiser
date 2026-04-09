@@ -291,10 +291,11 @@ class NoiseExtractionThread(QThread):
             'estimated_noise_std': float(noise_std),
             'image_dtype': str(image.dtype),
             'image_shape': list(image.shape),
-            'lambda_estimates_count': len(lambda_estimates),
+            'box_coords': box_coords,  # 区域盒坐标列表（用于显示）
+            'box_count': len(selected_boxes),  # 选择的盒子数量
+            'lambda_estimates_count': len(lambda_estimates),  # 成功估计λ的数量
             'lambda_min': float(np.min(lambda_estimates)) if lambda_estimates else 0,
             'lambda_max': float(np.max(lambda_estimates)) if lambda_estimates else 0,
-            'box_coords': box_coords,  # 区域盒坐标列表
             'method': 'homogeneous_region_box',
             'reference': 'Rev. Sci. Instrum. 95, 063508 (2024)',
         }
@@ -921,7 +922,7 @@ class PreprocessPage(QWidget):
         <h3 style="color: #0ea5e9; margin-bottom: 12px; font-size: 16px;">基于均匀区域法的噪声估计</h3>
 
         <div style="background: #e0f2fe; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
-        <strong>噪声模型：</strong>Poisson(λ) + AWGN(σ) + Gaussian Blur(σ)
+        <strong>噪声模型：</strong>Poisson(λ) + AWGN(σ)
         </div>
 
         <h4 style="color: #0284c7; margin-top: 10px;">步骤 1: 计算局部方差图</h4>
@@ -1548,11 +1549,10 @@ class PreprocessPage(QWidget):
             self.blur_sigma_spin.setValue(self.noise_params.get('gaussian_blur_sigma', 1.0))
 
             # 显示简要信息（步骤 1 页面右侧）
-            box_count = self.noise_params.get('lambda_estimates_count', len(self.noise_params.get('box_coords', [])))
+            box_count = self.noise_params.get('box_count', len(self.noise_params.get('box_coords', [])))
             self.extracted_params_text.setPlainText(
                 f"Poisson λ = {self.noise_params['poisson_lambda']:.1f}\n"
                 f"AWGN σ = {self.noise_params['awgn_sigma']:.4f}\n"
-                f"Gaussian Blur σ = 1.0\n"
                 f"(基于 {box_count} 个均匀区域盒估计)"
             )
 
@@ -2120,7 +2120,7 @@ class PreprocessPage(QWidget):
         # GroupBox 样式
         for group in self.findChildren(QGroupBox):
             if group.objectName() == "compactParamGroup":
-                # 紧凑参数组 - 使用更小的内边距
+                # 紧凑参数组 - 字体大小与其他 GroupBox 保持一致
                 group.setStyleSheet("""
                     QGroupBox {
                         font-weight: 600;
@@ -2129,7 +2129,7 @@ class PreprocessPage(QWidget):
                         border-radius: 8px;
                         margin-top: 12px;
                         padding-top: 10px;
-                        font-size: 14px;
+                        font-size: 16px;
                         max-height: 100px;
                     }
                     QGroupBox::title {
@@ -2138,7 +2138,7 @@ class PreprocessPage(QWidget):
                         padding: 0 6px;
                         color: #0ea5e9;
                         font-weight: 600;
-                        font-size: 14px;
+                        font-size: 16px;
                     }
                 """)
             else:
