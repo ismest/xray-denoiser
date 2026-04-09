@@ -777,9 +777,9 @@ class PreprocessPage(QWidget):
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
-        method_label.setStyleSheet("color: #64748b; font-size: 13px;")
+        method_label.setStyleSheet("color: #64748b; font-size: 12px;")
         method_label.setWordWrap(True)
-        method_label.setFixedHeight(18)
+        method_label.setFixedHeight(16)
         param_layout.addWidget(method_label)
 
         left_layout.addWidget(param_group)
