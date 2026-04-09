@@ -721,8 +721,8 @@ class PreprocessPage(QWidget):
         # 1. 加载 X 光图像
         load_group = QGroupBox("1. 加载 X 光图像")
         load_layout = QVBoxLayout(load_group)
-        load_layout.setSpacing(8)
-        load_layout.setContentsMargins(10, 10, 10, 10)
+        load_layout.setSpacing(6)
+        load_layout.setContentsMargins(8, 8, 8, 8)
 
         # 图像预览（在加载按钮上方）
         self.source_image_label = QLabel()
@@ -765,7 +765,7 @@ class PreprocessPage(QWidget):
         self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 13px;")
         self.source_info_label.setWordWrap(False)
         self.source_info_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.source_info_label.setMaximumHeight(18)
+        self.source_info_label.setFixedHeight(18)
         load_layout.addWidget(self.source_info_label)
 
         left_layout.addWidget(load_group)
@@ -773,9 +773,10 @@ class PreprocessPage(QWidget):
         # 2. 提取参数
         param_group = QGroupBox("2. 提取参数")
         param_group.setObjectName("compactParamGroup")
+        param_group.setMaximumHeight(60)
         param_layout = QVBoxLayout(param_group)
         param_layout.setSpacing(4)
-        param_layout.setContentsMargins(8, 8, 8, 8)
+        param_layout.setContentsMargins(8, 0, 8, 0)
 
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
@@ -783,7 +784,7 @@ class PreprocessPage(QWidget):
         method_label.setStyleSheet("color: #64748b; font-size: 12px;")
         method_label.setWordWrap(False)
         method_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        method_label.setMaximumHeight(16)
+        method_label.setFixedHeight(16)
         param_layout.addWidget(method_label)
 
         left_layout.addWidget(param_group)
@@ -833,6 +834,9 @@ class PreprocessPage(QWidget):
             }
         """)
         left_layout.addWidget(self.step1_progress)
+
+        # 添加弹性空间，将内容推向顶部
+        left_layout.addStretch()
 
         # 右侧：噪声参数显示
         right_panel = self._create_params_only_panel()
@@ -2100,7 +2104,6 @@ class PreprocessPage(QWidget):
                 padding: 0px;
                 margin: 0px;
             """)
-            method_label.adjustSize()
 
         # 控制面板
         for panel in self.findChildren(QFrame):
@@ -2124,9 +2127,10 @@ class PreprocessPage(QWidget):
                         color: #475569;
                         border: 1px solid #e2e8f0;
                         border-radius: 8px;
-                        margin-top: 8px;
-                        padding-top: 8px;
+                        margin-top: 4px;
+                        padding-top: 0px;
                         font-size: 14px;
+                        max-height: 60px;
                     }
                     QGroupBox::title {
                         subcontrol-origin: margin;
