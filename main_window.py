@@ -317,6 +317,52 @@ class HelpGuideDialog(QDialog):
 ## 系统简介
 本系统提供 X 射线图像的降噪处理和超分辨率重构功能，采用深度学习算法，有效提升图像质量。
 
+## 项目架构
+
+### 页面结构
+| 页面 | 文件 | 说明 |
+|------|------|------|
+| DenseNet | `densenet_page.py` | 三个标签页：噪音提取 / 数据集生成 / 算法训练 |
+| Noise2Void | `noise2void_page.py` | 自监督训练，单张图像无需干净参考 |
+| 降噪与超分 | `denoise_sr_page.py` | 降噪处理 + 超分辨率重构 |
+
+### 核心模块
+- `training_page.py` — 算法训练逻辑（嵌入 DenseNet 第三个标签）
+- `image_processor.py` — 图像加载 / 降噪 / 超分 / 保存的统一入口
+- `denoise_algorithms.py` — 经典降噪算法（NLM、Bilateral、Wavelet、BM3D 等）
+- `super_resolution.py` — 超分辨率算法（Bicubic、Lanczos、Edge-preserving、神经网络）
+- `neural_denoise.py` — ONNX 推理，patch 分块处理
+- `metrics.py` — PSNR / SSIM / MSE 评估指标
+
+### 算法配置管理
+- `algorithm_config.py` + `algorithm_config.json` — 算法启用 / 禁用 / 名称持久化
+- `algorithm_editor_dialog.py` — 管理对话框（重命名、加载自定义模型、恢复默认）
+
+### 训练模型存储
+```
+integrated_model/
+├── denoise/<YYYYMMDD_HHMMSS>/
+│   ├── denoiser.onnx       # ONNX 推理模型（优先使用）
+│   ├── best_denoiser.pth   # PyTorch 权重
+│   └── model_ready.marker  # 存在即代表模型完整
+└── super_resolution/<YYYYMMDD_HHMMSS>/
+    └── …同上
+```
+
+### 数据流
+```
+DenseNet
+  噪音提取  →  noise_profile_output/noise_params.json
+  数据集生成  →  dataset/train/{noisy, clean}/
+  算法训练  →  integrated_model/<type>/<timestamp>/
+
+降噪与超分
+  加载图像  →  ImageProcessor
+    降噪  →  denoise_algorithms / NeuralDenoiser(ONNX) / PyTorch
+    超分  →  super_resolution / NeuralDenoiser(ONNX) / PyTorch
+    指标  →  metrics
+```
+
 ## 功能模块
 
 ### 1. DenseNet
