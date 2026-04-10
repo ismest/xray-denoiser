@@ -103,15 +103,22 @@ class NoiseExtractionThread(QThread):
             import traceback
             self.finished.emit(False, f"提取失败：{e}\n{traceback.format_exc()}")
 
+    @staticmethod
+    def _boxes_overlap(cy1, cx1, cy2, cx2, box_h, box_w, gap=5):
+        """判断两个盒子（含间隔 gap 像素）是否矩形相交。"""
+        return not (cx1 + box_w + gap <= cx2 or cx2 + box_w + gap <= cx1 or
+                    cy1 + box_h + gap <= cy2 or cy2 + box_h + gap <= cy1)
+
     def _estimate_noise_params(self, image):
         """估计噪声参数（Poisson + AWGN）- 基于论文 Rev. Sci. Instrum. 95, 063508 (2024) 方法。
 
         使用均匀区域盒（homogeneous region box）方法估计噪声参数：
         1. 计算全图每个位置的局部方差
-        2. 选择局部方差最小的区域（最均匀的区域）
-        3. 在均匀区域内放置盒子
-        4. 在每个盒内归一化到最大值，使用泊松分布的方差/均值关系估计λ值
-        5. 从平坦区域估计 AWGN
+        2. 将候选框按亮度分为暗部/亮部两层，每层选方差最小的 2 个不重叠盒子
+        3. 归一化到图像最大值（与论文一致）
+        4. 用泊松分布方差/均值关系 λ = μ/σ² 估计 λ
+        5. 从平坦区域残差估计 AWGN σ
+        6. 生成合成分布（Poisson+AWGN+Gaussian blur）供直方图拟合对比
         """
         # 转换到 float [0, 1]
         if image.dtype == np.uint16:
@@ -120,8 +127,7 @@ class NoiseExtractionThread(QThread):
             img_float = image.astype(np.float64) / 255.0
         else:
             img_float = image.astype(np.float64)
-            # 归一化到 [0, 1]
-            img_float = (img_float - img_float.min()) / (img_float.max() - img_float.min())
+            img_float = (img_float - img_float.min()) / (img_float.max() - img_float.min() + 1e-10)
 
         # 如果是彩色图像，转换为灰度
         if len(img_float.shape) == 3:
@@ -131,36 +137,23 @@ class NoiseExtractionThread(QThread):
 
         h, w = img_gray.shape
 
+        # 图像归一化最大值（论文方法：归一化到整张图像最大值）
+        img_max = float(img_gray.max()) if img_gray.max() > 0 else 1.0
+
         # ========== 步骤 1: 计算全图局部方差图 ==========
-        # 使用滑动窗口计算每个像素位置的局部方差
-        kernel_size = 15  # 滑动窗口大小
+        kernel_size = 15
         local_mean = cv2.GaussianBlur(img_gray, (kernel_size, kernel_size), 0)
         local_var = cv2.GaussianBlur((img_gray - local_mean) ** 2, (kernel_size, kernel_size), 0)
 
-        # ========== 步骤 2: 在均匀区域内选择盒子 ==========
-        # 盒子大小：根据图像大小动态调整（约图像的 3%-5%，最小 30x30，最大 80x80）
+        # ========== 步骤 2: 盒子大小与候选区域 ==========
         min_dim = min(h, w)
-        box_ratio = 0.04  # 盒子大小约占图像的 4%
-        box_h = int(min_dim * box_ratio)
-        box_w = int(min_dim * box_ratio)
-        box_h = max(30, min(80, box_h))  # 限制在 30-80 之间
-        box_w = max(30, min(80, box_w))
-
-        # 采样步长：根据图像大小动态调整（约盒子大小的一半）
+        box_h = max(30, min(80, int(min_dim * 0.04)))
+        box_w = max(30, min(80, int(min_dim * 0.04)))
         step_y = max(15, box_h // 2)
         step_x = max(15, box_w // 2)
 
         print(f"图像尺寸：{w}x{h}, 盒子大小：{box_w}x{box_h}, 采样步长：{step_x}x{step_y}")
 
-        lambda_estimates = []
-        noise_std_estimates = []
-        box_coords = []  # 保存有效区域盒的坐标
-        box_data_list = []  # 保存每个盒子的分布数据（用于绘图）
-
-        # 在平坦区域内采样盒子
-        num_samples = 4  # 最多选择 4 个盒子（每层 2 个）
-
-        # 收集所有候选区域
         all_candidates = []
         for i in range(0, h - box_h, step_y):
             for j in range(0, w - box_w, step_x):
@@ -168,224 +161,201 @@ class NoiseExtractionThread(QThread):
                 box_mean = np.mean(img_gray[i:i+box_h, j:j+box_w])
                 all_candidates.append((i, j, avg_var, box_mean))
 
-        # 策略：分亮度层级选择，确保暗部和亮部都有代表
-        # 将候选区域按亮度分为 2 层：暗部 (0-50%)、亮部 (50%-100%)
+        # ========== 步骤 3: 按亮度分层，选方差最小的不重叠盒子 ==========
         brightness_values = [c[3] for c in all_candidates]
         p50 = np.percentile(brightness_values, 50)
+        print(f"亮度中位数：{p50:.4f}")
 
-        print(f"亮度分位数：50%={p50:.4f}")
-
-        # 每层按方差排序选择 2 个区域
-        dark_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br <= p50]
-        bright_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br > p50]
-
+        dark_regions  = sorted([(cy, cx, v, br) for cy, cx, v, br in all_candidates if br <= p50], key=lambda x: x[2])
+        bright_regions = sorted([(cy, cx, v, br) for cy, cx, v, br in all_candidates if br > p50],  key=lambda x: x[2])
         print(f"候选区域：暗部={len(dark_regions)}, 亮部={len(bright_regions)}")
 
-        # 各层按方差排序
-        dark_regions.sort(key=lambda x: x[2])
-        bright_regions.sort(key=lambda x: x[2])
+        def pick_nonoverlapping(regions, n=2):
+            """从排序后的候选列表中挑选 n 个不重叠的盒子。"""
+            chosen = []
+            for cy, cx, var, br in regions:
+                overlaps = any(self._boxes_overlap(cy, cx, sy, sx, box_h, box_w)
+                               for sy, sx, _, _ in chosen)
+                if not overlaps:
+                    chosen.append((cy, cx, var, br))
+                    if len(chosen) >= n:
+                        break
+            # 若不足 n 个，放宽：只检查与已选框不完全覆盖（IoU < 0.3）
+            if len(chosen) < n:
+                for cy, cx, var, br in regions:
+                    if any(cy == sy and cx == sx for sy, sx, _, _ in chosen):
+                        continue
+                    overlaps = any(self._boxes_overlap(cy, cx, sy, sx, box_h, box_w, gap=0)
+                                   for sy, sx, _, _ in chosen)
+                    if not overlaps:
+                        chosen.append((cy, cx, var, br))
+                        if len(chosen) >= n:
+                            break
+            return chosen
 
-        # 按层独立选择，确保每层至少 2 个盒子（每层内检查距离）
-        selected_boxes = []
-        min_distance = box_h * 0.8  # 盒子中心最小距离（80% 盒子大小）
+        dark_chosen   = pick_nonoverlapping(dark_regions,   n=2)
+        bright_chosen = pick_nonoverlapping(bright_regions, n=2)
+        selected_boxes = dark_chosen + bright_chosen
+        dark_count   = len(dark_chosen)
+        bright_count = len(bright_chosen)
 
-        # 暗部选 2 个（检查距离）
-        dark_count = 0
-        for cy, cx, var, br in dark_regions:
-            # 检查与已选暗部盒子的距离
-            too_close = False
-            for sy, sx, _, _ in selected_boxes[-dark_count:] if dark_count > 0 else []:
-                dist = np.sqrt((cy - sy) ** 2 + (cx - sx) ** 2)
-                if dist < min_distance:
-                    too_close = True
-                    break
-            if not too_close:
-                selected_boxes.append((cy, cx, var, br))
-                dark_count += 1
-                if dark_count >= 2:
-                    break
+        # ========== 步骤 4: 在每个盒子内估计噪声参数 ==========
+        lambda_estimates    = []
+        noise_std_estimates = []
+        box_coords    = []
+        box_data_list = []
 
-        # 如果暗部不足 2 个，放宽距离限制再选
-        while dark_count < 2 and len(dark_regions) > dark_count:
-            for cy, cx, var, br in dark_regions[dark_count:]:
-                selected_boxes.append((cy, cx, var, br))
-                dark_count += 1
-                if dark_count >= 2:
-                    break
-
-        # 亮部选 2 个（检查距离）
-        bright_count = 0
-        for cy, cx, var, br in bright_regions:
-            # 检查与已选亮部盒子的距离
-            too_close = False
-            # 亮部盒子在 selected_boxes 中的索引从 dark_count 开始
-            for sy, sx, _, _ in selected_boxes[dark_count:]:
-                dist = np.sqrt((cy - sy) ** 2 + (cx - sx) ** 2)
-                if dist < min_distance:
-                    too_close = True
-                    break
-            if not too_close:
-                selected_boxes.append((cy, cx, var, br))
-                bright_count += 1
-                if bright_count >= 2:
-                    break
-
-        # 如果亮部不足 2 个，放宽距离限制再选
-        while bright_count < 2 and len(bright_regions) > bright_count:
-            for cy, cx, var, br in bright_regions[bright_count:]:
-                selected_boxes.append((cy, cx, var, br))
-                bright_count += 1
-                if bright_count >= 2:
-                    break
-
-        # 更新 num_samples 为实际选择的盒子数
-        num_samples = len(selected_boxes)
-
-        # ========== 步骤 4: 在选中的盒子内估计噪声参数 ==========
-        # 盒子标签：1a, 1b (暗部); 2a, 2b (亮部)
-        layer_labels = ['1', '2']  # 暗部、亮部
-        sub_labels = ['a', 'b']  # 每层 2 个
+        layer_labels = ['1', '2']
+        sub_labels   = ['a', 'b']
 
         for idx, (cy, cx, _, _) in enumerate(selected_boxes):
             y1, y2 = cy, min(cy + box_h, h)
             x1, x2 = cx, min(cx + box_w, w)
-
             box = img_gray[y1:y2, x1:x2]
-
-            # 记录区域盒坐标
             box_coords.append({'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2)})
 
-            # 归一化到盒内最大值（论文方法）
-            box_max = box.max()
-            box_normalized = box / box_max
+            # 归一化到图像最大值（论文方法）
+            box_normalized = box / img_max
 
-            # 计算盒内统计量
-            box_mean = np.mean(box_normalized)
-            box_var = np.var(box_normalized)
+            # 盒内统计量
+            box_mean = float(np.mean(box_normalized))
+            box_var  = float(np.var(box_normalized))
 
-            # 计算强度分布（原始信号）
-            hist_signal, bin_edges = np.histogram(box_normalized.flatten(), bins=50, range=(0, 1))
-            hist_signal = hist_signal / hist_signal.sum()  # 归一化为概率
+            # 直方图范围：框均值 ±4σ，对暗区不会全部挤在一侧
+            bstd = float(np.std(box_normalized))
+            hist_lo = max(0.0, box_mean - 4 * bstd)
+            hist_hi = min(1.0, box_mean + 4 * bstd)
+            if hist_hi - hist_lo < 1e-6:
+                hist_lo, hist_hi = 0.0, 1.0
+            hist_range = (hist_lo, hist_hi)
 
-            # 计算局部方差用于估计 AWGN
-            kernel_size_box = 5
-            local_mean_box = cv2.GaussianBlur(box, (kernel_size_box, kernel_size_box), 0)
-            local_var_box = cv2.GaussianBlur((box - local_mean_box) ** 2, (kernel_size_box, kernel_size_box), 0)
+            hist_signal, bin_edges = np.histogram(box_normalized.flatten(), bins=50, range=hist_range)
+            hist_signal = hist_signal / (hist_signal.sum() + 1e-10)
 
-            # 提取噪声（残差）
-            noise_residual = (box - local_mean_box) / box_max
-            hist_noise, _ = np.histogram(noise_residual.flatten(), bins=50)
-            hist_noise = hist_noise / hist_noise.sum()  # 归一化为概率
+            # 层与位置
+            if idx < dark_count:
+                layer_idx_val = 0
+                layer_name    = '暗部'
+                pos_in_layer  = idx
+            else:
+                layer_idx_val = 1
+                layer_name    = '亮部'
+                pos_in_layer  = idx - dark_count
+            box_label = f"{layer_labels[layer_idx_val]}{sub_labels[pos_in_layer]}"
+
+            # Poisson λ = μ / σ²
+            box_lambda = float(box_mean / box_var) if box_var > 1e-12 else 0.0
+            if 2 < box_lambda < 200:
+                lambda_estimates.append(box_lambda)
+
+            # AWGN σ：从平坦区域（局部方差最小 20%）的残差估计
+            kernel_size_box  = 5
+            local_mean_box   = cv2.GaussianBlur(box, (kernel_size_box, kernel_size_box), 0)
+            local_var_box    = cv2.GaussianBlur((box - local_mean_box) ** 2,
+                                                (kernel_size_box, kernel_size_box), 0)
+            flat_thresh      = np.percentile(local_var_box, 20)
+            flat_mask        = local_var_box < flat_thresh
+            box_awgn_sigma   = 0.0
+            if np.sum(flat_mask) > 10:
+                noise_std_raw  = float(np.sqrt(np.mean(local_var_box[flat_mask])))
+                box_awgn_sigma = noise_std_raw / img_max  # 转换到归一化空间
+                noise_std_estimates.append(box_awgn_sigma)
+
+            # ===== 生成合成拟合分布（论文 Fig.2 虚线） =====
+            # 用估计的 λ 和 awgn_sigma 生成 Poisson+AWGN+GaussianBlur 合成分布
+            rng = np.random.default_rng(42 + idx)
+            patch = np.full((200, 200), box_mean, dtype=np.float64)
+            if box_lambda > 0:
+                counts   = rng.poisson(np.clip(patch * box_lambda, 0, None))
+                synthetic = counts.astype(np.float64) / box_lambda
+            else:
+                synthetic = patch.copy()
+            # AWGN
+            awgn_std_fit = max(box_awgn_sigma, 0.005)
+            synthetic += rng.normal(0.0, awgn_std_fit, synthetic.shape)
+            # Gaussian blur σ=1（论文固定值）
+            synthetic = cv2.GaussianBlur(synthetic.astype(np.float32), (0, 0), 1.0).astype(np.float64)
+            fitted_hist, fitted_bins = np.histogram(synthetic.flatten(), bins=50, range=hist_range)
+            fitted_hist = fitted_hist / (fitted_hist.sum() + 1e-10)
+
+            # 噪声残差分布
+            noise_residual  = (box - local_mean_box) / img_max
+            hist_noise, _   = np.histogram(noise_residual.flatten(), bins=50)
+            hist_noise      = hist_noise / (hist_noise.sum() + 1e-10)
             noise_bin_edges = np.linspace(noise_residual.min(), noise_residual.max(), 51)
 
-            # 保存盒子数据（用于绘图）- 根据 dark_count 判断属于哪一层
-            if idx < dark_count:
-                layer_idx = 0  # 暗部
-                layer_name = '暗部'
-                pos_in_layer = idx
-            else:
-                layer_idx = 1  # 亮部
-                layer_name = '亮部'
-                pos_in_layer = idx - dark_count
-
-            box_label = f"{layer_labels[layer_idx]}{sub_labels[pos_in_layer]}"
-            # 取最小方差区域（平坦区域）用于估计 AWGN
-            flat_threshold_box = np.percentile(local_var_box, 20)
-            flat_mask_box = local_var_box < flat_threshold_box
-            box_awgn_sigma = 0.0
-            if np.sum(flat_mask_box) > 10:
-                noise_std = np.sqrt(np.mean(local_var_box[flat_mask_box]))
-                box_awgn_sigma = float(noise_std)
-                noise_std_estimates.append(noise_std)
-
             box_data_list.append({
-                'box_id': idx + 1,
-                'label': box_label,
-                'layer': layer_labels[layer_idx],
-                'layer_name': layer_name,
-                'pos_in_layer': pos_in_layer,  # 用于确定颜色（0=orange, 1=blue）
-                'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2),  # 盒子坐标
-                'signal_hist': hist_signal.tolist(),
-                'signal_bins': bin_edges.tolist(),
-                'noise_hist': hist_noise.tolist(),
-                'noise_bins': noise_bin_edges.tolist(),
-                'box_mean': float(box_mean),
-                'box_lambda': float(box_mean / box_var) if box_var > 0 else 0,
-                'awgn_sigma': box_awgn_sigma  # 每盒的 AWGN 估计值
+                'box_id':       idx + 1,
+                'label':        box_label,
+                'layer':        layer_labels[layer_idx_val],
+                'layer_name':   layer_name,
+                'pos_in_layer': pos_in_layer,
+                'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2),
+                'signal_hist':  hist_signal.tolist(),
+                'signal_bins':  bin_edges.tolist(),
+                'fitted_hist':  fitted_hist.tolist(),
+                'fitted_bins':  fitted_bins.tolist(),
+                'hist_range':   list(hist_range),
+                'noise_hist':   hist_noise.tolist(),
+                'noise_bins':   noise_bin_edges.tolist(),
+                'box_mean':     box_mean,
+                'box_lambda':   box_lambda,
+                'awgn_sigma':   box_awgn_sigma,
             })
 
-            # 泊松噪声：variance ≈ mean / λ
-            if box_var > 0 and box_mean > 0:
-                box_lambda = box_mean / box_var
-                if 2 < box_lambda < 200:
-                    lambda_estimates.append(box_lambda)
-
         # ========== 步骤 4.5: 按层重新分配 pos_in_layer ==========
-        # 按层分组，确保每层内的盒子有正确的 pos_in_layer（0=a, 1=b）
-        layer_groups = {'1': [], '2': []}  # 暗部、亮部
+        layer_groups = {'1': [], '2': []}
         for box in box_data_list:
             layer_groups[box['layer']].append(box)
-
-        # 重新分配 pos_in_layer（每层内从 0 开始）
         for layer, boxes in layer_groups.items():
             for pos, box in enumerate(boxes):
                 box['pos_in_layer'] = pos
 
-        # ========== 步骤 5: 聚合估计结果 ==========
-        # 使用中位数作为最终估计（对异常值更鲁棒）
+        # ========== 步骤 5: 聚合估计结果（中位数） ==========
         if lambda_estimates:
-            poisson_lambda = np.median(lambda_estimates)
+            poisson_lambda = float(np.median(lambda_estimates))
         else:
-            # 回退到全局估计
-            global_mean = np.mean(img_gray)
-            global_var = np.var(img_gray)
-            if global_var > 0:
-                poisson_lambda = global_mean / global_var
-            else:
-                poisson_lambda = 10
+            global_mean = float(np.mean(img_gray))
+            global_var  = float(np.var(img_gray))
+            poisson_lambda = global_mean / global_var if global_var > 0 else 10.0
 
         if noise_std_estimates:
-            noise_std = np.median(noise_std_estimates)
+            noise_std = float(np.median(noise_std_estimates))
         else:
-            noise_std = np.sqrt(np.mean(cv2.GaussianBlur((img_gray - cv2.GaussianBlur(img_gray, (5, 5), 0)) ** 2, (7, 7), 0)))
+            residual  = img_gray - cv2.GaussianBlur(img_gray, (5, 5), 0)
+            noise_std = float(np.sqrt(np.mean(
+                cv2.GaussianBlur(residual ** 2, (7, 7), 0)))) / img_max
 
-        # 根据论文：AWGN 约为 5%，Poisson λ 在 5-20 范围
-        # 限制估计值在合理范围内
-        poisson_lambda = max(5, min(50, poisson_lambda))
+        poisson_lambda = max(5.0, min(50.0, poisson_lambda))
+        awgn_sigma     = max(0.02, min(0.10, noise_std))
 
-        # AWGN sigma：论文标准值为 5%，根据估计的噪声标准差调整
-        # 约 50% 的噪声标准差来自 AWGN
-        awgn_ratio = noise_std * 0.5  # 约 50% 的噪声标准差来自 AWGN
-        awgn_sigma = max(0.02, min(0.10, awgn_ratio))  # 限制在 2%-10%
-
-        # 记录噪声参数范围用于训练数据生成（论文方法：使用随机噪声参数增加泛化性）
         lambda_range = {
-            'min': max(5, poisson_lambda - 5),
-            'max': min(50, poisson_lambda + 10),
-            'nominal': poisson_lambda
+            'min':     max(5.0,  poisson_lambda - 5),
+            'max':     min(50.0, poisson_lambda + 10),
+            'nominal': poisson_lambda,
         }
         awgn_range = {
-            'min': max(0.02, awgn_sigma - 0.03),
-            'max': min(0.10, awgn_sigma + 0.05),
-            'nominal': awgn_sigma
+            'min':     max(0.02, awgn_sigma - 0.03),
+            'max':     min(0.10, awgn_sigma + 0.05),
+            'nominal': awgn_sigma,
         }
 
         return {
-            'poisson_lambda': float(poisson_lambda),
-            'poisson_lambda_range': lambda_range,  # 用于训练数据生成
-            'awgn_sigma': float(awgn_sigma),
-            'awgn_sigma_range': awgn_range,  # 用于训练数据生成
-            'gaussian_blur_sigma': 1.0,  # 论文中固定值
-            'estimated_noise_std': float(noise_std),
-            'image_dtype': str(image.dtype),
-            'image_shape': list(image.shape),
-            'box_coords': box_coords,  # 区域盒坐标列表（用于显示）
-            'box_data_list': box_data_list,  # 每个盒子的分布数据（用于绘图）
-            'box_count': len(selected_boxes),  # 选择的盒子数量
-            'lambda_estimates_count': len(lambda_estimates),  # 成功估计λ的数量
-            'lambda_min': float(np.min(lambda_estimates)) if lambda_estimates else 0,
-            'lambda_max': float(np.max(lambda_estimates)) if lambda_estimates else 0,
-            'method': 'homogeneous_region_box',
+            'poisson_lambda':       float(poisson_lambda),
+            'poisson_lambda_range': lambda_range,
+            'awgn_sigma':           float(awgn_sigma),
+            'awgn_sigma_range':     awgn_range,
+            'gaussian_blur_sigma':  1.0,
+            'estimated_noise_std':  float(noise_std),
+            'image_dtype':          str(image.dtype),
+            'image_shape':          list(image.shape),
+            'box_coords':           box_coords,
+            'box_data_list':        box_data_list,
+            'box_count':            len(selected_boxes),
+            'lambda_estimates_count': len(lambda_estimates),
+            'lambda_min': float(np.min(lambda_estimates)) if lambda_estimates else 0.0,
+            'lambda_max': float(np.max(lambda_estimates)) if lambda_estimates else 0.0,
+            'method':    'homogeneous_region_box',
             'reference': 'Rev. Sci. Instrum. 95, 063508 (2024)',
         }
 
@@ -1730,74 +1700,92 @@ class DenseNetPage(QWidget):
         """使用 matplotlib 绘制每个均匀区域窗口的强度分布直方图。
 
         布局：1 行 2 列，每个子图显示一层（暗部/亮部）
-        每层内 2 条曲线，用不同颜色区分 2 个盒子（a/b）
+        实线：实测强度分布；虚线：合成拟合分布（Poisson + AWGN + Gaussian blur）
         """
         if not MATPLOTLIB_AVAILABLE:
             self.histogram_label.setText("matplotlib 不可用，无法绘制直方图")
             return
 
-        # 设置中文字体
         plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'Arial Unicode MS']
-        plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
+        plt.rcParams['axes.unicode_minus'] = False
 
         box_data_list = self.noise_params.get('box_data_list', [])
         if not box_data_list:
             self.histogram_label.setText("暂无盒子数据，请先提取噪声参数")
             return
 
-        # 1 行 2 列布局
-        n_cols = 2
-        fig, axes = plt.subplots(1, n_cols, figsize=(12, 5))
-        fig.tight_layout(pad=3.0)
+        from matplotlib.lines import Line2D
+        from io import BytesIO
 
-        axes = axes.reshape(1, -1)
+        colors = ['#e67e22', '#3498db']  # a=橙色, b=蓝色
+        layer_titles = ['暗部 (0–50%)', '亮部 (50–100%)']
 
-        # 颜色方案：a/b 分别用不同颜色（两层通用）
-        # a = 该层第 1 个（最均匀），b = 第 2 个
-        colors = ['#e67e22', '#3498db']  # 橙色、蓝色
-
-        # 层标题
-        layer_titles = ['暗部 (0-50%)', '亮部 (50%-100%)']
+        fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+        fig.subplots_adjust(left=0.07, right=0.97, top=0.85, bottom=0.12, wspace=0.32)
 
         for layer_idx in range(2):
-            ax = axes[0, layer_idx]
-
-            # 获取该层的 2 个盒子数据
+            ax = axes[layer_idx]
             layer_boxes = [b for b in box_data_list if b['layer'] == str(layer_idx + 1)]
 
             for box_data in layer_boxes:
-                label = box_data['label']  # 如 "1a", "2b"
-                pos_in_layer = box_data.get('pos_in_layer', 0)  # 0=a, 1=b
-                color = colors[pos_in_layer]  # 根据在层内位置确定颜色
+                pos   = box_data.get('pos_in_layer', 0)
+                color = colors[min(pos, len(colors) - 1)]
+                label = box_data['label']
+                lam   = box_data.get('box_lambda', 0)
+                sig   = box_data.get('awgn_sigma', 0)
 
-                signal_hist = box_data.get('signal_hist', [])
-                signal_bins = box_data.get('signal_bins', [])
+                # --- 实测强度分布（实线）---
+                sig_hist = box_data.get('signal_hist', [])
+                sig_bins = box_data.get('signal_bins', [])
+                if sig_hist and sig_bins:
+                    centers = [(sig_bins[i] + sig_bins[i+1]) / 2 for i in range(len(sig_hist))]
+                    ax.plot(centers, sig_hist, color=color, linewidth=2.5,
+                            label=f"Box {label}  λ={lam:.1f}  σ={sig:.3f}")
 
-                # 计算 bin 中心位置
-                signal_centers = [(signal_bins[i] + signal_bins[i+1]) / 2 for i in range(len(signal_hist))]
+                # --- 合成拟合分布（虚线，论文 Fig.2 风格）---
+                fit_hist = box_data.get('fitted_hist', [])
+                fit_bins = box_data.get('fitted_bins', [])
+                if fit_hist and fit_bins:
+                    fcenters = [(fit_bins[i] + fit_bins[i+1]) / 2 for i in range(len(fit_hist))]
+                    ax.plot(fcenters, fit_hist, color=color, linewidth=1.5,
+                            linestyle='--', alpha=0.75)
 
-                # 用固定颜色绘制曲线
-                ax.plot(signal_centers, signal_hist, color=color, linewidth=2.5,
-                        label=f"Box {label}")
+            # 图例：实线/虚线各出现一次
+            legend_handles = []
+            for b in layer_boxes:
+                pos   = b.get('pos_in_layer', 0)
+                color = colors[min(pos, len(colors) - 1)]
+                lam   = b.get('box_lambda', 0)
+                sig   = b.get('awgn_sigma', 0)
+                legend_handles.append(
+                    Line2D([0], [0], color=color, lw=2.5,
+                           label=f"Box {b['label']}  λ={lam:.1f}  σ={sig:.3f}")
+                )
+            legend_handles.append(
+                Line2D([0], [0], color='gray', lw=1.5, linestyle='--',
+                       label='Fitted (Poisson+AWGN+Blur)')
+            )
+            ax.legend(handles=legend_handles, fontsize=9, framealpha=0.9,
+                      loc='upper right')
 
-            ax.set_title(layer_titles[layer_idx], fontsize=13, fontweight='bold')
-            ax.set_xlabel('Intensity', fontsize=11)
-            ax.set_ylabel('Probability', fontsize=11)
-            ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
+            # λ 摘要写入标题
+            lambda_strs = [f"Box {b['label']} λ={b.get('box_lambda',0):.1f}"
+                           for b in layer_boxes]
+            ax.set_title(f"{layer_titles[layer_idx]}\n{',  '.join(lambda_strs)}",
+                         fontsize=11, fontweight='bold')
+            ax.set_xlabel('Normalized Intensity', fontsize=10)
+            ax.set_ylabel('Probability', fontsize=10)
             ax.grid(True, alpha=0.25, linestyle='--')
 
-        # 保存图片到内存
-        from io import BytesIO
+        # 保存并显示
         buf = BytesIO()
         fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
         buf.seek(0)
-
-        # 转换为 QImage 并显示
         pixmap = QPixmap()
         pixmap.loadFromData(buf.getvalue(), 'PNG')
-
-        self.histogram_label.setPixmap(pixmap.scaled(self.histogram_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-
+        self.histogram_label.setPixmap(
+            pixmap.scaled(self.histogram_label.size(), Qt.KeepAspectRatio,
+                          Qt.SmoothTransformation))
         plt.close(fig)
 
     def get_current_noise_params(self):
