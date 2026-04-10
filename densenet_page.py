@@ -170,31 +170,44 @@ class NoiseExtractionThread(QThread):
         bright_regions = sorted([(cy, cx, v, br) for cy, cx, v, br in all_candidates if br > p50],  key=lambda x: x[2])
         print(f"候选区域：暗部={len(dark_regions)}, 亮部={len(bright_regions)}")
 
-        def pick_nonoverlapping(regions, n=2):
-            """从排序后的候选列表中挑选 n 个不重叠的盒子。"""
+        def pick_nonoverlapping(regions, n=4, min_center_dist=None):
+            """选 n 个不重叠且空间分散的盒子。
+
+            第1轮：非重叠 + 中心距 ≥ min_center_dist（确保空间分散）
+            第2轮：仅检查非重叠（放宽中心距，补足数量）
+            """
+            if min_center_dist is None:
+                min_center_dist = 2 * max(box_h, box_w)
+
+            def is_rejected(cy, cx, chosen, use_dist=True):
+                for sy, sx, *_ in chosen:
+                    if self._boxes_overlap(cy, cx, sy, sx, box_h, box_w):
+                        return True
+                    if use_dist and ((cy - sy) ** 2 + (cx - sx) ** 2) < min_center_dist ** 2:
+                        return True
+                return False
+
+            # 第1轮：非重叠 + 空间分散
             chosen = []
             for cy, cx, var, br in regions:
-                overlaps = any(self._boxes_overlap(cy, cx, sy, sx, box_h, box_w)
-                               for sy, sx, _, _ in chosen)
-                if not overlaps:
+                if not is_rejected(cy, cx, chosen, use_dist=True):
                     chosen.append((cy, cx, var, br))
                     if len(chosen) >= n:
                         break
-            # 若不足 n 个，放宽：只检查与已选框不完全覆盖（IoU < 0.3）
+
+            # 第2轮：仅非重叠（补足）
             if len(chosen) < n:
                 for cy, cx, var, br in regions:
-                    if any(cy == sy and cx == sx for sy, sx, _, _ in chosen):
+                    if any(cy == sy and cx == sx for sy, sx, *_ in chosen):
                         continue
-                    overlaps = any(self._boxes_overlap(cy, cx, sy, sx, box_h, box_w, gap=0)
-                                   for sy, sx, _, _ in chosen)
-                    if not overlaps:
+                    if not is_rejected(cy, cx, chosen, use_dist=False):
                         chosen.append((cy, cx, var, br))
                         if len(chosen) >= n:
                             break
             return chosen
 
-        dark_chosen   = pick_nonoverlapping(dark_regions,   n=2)
-        bright_chosen = pick_nonoverlapping(bright_regions, n=2)
+        dark_chosen   = pick_nonoverlapping(dark_regions,   n=4)
+        bright_chosen = pick_nonoverlapping(bright_regions, n=4)
         selected_boxes = dark_chosen + bright_chosen
         dark_count   = len(dark_chosen)
         bright_count = len(bright_chosen)
@@ -206,7 +219,7 @@ class NoiseExtractionThread(QThread):
         box_data_list = []
 
         layer_labels = ['1', '2']
-        sub_labels   = ['a', 'b']
+        sub_labels   = ['a', 'b', 'c', 'd']
 
         for idx, (cy, cx, _, _) in enumerate(selected_boxes):
             y1, y2 = cy, min(cy + box_h, h)
@@ -1717,7 +1730,7 @@ class DenseNetPage(QWidget):
         from matplotlib.lines import Line2D
         from io import BytesIO
 
-        colors = ['#e67e22', '#3498db']  # a=橙色, b=蓝色
+        colors = ['#e67e22', '#3498db', '#27ae60', '#9b59b6']  # a=橙, b=蓝, c=绿, d=紫
         layer_titles = ['暗部 (0–50%)', '亮部 (50–100%)']
 
         fig, axes = plt.subplots(1, 2, figsize=(13, 5))
