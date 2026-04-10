@@ -265,27 +265,6 @@ class DenoiseWidget(QWidget):
 
         step1_layout.addLayout(algo_layout)
 
-        # 强度选择
-        strength_layout = QHBoxLayout()
-        strength_layout.setSpacing(8)
-        strength_label = QLabel("强度:")
-        strength_label.setStyleSheet("font-size: 15px; color: #475569;")
-        strength_layout.addWidget(strength_label)
-
-        self.strength_combo = QComboBox()
-        self.strength_combo.addItems(["低", "中", "高"])
-        self.strength_combo.setCurrentIndex(1)
-        self.strength_combo.setMinimumHeight(32)
-        self.strength_combo.setStyleSheet("""
-            QComboBox {
-                font-size: 15px;
-                padding: 6px 10px;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-            }
-        """)
-        strength_layout.addWidget(self.strength_combo, 1)
-        step1_layout.addLayout(strength_layout)
 
         self.denoise_params_widget = self.create_denoise_params()
         step1_layout.addWidget(self.denoise_params_widget)
@@ -647,10 +626,9 @@ class DenoiseWidget(QWidget):
     def update_parameter_panel(self):
         """Update parameter panel visibility."""
         method = self.algorithm_combo.currentData()
+        is_trained_neural = bool(method and method.startswith('trained_neural_denoise_'))
         self.nlm_group.setVisible(method == 'nlm')
         self.bilateral_group.setVisible(method == 'bilateral')
-        # Show neural group for neural and any trained_neural_denoise_* methods
-        is_trained_neural = method and method.startswith('trained_neural_denoise_')
         self.neural_group.setVisible(method in ['neural', 'trained_neural_denoise'] or is_trained_neural)
         self.bm3d_group.setVisible(method == 'bm3d')
         self.aniso_group.setVisible(method == 'anisotropic')
@@ -730,10 +708,7 @@ class DenoiseWidget(QWidget):
         method = self.algorithm_combo.currentData()
         params = {}
 
-        if method == 'hybrid':
-            strength_map = {"低": "low", "中": "medium", "高": "high"}
-            params['strength'] = strength_map.get(self.strength_combo.currentText(), "medium")
-        elif method == 'nlm':
+        if method == 'nlm':
             params['h'] = self.nlm_h_spin.value()
             params['patch_size'] = self.nlm_patch_spin.value()
         elif method == 'bilateral':

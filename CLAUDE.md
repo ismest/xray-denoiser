@@ -11,55 +11,60 @@ pip install -r requirements.txt
 # Run the application (multi-page GUI)
 python main.py
 
-# Run tests
+# Run lightweight tests (no OpenCV needed)
 python test_simple.py
 ```
 
-## Current Version: v4.0.0 (stable-v1)
+## Architecture - Multi-Page Design
 
-## Architecture v2.0 - Multi-Page Design
-
-**Entry point**: `main.py` launches a PyQt5 GUI application with three pages.
+**Entry point**: `main.py` → `main_window.py` (`MainWindow`) hosts three pages in a `QStackedWidget` with a dark sidebar for navigation.
 
 ### Pages
 
-1. **图片预处理 (Preprocess Page)** - `preprocess_page.py`
-   - **Step 1: 噪音提取** - Extract noise profile from single X-ray image
-   - **Step 2: 数据集生成** - Generate synthetic noisy/clean patch pairs using extracted noise parameters
-   - Noise model: Poisson(λ) + AWGN(σ) + Gaussian Blur(σ=1)
-   - Output: train/test/validation splits with metadata
+| File | Chinese name | Purpose |
+|------|-------------|---------|
+| `preprocess_page.py` | 图片预处理 | Step 1: noise extraction from a single X-ray; Step 2: synthetic noisy/clean patch-pair dataset generation |
+| `noise2void_page.py` | Noise2Void | Self-supervised training directly from a single noisy image (no clean reference needed) |
+| `denoise_app.py` | 降噪与超分辨率 | Two-step workflow: Denoise → Super-Resolution, with quality metrics |
+| `training_page.py` | 算法训练 | Supervised training from a preprocessed dataset; exports ONNX |
 
-2. **算法训练 (Training Page)** - `training_page.py`
-   - Load preprocessed datasets
-   - Train neural denoising models (PyTorch)
-   - Export models to ONNX format
-   - Real-time training monitoring
+### Core modules
 
-3. **降噪与超分辨率 (Denoise & SR Page)** - `denoise_app.py`
-   - Two-step workflow: Denoise -> Super-Resolution
-   - Multiple denoising algorithms
-   - Quality metrics (PSNR, SSIM, MSE)
+- `image_processor.py` — `ImageProcessor` class: load/denoise/super-resolve/save; orchestrates `denoise_algorithms`, `neural_denoise`, `super_resolution`, `metrics`
+- `denoise_algorithms.py` — all classical denoising functions; every function normalizes to float64 [0,1] then denormalizes back to the original dtype
+- `super_resolution.py` — bicubic, lanczos, edge-preserving upscaling
+- `neural_denoise.py` — `NeuralDenoiser`: ONNX inference wrapper; falls back to bilateral filter if ONNX unavailable
+- `metrics.py` — PSNR, SSIM, MSE with multi-depth normalization
+- `algorithm_config.py` — loads/saves `algorithm_config.json`; `get_denoise_algorithms()` / `get_sr_algorithms()` dynamically append trained models found on disk
+- `algorithm_editor_dialog.py` — `DenoiseAlgorithmEditor` / `SRAlgorithmEditor` dialogs for enabling/disabling/renaming algorithms at runtime
 
-### Core modules:
-- `main_window.py` - Main window with sidebar navigation and QStackedWidget
-- `image_processor.py` - Central `ImageProcessor` class managing image loading, denoising, super-resolution, and saving
-- `denoise_algorithms.py` - Denoising functions (`hybrid_denoise`, `adaptive_denoise`, `non_local_means_denoise`, `bilateral_filter_denoise`, `wavelet_denoise`, `bm3d_denoise`, `anisotropic_diffusion_denoise`, `iterative_reconstruction_denoise`) with multi-depth support (uint8/uint16/float)
-- `super_resolution.py` - Super-resolution reconstruction (bicubic, lanczos, edge-preserving upscaling with contrast enhancement)
-- `neural_denoise.py` - Optional ONNX-based neural denoiser with fallback to bilateral filter
-- `metrics.py` - PSNR, SSIM, MSE calculation with multi-depth normalization
-- `training_page.py` - PyTorch-based neural network training with ONNX export
-- `preprocess_page.py` - Two-step workflow: noise extraction from single image, then synthetic dataset generation
+### Trained model storage
 
-**Key patterns**:
-- All denoising functions normalize images to float64 [0,1] before processing, then denormalize to original dtype
-- Processing runs in a background `QThread` to keep GUI responsive
-- Each algorithm has fallback chains (NLM → Bilateral → Gaussian → original) to handle edge cases
-- Training uses patch-based processing with data augmentation
+After training, models are saved under:
+```
+integrated_model/
+  denoise/<YYYYMMDD_HHMMSS>/
+    best_denoiser.pth   # PyTorch weights
+    denoiser.onnx       # ONNX export (used at inference)
+    model_ready.marker  # presence = model is complete
+  super_resolution/<YYYYMMDD_HHMMSS>/
+    ...same structure...
+```
+`algorithm_config.py::_scan_integrated_models()` discovers these at runtime and surfaces them as selectable algorithms in the UI. `algorithm_config.json` persists user-level enable/disable and rename state for both built-in and trained algorithms.
+
+### Key patterns
+
+- **Chinese path workaround**: image loading uses `np.fromfile(path, dtype=np.uint8)` + `cv2.imdecode(...)` instead of `cv2.imread()` to handle non-ASCII paths.
+- **Background processing**: every long-running operation runs in a `QThread` subclass that emits `progress(int, str)` and `finished(bool, str)` signals.
+- **Fallback chains**: classical denoising degrades gracefully — NLM → Bilateral → Gaussian → original — when image is too small or a library is missing.
+- **Dataset structure**: `NoiseDataset` in `training_page.py` supports both the current layout (`train/noisy`, `train/clean`) and the legacy `noisy_patches`/`clean_patches` layout.
 
 ## Dependencies
 
-- PyQt5 (GUI), OpenCV (image I/O), scikit-image (denoising algorithms), NumPy, SciPy
-- Optional: onnxruntime (neural denoising), PyInstaller (building executables)
+- **Required**: PyQt5, OpenCV, scikit-image, NumPy, SciPy, matplotlib
+- **Training**: PyTorch (`TORCH_AVAILABLE` flag guards all imports)
+- **Inference**: onnxruntime (`ONNX_AVAILABLE` flag)
+- **Optional**: Pillow (better format support in `image_processor.py`), PyInstaller (executable build)
 
 ## Building Executable
 
@@ -67,4 +72,4 @@ python test_simple.py
 python build_executable.py
 ```
 
-Creates standalone executable via PyInstaller in `dist/` directory.
+Creates standalone executable via PyInstaller in `dist/`.

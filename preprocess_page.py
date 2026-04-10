@@ -14,9 +14,18 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QFrame, QMessageBox, QTextEdit, QGridLayout,
                              QScrollArea, QSizePolicy, QTabWidget, QSplitter,
                              QApplication, QLineEdit)
-from PyQt5.QtGui import QPixmap, QImage
+from PyQt5.QtGui import QPixmap, QImage, QIcon
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import cv2
+
+# matplotlib 用于绘制直方图
+try:
+    import matplotlib
+    matplotlib.use('Agg')  # 非交互式后端
+    import matplotlib.pyplot as plt
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    MATPLOTLIB_AVAILABLE = False
 
 # 导入训练页面相关类
 try:
@@ -146,9 +155,10 @@ class NoiseExtractionThread(QThread):
         lambda_estimates = []
         noise_std_estimates = []
         box_coords = []  # 保存有效区域盒的坐标
+        box_data_list = []  # 保存每个盒子的分布数据（用于绘图）
 
         # 在平坦区域内采样盒子
-        num_samples = 9  # 最多选择 9 个盒子（每层 3 个）
+        num_samples = 4  # 最多选择 4 个盒子（每层 2 个）
 
         # 收集所有候选区域
         all_candidates = []
@@ -158,52 +168,85 @@ class NoiseExtractionThread(QThread):
                 box_mean = np.mean(img_gray[i:i+box_h, j:j+box_w])
                 all_candidates.append((i, j, avg_var, box_mean))
 
-        # 策略：分亮度层级选择，确保暗部、中等、亮部都有代表
-        # 将候选区域按亮度分为 3 层：暗部 (0-33%)、中等 (33%-66%)、亮部 (66%-100%)
+        # 策略：分亮度层级选择，确保暗部和亮部都有代表
+        # 将候选区域按亮度分为 2 层：暗部 (0-50%)、亮部 (50%-100%)
         brightness_values = [c[3] for c in all_candidates]
-        p33 = np.percentile(brightness_values, 33)
-        p66 = np.percentile(brightness_values, 66)
+        p50 = np.percentile(brightness_values, 50)
 
-        print(f"亮度分位数：33%={p33:.4f}, 66%={p66:.4f}")
+        print(f"亮度分位数：50%={p50:.4f}")
 
-        # 每层按方差排序选择 3 个区域
-        dark_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br <= p33]
-        mid_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if p33 < br <= p66]
-        bright_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br > p66]
+        # 每层按方差排序选择 2 个区域
+        dark_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br <= p50]
+        bright_regions = [(cy, cx, var, br) for cy, cx, var, br in all_candidates if br > p50]
 
-        print(f"候选区域：暗部={len(dark_regions)}, 中等={len(mid_regions)}, 亮部={len(bright_regions)}")
+        print(f"候选区域：暗部={len(dark_regions)}, 亮部={len(bright_regions)}")
 
         # 各层按方差排序
         dark_regions.sort(key=lambda x: x[2])
-        mid_regions.sort(key=lambda x: x[2])
         bright_regions.sort(key=lambda x: x[2])
 
-        # 合并：每层选 3 个，共 9 个
-        candidates = []
-        per_layer = 3
-        candidates.extend(dark_regions[:per_layer])
-        candidates.extend(mid_regions[:per_layer])
-        candidates.extend(bright_regions[:per_layer])
-
-        # 选择前 num_samples 个盒子，但要确保它们之间有足够的距离
+        # 按层独立选择，确保每层至少 2 个盒子（每层内检查距离）
         selected_boxes = []
-        min_distance = box_h // 2  # 盒子中心最小距离（放宽到一半）
+        min_distance = box_h * 0.8  # 盒子中心最小距离（80% 盒子大小）
 
-        for cy, cx, avg_var, box_mean in candidates:
-            # 检查与已选盒子的距离
+        # 暗部选 2 个（检查距离）
+        dark_count = 0
+        for cy, cx, var, br in dark_regions:
+            # 检查与已选暗部盒子的距离
             too_close = False
-            for sy, sx, _, _ in selected_boxes:
+            for sy, sx, _, _ in selected_boxes[-dark_count:] if dark_count > 0 else []:
                 dist = np.sqrt((cy - sy) ** 2 + (cx - sx) ** 2)
                 if dist < min_distance:
                     too_close = True
                     break
             if not too_close:
-                selected_boxes.append((cy, cx, avg_var, box_mean))
-                if len(selected_boxes) >= num_samples:
+                selected_boxes.append((cy, cx, var, br))
+                dark_count += 1
+                if dark_count >= 2:
                     break
 
+        # 如果暗部不足 2 个，放宽距离限制再选
+        while dark_count < 2 and len(dark_regions) > dark_count:
+            for cy, cx, var, br in dark_regions[dark_count:]:
+                selected_boxes.append((cy, cx, var, br))
+                dark_count += 1
+                if dark_count >= 2:
+                    break
+
+        # 亮部选 2 个（检查距离）
+        bright_count = 0
+        for cy, cx, var, br in bright_regions:
+            # 检查与已选亮部盒子的距离
+            too_close = False
+            # 亮部盒子在 selected_boxes 中的索引从 dark_count 开始
+            for sy, sx, _, _ in selected_boxes[dark_count:]:
+                dist = np.sqrt((cy - sy) ** 2 + (cx - sx) ** 2)
+                if dist < min_distance:
+                    too_close = True
+                    break
+            if not too_close:
+                selected_boxes.append((cy, cx, var, br))
+                bright_count += 1
+                if bright_count >= 2:
+                    break
+
+        # 如果亮部不足 2 个，放宽距离限制再选
+        while bright_count < 2 and len(bright_regions) > bright_count:
+            for cy, cx, var, br in bright_regions[bright_count:]:
+                selected_boxes.append((cy, cx, var, br))
+                bright_count += 1
+                if bright_count >= 2:
+                    break
+
+        # 更新 num_samples 为实际选择的盒子数
+        num_samples = len(selected_boxes)
+
         # ========== 步骤 4: 在选中的盒子内估计噪声参数 ==========
-        for cy, cx, _, _ in selected_boxes:
+        # 盒子标签：1a, 1b (暗部); 2a, 2b (亮部)
+        layer_labels = ['1', '2']  # 暗部、亮部
+        sub_labels = ['a', 'b']  # 每层 2 个
+
+        for idx, (cy, cx, _, _) in enumerate(selected_boxes):
             y1, y2 = cy, min(cy + box_h, h)
             x1, x2 = cx, min(cx + box_w, w)
 
@@ -214,34 +257,79 @@ class NoiseExtractionThread(QThread):
 
             # 归一化到盒内最大值（论文方法）
             box_max = box.max()
-            if box_max < 0.1:  # 跳过太暗的区域
-                continue
-
             box_normalized = box / box_max
 
             # 计算盒内统计量
             box_mean = np.mean(box_normalized)
             box_var = np.var(box_normalized)
 
-            # 泊松噪声：variance ≈ mean / λ
-            # 所以 λ ≈ mean / variance
-            if box_var > 0 and box_mean > 0:
-                box_lambda = box_mean / box_var
-                # 限制λ在合理范围内（论文中λ≈5-20）
-                if 2 < box_lambda < 200:
-                    lambda_estimates.append(box_lambda)
+            # 计算强度分布（原始信号）
+            hist_signal, bin_edges = np.histogram(box_normalized.flatten(), bins=50, range=(0, 1))
+            hist_signal = hist_signal / hist_signal.sum()  # 归一化为概率
 
             # 计算局部方差用于估计 AWGN
             kernel_size_box = 5
             local_mean_box = cv2.GaussianBlur(box, (kernel_size_box, kernel_size_box), 0)
             local_var_box = cv2.GaussianBlur((box - local_mean_box) ** 2, (kernel_size_box, kernel_size_box), 0)
 
+            # 提取噪声（残差）
+            noise_residual = (box - local_mean_box) / box_max
+            hist_noise, _ = np.histogram(noise_residual.flatten(), bins=50)
+            hist_noise = hist_noise / hist_noise.sum()  # 归一化为概率
+            noise_bin_edges = np.linspace(noise_residual.min(), noise_residual.max(), 51)
+
+            # 保存盒子数据（用于绘图）- 根据 dark_count 判断属于哪一层
+            if idx < dark_count:
+                layer_idx = 0  # 暗部
+                layer_name = '暗部'
+                pos_in_layer = idx
+            else:
+                layer_idx = 1  # 亮部
+                layer_name = '亮部'
+                pos_in_layer = idx - dark_count
+
+            box_label = f"{layer_labels[layer_idx]}{sub_labels[pos_in_layer]}"
             # 取最小方差区域（平坦区域）用于估计 AWGN
             flat_threshold_box = np.percentile(local_var_box, 20)
             flat_mask_box = local_var_box < flat_threshold_box
+            box_awgn_sigma = 0.0
             if np.sum(flat_mask_box) > 10:
                 noise_std = np.sqrt(np.mean(local_var_box[flat_mask_box]))
+                box_awgn_sigma = float(noise_std)
                 noise_std_estimates.append(noise_std)
+
+            box_data_list.append({
+                'box_id': idx + 1,
+                'label': box_label,
+                'layer': layer_labels[layer_idx],
+                'layer_name': layer_name,
+                'pos_in_layer': pos_in_layer,  # 用于确定颜色（0=orange, 1=blue）
+                'x1': int(x1), 'y1': int(y1), 'x2': int(x2), 'y2': int(y2),  # 盒子坐标
+                'signal_hist': hist_signal.tolist(),
+                'signal_bins': bin_edges.tolist(),
+                'noise_hist': hist_noise.tolist(),
+                'noise_bins': noise_bin_edges.tolist(),
+                'box_mean': float(box_mean),
+                'box_lambda': float(box_mean / box_var) if box_var > 0 else 0,
+                'awgn_sigma': box_awgn_sigma  # 每盒的 AWGN 估计值
+            })
+
+            # 泊松噪声：variance ≈ mean / λ
+            if box_var > 0 and box_mean > 0:
+                box_lambda = box_mean / box_var
+                if 2 < box_lambda < 200:
+                    lambda_estimates.append(box_lambda)
+
+        # ========== 步骤 4.5: 按层重新分配 pos_in_layer ==========
+        # 按层分组，确保每层内的盒子有正确的 pos_in_layer（0=a, 1=b）
+        layer_groups = {'1': [], '2': []}  # 暗部、亮部
+        for box in box_data_list:
+            layer_groups[box['layer']].append(box)
+
+        # 重新分配 pos_in_layer（每层内从 0 开始）
+        for layer, boxes in layer_groups.items():
+            for pos, box in enumerate(boxes):
+                box['pos_in_layer'] = pos
 
         # ========== 步骤 5: 聚合估计结果 ==========
         # 使用中位数作为最终估计（对异常值更鲁棒）
@@ -292,6 +380,7 @@ class NoiseExtractionThread(QThread):
             'image_dtype': str(image.dtype),
             'image_shape': list(image.shape),
             'box_coords': box_coords,  # 区域盒坐标列表（用于显示）
+            'box_data_list': box_data_list,  # 每个盒子的分布数据（用于绘图）
             'box_count': len(selected_boxes),  # 选择的盒子数量
             'lambda_estimates_count': len(lambda_estimates),  # 成功估计λ的数量
             'lambda_min': float(np.min(lambda_estimates)) if lambda_estimates else 0,
@@ -763,7 +852,7 @@ class PreprocessPage(QWidget):
 
         # 文件信息显示
         self.source_info_label = QLabel("未加载图像")
-        self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 13px;")
+        self.source_info_label.setStyleSheet("color: #94a3b8; font-size: 16px;")
         self.source_info_label.setWordWrap(False)
         self.source_info_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         self.source_info_label.setFixedHeight(18)
@@ -782,7 +871,7 @@ class PreprocessPage(QWidget):
         # 提取方法说明（固定使用均匀区域法）
         method_label = QLabel("使用均匀区域法提取噪音")
         method_label.setObjectName("methodLabel")
-        method_label.setStyleSheet("color: #64748b; font-size: 12px;")
+        method_label.setStyleSheet("color: #64748b; font-size: 16px;")
         method_label.setWordWrap(False)
         method_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         method_label.setFixedHeight(16)
@@ -848,7 +937,7 @@ class PreprocessPage(QWidget):
         return widget
 
     def _create_params_only_panel(self):
-        """创建右侧面板：噪音分析说明 + 噪声参数（步骤 1 右侧）。"""
+        """创建右侧面板：噪音分析说明 + 直方图显示 + 噪声参数（步骤 1 右侧）。"""
         panel = QFrame()
         panel.setStyleSheet("""
             QFrame {
@@ -858,26 +947,58 @@ class PreprocessPage(QWidget):
                 padding: 4px;
             }
         """)
-        layout = QVBoxLayout(panel)
-        layout.setSpacing(3)
-        layout.setContentsMargins(0, 0, 0, 0)
 
-        # 噪音分析说明（放在上方）
-        analysis_group = QGroupBox("噪音分析 - 参数计算原理")
-        analysis_group.setMinimumHeight(450)
+        # 使用滚动区域来容纳所有内容
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameStyle(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background-color: transparent; border: none; }")
+
+        scroll_content = QWidget()
+        scroll.setWidget(scroll_content)
+
+        main_layout = QVBoxLayout(scroll_content)
+        main_layout.setSpacing(8)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+
+        # 1. 直方图显示（放在上方）
+        self.histogram_group = QGroupBox("均匀区域窗口强度分布")
+        self.histogram_group.setMinimumHeight(500)
+        histogram_layout = QVBoxLayout(self.histogram_group)
+        histogram_layout.setSpacing(8)
+        histogram_layout.setContentsMargins(12, 12, 12, 12)
+
+        # 直方图标签（用于显示 matplotlib 绘制的图像）
+        self.histogram_label = QLabel()
+        self.histogram_label.setAlignment(Qt.AlignCenter)
+        self.histogram_label.setMinimumSize(900, 450)
+        self.histogram_label.setStyleSheet("""
+            QLabel {
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 8px;
+            }
+        """)
+        histogram_layout.addWidget(self.histogram_label)
+        main_layout.addWidget(self.histogram_group)
+
+        # 2. 噪音分析说明（放在中间）
+        analysis_group = QGroupBox("基于均匀区域法的噪声估计")
+        analysis_group.setMinimumHeight(400)
         analysis_layout = QVBoxLayout(analysis_group)
         analysis_layout.setSpacing(10)
         analysis_layout.setContentsMargins(12, 12, 12, 12)
 
-        analysis_text = QTextEdit()
-        analysis_text.setReadOnly(True)
-        analysis_text.setMaximumHeight(500)
-        analysis_text.setMinimumHeight(430)
-        analysis_text.setHtml(self._get_noise_analysis_html())
-        analysis_text.setStyleSheet("""
+        self.analysis_text = QTextEdit()
+        self.analysis_text.setReadOnly(True)
+        self.analysis_text.setMaximumHeight(450)
+        self.analysis_text.setMinimumHeight(400)
+        self.analysis_text.setHtml(self._get_noise_analysis_html())
+        self.analysis_text.setStyleSheet("""
             QTextEdit {
                 font-family: 'Microsoft YaHei', sans-serif;
-                font-size: 13px;
+                font-size: 16px;
                 background-color: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
@@ -886,10 +1007,10 @@ class PreprocessPage(QWidget):
                 line-height: 1.6;
             }
         """)
-        analysis_layout.addWidget(analysis_text)
-        layout.addWidget(analysis_group)
+        analysis_layout.addWidget(self.analysis_text)
+        main_layout.addWidget(analysis_group)
 
-        # 噪声参数显示（放在下方）
+        # 3. 噪声参数显示（放在下方）
         params_group = QGroupBox("提取的噪声参数")
         params_group.setMinimumHeight(280)
         params_layout = QVBoxLayout(params_group)
@@ -903,7 +1024,7 @@ class PreprocessPage(QWidget):
         self.extracted_params_text.setStyleSheet("""
             QTextEdit {
                 font-family: 'Consolas', monospace;
-                font-size: 14px;
+                font-size: 16px;
                 background-color: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
@@ -912,45 +1033,72 @@ class PreprocessPage(QWidget):
             }
         """)
         params_layout.addWidget(self.extracted_params_text)
-        layout.addWidget(params_group)
+        main_layout.addWidget(params_group)
+
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(0, 0, 0, 0)
+        panel_layout.addWidget(scroll)
 
         return panel
 
     def _get_noise_analysis_html(self):
-        """获取噪音分析说明的 HTML 内容。"""
+        """根据实际数据生成噪声分析 HTML。"""
+        if not self.noise_params or not self.noise_params.get('box_data_list'):
+            return self._get_noise_analysis_placeholder()
+
+        box_data_list = self.noise_params['box_data_list']
+        p = self.noise_params
+
+        html = """
+        <h3 style="color: #0ea5e9; margin-bottom: 12px; font-size: 16px;">基于均匀区域法的噪声估计</h3>
+
+        <h4 style="color: #0284c7; margin-top: 10px;">计算流程</h4>
+        <ol style="margin: 6px 0; padding-left: 20px; font-size: 14px; color: #64748b;">
+        <li>按亮度分为暗部/亮部两层，每层选择 2 个均匀区域盒</li>
+        <li>对每个盒子计算强度分布（直方图）和噪声残差</li>
+        <li>利用泊松分布方差/均值关系估计 λ</li>
+        <li>从残差中估计 AWGN σ</li>
+        <li>取中位数聚合得到最终噪声参数</li>
+        </ol>
+        """
+
+        html += """<h4 style="color: #0284c7; margin-top: 16px;">各盒子估计值</h4>"""
+        for box in box_data_list:
+            html += f"""
+            <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #0ea5e9;">
+                <strong>Box {box['label']}</strong> ({box['layer_name']})<br>
+                <span style="font-size: 14px; color: #64748b;">
+                盒内均值 = {box['box_mean']:.4f} → Poisson λ = {box['box_lambda']:.2f}<br>
+                残差标准差 = {box.get('awgn_sigma', 0):.4f} → AWGN σ = {box.get('awgn_sigma', 0):.4f}
+                </span>
+            </div>
+            """
+
+        html += f"""
+        <h4 style="color: #0284c7; margin-top: 16px;">聚合结果（中位数）</h4>
+        <div style="background: #dcfce7; padding: 10px; border-radius: 6px; margin-top: 8px;">
+            <strong>Poisson λ</strong> = {p['poisson_lambda']:.2f}<br>
+            <strong>AWGN σ</strong> = {p['awgn_sigma']:.4f}
+        </div>
+        """
+
+        return html
+
+    def _get_noise_analysis_placeholder(self):
+        """获取噪声分析的占位说明（未提取数据时显示）。"""
         return """
         <h3 style="color: #0ea5e9; margin-bottom: 12px; font-size: 16px;">基于均匀区域法的噪声估计</h3>
 
-        <div style="background: #e0f2fe; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
-        <strong>噪声模型：</strong>Poisson(λ) + AWGN(σ)
-        </div>
-
-        <h4 style="color: #0284c7; margin-top: 10px;">步骤 1: 计算局部方差图</h4>
-        <p style="margin: 6px 0;">使用 15×15 滑动窗口，对每个像素位置计算邻域方差：</p>
-        <code style="display: block; background: #1e293b; color: #e2e8f0; padding: 8px; border-radius: 4px; margin: 6px 0;">
-        local_var = GaussianBlur((img - local_mean)², kernel=15)
-        </code>
-
-        <h4 style="color: #0284c7; margin-top: 10px;">步骤 2: 选择均匀区域盒</h4>
-        <p style="margin: 6px 0;">按亮度分层（33%/66% 分位数），每层选方差最小的 3 个区域：</p>
-        <ul style="margin: 6px 0; padding-left: 20px;">
-        <li><strong style="color: #64748b;">暗部区域</strong> (0-33%)：3 个盒</li>
-        <li><strong style="color: #64748b;">中等区域</strong> (33%-66%)：3 个盒</li>
-        <li><strong style="color: #64748b;">亮部区域</strong> (66%-100%)：3 个盒</li>
-        </ul>
-
-        <h4 style="color: #0284c7; margin-top: 10px;">步骤 3: 估计 Poisson λ</h4>
-        <p style="margin: 6px 0;">在每个均匀盒内，利用泊松分布的方差/均值关系：</p>
-        <code style="display: block; background: #1e293b; color: #e2e8f0; padding: 8px; border-radius: 4px; margin: 6px 0;">
-        λ = mean² / (variance - AWGN_σ²)
-        </code>
-
-        <h4 style="color: #0284c7; margin-top: 10px;">步骤 4: 估计 AWGN σ</h4>
-        <p style="margin: 6px 0;">从最平坦区域的残差噪声计算标准差：</p>
-        <code style="display: block; background: #1e293b; color: #e2e8f0; padding: 8px; border-radius: 4px; margin: 6px 0;">
-        AWGN_σ = std(residual)
-        </code>
+        <h4 style="color: #0284c7; margin-top: 10px;">计算流程</h4>
+        <ol style="margin: 6px 0; padding-left: 20px; font-size: 14px; color: #64748b;">
+        <li>按亮度分为暗部/亮部两层，每层选择 2 个均匀区域盒</li>
+        <li>对每个盒子计算强度分布（直方图）和噪声残差</li>
+        <li>利用泊松分布方差/均值关系估计 λ</li>
+        <li>从残差中估计 AWGN σ</li>
+        <li>取中位数聚合得到最终噪声参数</li>
+        </ol>
         """
+
 
     def _create_step2_widget(self):
         """创建步骤 2：数据集生成界面。"""
@@ -1549,15 +1697,112 @@ class PreprocessPage(QWidget):
             self.blur_sigma_spin.setValue(self.noise_params.get('gaussian_blur_sigma', 1.0))
 
             # 显示简要信息（步骤 1 页面右侧）
-            box_count = self.noise_params.get('box_count', len(self.noise_params.get('box_coords', [])))
-            self.extracted_params_text.setPlainText(
-                f"Poisson λ = {self.noise_params['poisson_lambda']:.1f}\n"
-                f"AWGN σ = {self.noise_params['awgn_sigma']:.4f}\n"
-                f"(基于 {box_count} 个均匀区域盒估计)"
-            )
+            self.extracted_params_text.setHtml(self._get_extracted_params_html())
 
             # 保存 box_coords 用于显示
             self.selected_boxes = self.noise_params.get('box_coords', [])
+
+            # 绘制直方图
+            self._draw_histograms()
+
+            # 更新噪声估计区域的 HTML 显示
+            self.analysis_text.setHtml(self._get_noise_analysis_html())
+
+    def _get_extracted_params_html(self):
+        """生成噪声参数显示 HTML。"""
+        if not self.noise_params:
+            return "<p>暂无噪声参数</p>"
+
+        p = self.noise_params
+
+        html = f"""
+        <h3 style="color: #0ea5e9; margin-bottom: 8px; font-size: 15px;">噪声模型</h3>
+        <div style="background: #e0f2fe; padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;">
+            <strong>Poisson(λ)</strong> + <strong>AWGN(σ)</strong> + <strong>Gaussian Blur(σ=1)</strong>
+        </div>
+
+        <h3 style="color: #0ea5e9; margin-bottom: 8px; font-size: 15px;">最终估计结果</h3>
+        <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;">
+            <strong>Poisson λ</strong> = {p['poisson_lambda']:.2f}<br>
+            <strong>AWGN σ</strong> = {p['awgn_sigma']:.4f}
+        </div>
+        """
+
+        return html
+
+    def _draw_histograms(self):
+        """使用 matplotlib 绘制每个均匀区域窗口的强度分布直方图。
+
+        布局：1 行 2 列，每个子图显示一层（暗部/亮部）
+        每层内 2 条曲线，用不同颜色区分 2 个盒子（a/b）
+        """
+        if not MATPLOTLIB_AVAILABLE:
+            self.histogram_label.setText("matplotlib 不可用，无法绘制直方图")
+            return
+
+        # 设置中文字体
+        plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'Arial Unicode MS']
+        plt.rcParams['axes.unicode_minus'] = False  # 正常显示负号
+
+        box_data_list = self.noise_params.get('box_data_list', [])
+        if not box_data_list:
+            self.histogram_label.setText("暂无盒子数据，请先提取噪声参数")
+            return
+
+        # 1 行 2 列布局
+        n_cols = 2
+        fig, axes = plt.subplots(1, n_cols, figsize=(12, 5))
+        fig.tight_layout(pad=3.0)
+
+        axes = axes.reshape(1, -1)
+
+        # 颜色方案：a/b 分别用不同颜色（两层通用）
+        # a = 该层第 1 个（最均匀），b = 第 2 个
+        colors = ['#e67e22', '#3498db']  # 橙色、蓝色
+
+        # 层标题
+        layer_titles = ['暗部 (0-50%)', '亮部 (50%-100%)']
+
+        for layer_idx in range(2):
+            ax = axes[0, layer_idx]
+
+            # 获取该层的 2 个盒子数据
+            layer_boxes = [b for b in box_data_list if b['layer'] == str(layer_idx + 1)]
+
+            for box_data in layer_boxes:
+                label = box_data['label']  # 如 "1a", "2b"
+                pos_in_layer = box_data.get('pos_in_layer', 0)  # 0=a, 1=b
+                color = colors[pos_in_layer]  # 根据在层内位置确定颜色
+
+                signal_hist = box_data.get('signal_hist', [])
+                signal_bins = box_data.get('signal_bins', [])
+
+                # 计算 bin 中心位置
+                signal_centers = [(signal_bins[i] + signal_bins[i+1]) / 2 for i in range(len(signal_hist))]
+
+                # 用固定颜色绘制曲线
+                ax.plot(signal_centers, signal_hist, color=color, linewidth=2.5,
+                        label=f"Box {label}")
+
+            ax.set_title(layer_titles[layer_idx], fontsize=13, fontweight='bold')
+            ax.set_xlabel('Intensity', fontsize=11)
+            ax.set_ylabel('Probability', fontsize=11)
+            ax.legend(loc='upper right', fontsize=10, framealpha=0.9)
+            ax.grid(True, alpha=0.25, linestyle='--')
+
+        # 保存图片到内存
+        from io import BytesIO
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
+        buf.seek(0)
+
+        # 转换为 QImage 并显示
+        pixmap = QPixmap()
+        pixmap.loadFromData(buf.getvalue(), 'PNG')
+
+        self.histogram_label.setPixmap(pixmap.scaled(self.histogram_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
+        plt.close(fig)
 
     def get_current_noise_params(self):
         """从可编辑控件获取当前的噪声参数。"""
@@ -1680,30 +1925,25 @@ class PreprocessPage(QWidget):
             # 转换为 RGB
             rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-            # 获取区域盒坐标（从 selected_boxes 或 noise_params）
-            box_coords = self.selected_boxes if hasattr(self, 'selected_boxes') and self.selected_boxes else self.noise_params.get('box_coords', [])
+            # 获取区域盒数据（从 box_data_list 获取标签和坐标）
+            box_data_list = self.noise_params.get('box_data_list', [])
 
-            print(f"Box coords to display: {len(box_coords)} boxes")
-            print(f"Box coords: {box_coords}")
-
-            if not box_coords:
-                print("No box coords to display")
+            if not box_data_list:
                 return
 
             # 获取图像尺寸
             img_h, img_w = rgb_img.shape[:2]
-            print(f"Image size: {img_w}x{img_h}")
 
-            # 在图像上绘制区域盒（绿色边框，3 像素粗，带编号）
-            for idx, box in enumerate(box_coords):
-                x1, y1 = box['x1'], box['y1']
-                x2, y2 = box['x2'], box['y2']
-                # 绘制矩形框（绿色，3 像素粗）
-                cv2.rectangle(rgb_img, (x1, y1), (x2, y2), (0, 255, 0), 3)
-                # 添加编号标签
-                label = f"Box {idx+1}"
-                cv2.putText(rgb_img, label, (x1, y1 - 5),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+            # 在图像上绘制区域盒（绿色边框，3 像素粗，带层内标签）
+            for box_data in box_data_list:
+                x1, y1 = box_data['x1'], box_data['y1']
+                x2, y2 = box_data['x2'], box_data['y2']
+                label = box_data['label']  # 如 "1a", "2b"
+                # 绘制矩形框（黄色，4 像素粗）
+                cv2.rectangle(rgb_img, (x1, y1), (x2, y2), (255, 255, 0), 4)
+                # 添加标签（白色，大字体，粗线条）
+                cv2.putText(rgb_img, label, (x1, y1 - 18),
+                           cv2.FONT_HERSHEY_SIMPLEX, 2.4, (255, 255, 255), 4)
 
             # 转换为 QImage 显示
             h, w = rgb_img.shape[:2]
@@ -1724,7 +1964,7 @@ class PreprocessPage(QWidget):
                 self.source_image_label.setPixmap(pixmap)
 
             self.source_image_label.setText("")
-            print(f"Successfully displayed {len(box_coords)} noise estimation boxes")
+            print(f"Successfully displayed {len(box_data_list)} noise estimation boxes")
         except Exception as e:
             print(f"Error displaying noise boxes: {e}")
             import traceback
@@ -2100,7 +2340,7 @@ class PreprocessPage(QWidget):
         if method_label:
             method_label.setStyleSheet("""
                 color: #64748b;
-                font-size: 12px;
+                font-size: 16px;
                 padding: 0px;
                 margin: 0px;
             """)

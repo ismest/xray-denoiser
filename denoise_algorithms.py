@@ -367,46 +367,6 @@ def adaptive_denoise(image, method='auto', noise_estimate=None):
         return gaussian_denoise(image)
 
 
-def hybrid_denoise(image, strength='medium'):
-    """
-    Hybrid denoising approach combining multiple methods.
-
-    Args:
-        image: Input image (any depth)
-        strength: 'low', 'medium', 'high' - controls denoising strength
-
-    Returns:
-        Denoised image in original depth
-    """
-    try:
-        # Handle very small images
-        if image.shape[0] < 20 or image.shape[1] < 20:
-            return bilateral_filter_denoise(image)
-
-        # Set parameters based on strength
-        if strength == 'low':
-            h, patch_size, d = 6, 5, 5
-            sigma_color, sigma_space = 50, 50
-        elif strength == 'high':
-            h, patch_size, d = 15, 9, 13
-            sigma_color, sigma_space = 100, 100
-        else:  # medium
-            h, patch_size, d = 10, 7, 9
-            sigma_color, sigma_space = 75, 75
-
-        # First pass: Non-local means
-        denoised_nlm = non_local_means_denoise(image, h=h, patch_size=patch_size, patch_distance=15)
-
-        # Second pass: Bilateral filter to preserve edges
-        denoised_final = bilateral_filter_denoise(denoised_nlm, d=d, sigma_color=sigma_color, sigma_space=sigma_space)
-
-        return denoised_final
-
-    except Exception as e:
-        print(f"Hybrid denoising failed: {e}")
-        return adaptive_denoise(image, method='auto')
-
-
 def bm3d_denoise(image, sigma_psd=20, stage_arg='hard'):
     """
     BM3D (Block-Matching 3D) denoising - advanced patch-based algorithm.

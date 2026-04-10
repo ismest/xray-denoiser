@@ -195,13 +195,13 @@ def super_resolution_denoised_image(image: np.ndarray,
                         model.eval()
 
                         # 归一化
-                        img_norm = normalize_image(image)
+                        img_norm, orig_dtype, orig_max = normalize_image(image)
                         img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
 
                         # 推理
                         with torch.no_grad():
                             result = model(img_tensor)
-                            upscaled = denormalize_image(result.squeeze().numpy())
+                            upscaled = denormalize_image(result.squeeze().numpy(), orig_dtype, orig_max)
                 except Exception as e:
                     print(f"Failed to load trained SR model: {e}")
                     # Fallback to lanczos
@@ -219,7 +219,7 @@ def super_resolution_denoised_image(image: np.ndarray,
         model_file = None
         for filename in os.listdir(sr_model_dir):
             if filename.lower().endswith('.pth') or filename.lower().endswith('.pt'):
-                model_file = os.path.join(sr_model_dir, f)
+                model_file = os.path.join(sr_model_dir, filename)
                 break
 
         if model_file and os.path.exists(model_file):
@@ -229,13 +229,13 @@ def super_resolution_denoised_image(image: np.ndarray,
                 model.eval()
 
                 # 归一化
-                img_norm = normalize_image(image)
+                img_norm, orig_dtype, orig_max = normalize_image(image)
                 img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
 
                 # 推理
                 with torch.no_grad():
                     result = model(img_tensor)
-                    upscaled = denormalize_image(result.squeeze().numpy())
+                    upscaled = denormalize_image(result.squeeze().numpy(), orig_dtype, orig_max)
             except Exception as e:
                 print(f"Failed to load trained SR model: {e}")
                 # Fallback to lanczos

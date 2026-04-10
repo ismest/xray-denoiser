@@ -2,11 +2,6 @@
   "denoise": {
     "algorithms": [
       {
-        "key": "hybrid",
-        "name": "Hybrid (Recommended)",
-        "enabled": true
-      },
-      {
         "key": "bm3d",
         "name": "BM3D (Block-Matching 3D)",
         "enabled": true
@@ -40,16 +35,6 @@
         "key": "gaussian",
         "name": "Gaussian Filter",
         "enabled": true
-      },
-      {
-        "key": "trained_neural_denoise_20260407_170903",
-        "name": "Trained Neural Denoise [20260407_170903]",
-        "enabled": true
-      },
-      {
-        "key": "trained_neural_denoise_n2v_20260408_102410",
-        "name": "Noise2Void (Self-Supervised) [20260408_102410]",
-        "enabled": true
       }
     ]
   },
@@ -62,7 +47,7 @@
       },
       {
         "key": "lanczos",
-        "name": "兰索斯插值 (Lanczos) - 推荐",
+        "name": "兰索斯插值 (Lanczos)",
         "enabled": true
       },
       {

@@ -12,7 +12,6 @@ CONFIG_FILE = os.path.join(os.path.dirname(__file__), 'algorithm_config.json')
 
 # 默认降噪算法配置
 DEFAULT_DENOISE_ALGORITHMS = [
-    {"key": "hybrid", "name": "Hybrid (Recommended)", "enabled": True},
     {"key": "bm3d", "name": "BM3D (Block-Matching 3D)", "enabled": True},
     {"key": "anisotropic", "name": "Anisotropic Diffusion", "enabled": True},
     {"key": "iterative", "name": "Iterative Reconstruction", "enabled": True},
@@ -25,7 +24,7 @@ DEFAULT_DENOISE_ALGORITHMS = [
 # 默认超分辨率算法配置
 DEFAULT_SR_ALGORITHMS = [
     {"key": "bicubic", "name": "双三次插值 (Bicubic)", "enabled": True},
-    {"key": "lanczos", "name": "兰索斯插值 (Lanczos) - 推荐", "enabled": True},
+    {"key": "lanczos", "name": "兰索斯插值 (Lanczos)", "enabled": True},
     {"key": "edge_preserving", "name": "保边增强 (Edge Preserving)", "enabled": True},
 ]
 
@@ -65,6 +64,50 @@ def save_config(config: Dict) -> bool:
         return False
 
 
+def _scan_integrated_models(model_type: str) -> List[Dict]:
+    """扫描 integrated_model 目录中的训练模型。
+
+    Args:
+        model_type: 'denoise' 或 'super_resolution'
+
+    Returns:
+        训练模型列表
+    """
+    models = []
+    base_dir = os.path.join(os.path.dirname(__file__), 'integrated_model',
+                            'denoise' if model_type == 'denoise' else 'super_resolution')
+    if not os.path.isdir(base_dir):
+        return models
+
+    for entry in sorted(os.listdir(base_dir)):
+        model_subdir = os.path.join(base_dir, entry)
+        if not os.path.isdir(model_subdir):
+            continue
+        marker_file = os.path.join(model_subdir, 'model_ready.marker')
+        if not os.path.exists(marker_file):
+            continue
+
+        # 读取时间戳
+        timestamp = entry
+        try:
+            with open(marker_file, 'r', encoding='utf-8') as f:
+                first_line = f.readline().strip()
+                if 'Integrated at' in first_line:
+                    timestamp = first_line.replace('Integrated at', '').strip()
+        except Exception:
+            pass
+
+        prefix = 'trained_neural_denoise' if model_type == 'denoise' else 'trained_sr'
+        label = 'Denoise' if model_type == 'denoise' else 'Super-Resolution'
+        models.append({
+            "key": f"{prefix}_{entry}",
+            "name": f"Trained Neural {label} [{timestamp}]",
+            "enabled": True
+        })
+
+    return models
+
+
 def get_denoise_algorithms(include_disabled: bool = False) -> List[Dict]:
     """
     获取降噪算法列表。
@@ -77,11 +120,20 @@ def get_denoise_algorithms(include_disabled: bool = False) -> List[Dict]:
     """
     config = load_config()
     algorithms = config.get('denoise', {}).get('algorithms', DEFAULT_DENOISE_ALGORITHMS)
+    json_keys = {a['key'] for a in algorithms}
 
     if include_disabled:
-        return [{"key": a["key"], "name": a["name"]} for a in algorithms]
+        result = [{"key": a["key"], "name": a["name"]} for a in algorithms]
     else:
-        return [{"key": a["key"], "name": a["name"]} for a in algorithms if a.get("enabled", True)]
+        result = [{"key": a["key"], "name": a["name"]} for a in algorithms if a.get("enabled", True)]
+
+    # 追加磁盘模型，跳过 JSON 已有的（去重）
+    trained = _scan_integrated_models('denoise')
+    for m in trained:
+        if m['key'] not in json_keys:
+            result.append({"key": m["key"], "name": m["name"]})
+
+    return result
 
 
 def get_sr_algorithms(include_disabled: bool = False) -> List[Dict]:
@@ -96,11 +148,20 @@ def get_sr_algorithms(include_disabled: bool = False) -> List[Dict]:
     """
     config = load_config()
     algorithms = config.get('super_resolution', {}).get('algorithms', DEFAULT_SR_ALGORITHMS)
+    json_keys = {a['key'] for a in algorithms}
 
     if include_disabled:
-        return [{"key": a["key"], "name": a["name"]} for a in algorithms]
+        result = [{"key": a["key"], "name": a["name"]} for a in algorithms]
     else:
-        return [{"key": a["key"], "name": a["name"]} for a in algorithms if a.get("enabled", True)]
+        result = [{"key": a["key"], "name": a["name"]} for a in algorithms if a.get("enabled", True)]
+
+    # 追加磁盘模型，跳过 JSON 已有的（去重）
+    trained = _scan_integrated_models('super_resolution')
+    for m in trained:
+        if m['key'] not in json_keys:
+            result.append({"key": m["key"], "name": m["name"]})
+
+    return result
 
 
 def update_algorithm(algo_type: str, key: str, name: str = None, enabled: bool = None) -> bool:
@@ -195,7 +256,21 @@ def get_algorithm_config(algo_type: str) -> List[Dict]:
         完整的算法配置列表
     """
     config = load_config()
-    return config.get(algo_type, {}).get('algorithms', [])
+    result = config.get(algo_type, {}).get('algorithms', [])
+
+    # 同步磁盘模型到 JSON，使 update/delete 生效
+    trained = _scan_integrated_models(algo_type)
+    changed = False
+    for model in trained:
+        if add_algorithm(algo_type, model['key'], model['name'], enabled=True):
+            changed = True
+
+    # 有新模型写入时重新加载，避免追加导致重复条目
+    if changed:
+        config = load_config()
+        result = config.get(algo_type, {}).get('algorithms', [])
+
+    return result
 
 
 def reset_to_defaults(algo_type: str = None) -> bool:

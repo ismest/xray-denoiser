@@ -8,7 +8,7 @@ import numpy as np
 import os
 from typing import Tuple, Optional, Dict, Any
 from denoise_algorithms import (
-    hybrid_denoise, adaptive_denoise, normalize_image, denormalize_image,
+    adaptive_denoise, normalize_image, denormalize_image,
     safe_resize_for_display, non_local_means_denoise, bilateral_filter_denoise,
     wavelet_denoise, gaussian_denoise, bm3d_denoise, anisotropic_diffusion_denoise,
     iterative_reconstruction_denoise
@@ -144,11 +144,7 @@ class ImageProcessor:
             # Store original dtype for verification
             original_dtype = self.original_image.dtype
 
-            if method == 'hybrid':
-                strength = kwargs.get('strength', 'medium')
-                self.denoised_image = hybrid_denoise(self.original_image, strength=strength)
-
-            elif method == 'neural':
+            if method == 'neural':
                 patch_size = kwargs.get('patch_size', 256)
                 stride = kwargs.get('stride', 128)
                 self.denoised_image = self.neural_denoiser.denoise(
@@ -194,7 +190,7 @@ class ImageProcessor:
                             )
                         except Exception as e:
                             print(f"Failed to load ONNX model: {e}")
-                            self.denoised_image = hybrid_denoise(self.original_image)
+                            self.denoised_image = bilateral_filter_denoise(self.original_image)
                     elif model_file_pth:
                         # Load PyTorch model
                         try:
@@ -206,22 +202,22 @@ class ImageProcessor:
                             model.eval()
 
                             # Normalize input
-                            img_norm = normalize_image(self.original_image)
+                            img_norm, orig_dtype, orig_max = normalize_image(self.original_image)
                             img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
 
                             # Run inference
                             with torch.no_grad():
                                 result = model(img_tensor)
-                                self.denoised_image = denormalize_image(result.squeeze().numpy())
+                                self.denoised_image = denormalize_image(result.squeeze().numpy(), orig_dtype, orig_max)
                         except Exception as e:
                             print(f"Failed to load PyTorch model: {e}")
-                            self.denoised_image = hybrid_denoise(self.original_image)
+                            self.denoised_image = bilateral_filter_denoise(self.original_image)
                     else:
                         # Fallback to hybrid
-                        self.denoised_image = hybrid_denoise(self.original_image)
+                        self.denoised_image = bilateral_filter_denoise(self.original_image)
                 else:
                     # Fallback to hybrid if directory doesn't exist
-                    self.denoised_image = hybrid_denoise(self.original_image)
+                    self.denoised_image = bilateral_filter_denoise(self.original_image)
 
             elif method == 'trained_neural_denoise':
                 # Legacy: Use trained neural model from integrated_model/denoise directory (without timestamp)
@@ -246,7 +242,7 @@ class ImageProcessor:
                         )
                     except Exception as e:
                         print(f"Failed to load ONNX model: {e}")
-                        self.denoised_image = hybrid_denoise(self.original_image)
+                        self.denoised_image = bilateral_filter_denoise(self.original_image)
                 elif os.path.exists(model_file_pth):
                     # Load PyTorch model
                     try:
@@ -258,19 +254,19 @@ class ImageProcessor:
                         model.eval()
 
                         # Normalize input
-                        img_norm = normalize_image(self.original_image)
+                        img_norm, orig_dtype, orig_max = normalize_image(self.original_image)
                         img_tensor = torch.from_numpy(img_norm).unsqueeze(0).unsqueeze(0).float()
 
                         # Run inference
                         with torch.no_grad():
                             result = model(img_tensor)
-                            self.denoised_image = denormalize_image(result.squeeze().numpy())
+                            self.denoised_image = denormalize_image(result.squeeze().numpy(), orig_dtype, orig_max)
                     except Exception as e:
                         print(f"Failed to load PyTorch model: {e}")
-                        self.denoised_image = hybrid_denoise(self.original_image)
+                        self.denoised_image = bilateral_filter_denoise(self.original_image)
                 else:
                     # Fallback to hybrid
-                    self.denoised_image = hybrid_denoise(self.original_image)
+                    self.denoised_image = bilateral_filter_denoise(self.original_image)
 
             elif method == 'nlm':
                 # Pass NLM parameters from UI
@@ -325,8 +321,8 @@ class ImageProcessor:
                 )
 
             else:
-                # Default to hybrid
-                self.denoised_image = hybrid_denoise(self.original_image)
+                # Default to bilateral
+                self.denoised_image = bilateral_filter_denoise(self.original_image)
 
             # Verify output
             if self.denoised_image is None:

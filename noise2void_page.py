@@ -113,6 +113,9 @@ class Noise2VoidTrainingThread(QThread):
 
             self.progress.emit(20, "正在准备训练数据...")
 
+            # 确保输出目录存在
+            os.makedirs(self.output_dir, exist_ok=True)
+
             # 准备 N2V 训练数据
             train_data = self._prepare_n2v_data(img)
 
@@ -179,7 +182,6 @@ class Noise2VoidTrainingThread(QThread):
 
             # 保存配置
             self.progress.emit(95, "正在保存模型...")
-            os.makedirs(self.output_dir, exist_ok=True)
 
             config = {
                 'algorithm': 'Noise2Void',
@@ -545,8 +547,28 @@ class Noise2VoidPage(QWidget):
         integrate_layout = QVBoxLayout(integrate_group)
         integrate_layout.setSpacing(DesignTokens.SPACING_10)
 
+        # 模型类型选择
+        model_type_layout = QHBoxLayout()
+        model_type_label = QLabel("模型类型:")
+        model_type_label.setStyleSheet("font-size: 15px; font-weight: 500; color: #475569;")
+        model_type_layout.addWidget(model_type_label)
+
+        self.model_type_combo = QComboBox()
+        self.model_type_combo.addItems(["降噪模型 (Denoiser)", "超分辨率模型 (Super-Resolution)"])
+        self.model_type_combo.setMinimumHeight(40)
+        self.model_type_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 15px;
+                padding: 10px 14px;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+            }
+        """)
+        model_type_layout.addWidget(self.model_type_combo, 1)
+        integrate_layout.addLayout(model_type_layout)
+
         # 集成按钮
-        self.integrate_model_btn = QPushButton("添加到降噪模型")
+        self.integrate_model_btn = QPushButton("添加")
         self.integrate_model_btn.setObjectName("integrateModelBtn")
         self.integrate_model_btn.setMinimumHeight(48)
         self.integrate_model_btn.clicked.connect(self.integrate_model)
@@ -781,6 +803,7 @@ class Noise2VoidPage(QWidget):
         # 创建带时间戳的子目录（与 DenseNet 训练页面逻辑一致）
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_dir = os.path.join(self.output_dir, f'noise2void_{timestamp}')
+        self.output_dir = output_dir  # 更新为实际训练目录
         self.output_dir_edit.setText(output_dir)
 
         # 获取参数
@@ -912,42 +935,91 @@ class Noise2VoidPage(QWidget):
             QMessageBox.warning(self, "警告", "请先选择模型输出目录")
             return
 
-        # 检查模型文件是否存在
-        model_file = os.path.join(self.output_dir, 'noise2void_model.pth')
-        if not os.path.exists(model_file):
-            QMessageBox.warning(self, "警告", "未找到训练好的模型文件")
+        if not os.path.isdir(self.output_dir):
+            QMessageBox.warning(self, "警告", f"输出目录不存在：\n{self.output_dir}")
             return
 
+        # 检查模型文件
+        model_files = [f for f in os.listdir(self.output_dir) if f.endswith(('.pth', '.onnx', '.json'))]
+        if not model_files:
+            # 尝试查找默认文件名
+            default_files = ['noise2void_model.pth', 'n2v_config.json', 'model_ready.marker']
+            for fname in default_files:
+                if os.path.exists(os.path.join(self.output_dir, fname)):
+                    model_files.append(fname)
+            if not model_files:
+                QMessageBox.warning(self, "警告",
+                    f"没有找到模型文件\n输出目录：{self.output_dir}\n请确认训练已完成")
+                return
+
         try:
-            from algorithm_config import add_algorithm
             import shutil
 
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            algo_key = f"trained_neural_denoise_n2v_{timestamp}"
-            algo_name = f"Noise2Void (Self-Supervised) [{timestamp}]"
+            # 根据模型类型决定目标目录
+            model_type = self.model_type_combo.currentText()
+            if "降噪" in model_type:
+                base_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise')
+            else:
+                base_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
 
-            # 复制模型到 integrated_model/denoise 目录
-            target_base = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise', timestamp)
-            os.makedirs(target_base, exist_ok=True)
+            # 创建带时间戳的子目录
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            target_dir = os.path.join(base_dir, timestamp)
+            os.makedirs(target_dir, exist_ok=True)
 
             # 复制模型文件
-            for item in os.listdir(self.output_dir):
-                src = os.path.join(self.output_dir, item)
-                dst = os.path.join(target_base, item)
+            copied_count = 0
+            for filename in model_files:
+                src = os.path.join(self.output_dir, filename)
+                dst = os.path.join(target_dir, filename)
                 if os.path.isfile(src):
                     shutil.copy2(src, dst)
+                    copied_count += 1
 
-            # 添加到算法配置
-            if add_algorithm('denoise', algo_key, algo_name, enabled=True):
-                QMessageBox.information(self, "成功", f"模型已集成到降噪算法列表:\n{algo_name}")
-                self.append_log(f"模型已集成：{algo_name}")
-                self.integrate_model_btn.setEnabled(False)
-            else:
-                QMessageBox.warning(self, "警告", "添加到算法列表失败")
+            # 创建集成标记文件
+            marker_path = os.path.join(target_dir, 'model_ready.marker')
+            with open(marker_path, 'w', encoding='utf-8') as f:
+                f.write(f"Integrated at {datetime.now().isoformat()}\nModel Type: {model_type}")
+
+            # 同步到 JSON 配置（使管理对话框能识别此模型）
+            from algorithm_config import add_algorithm
+            label = 'Denoise' if '降噪' in model_type else 'Super-Resolution'
+            prefix = 'trained_neural_denoise' if '降噪' in model_type else 'trained_sr'
+            algo_key = f"{prefix}_{timestamp}"
+            algo_name = f"Trained Neural {label} [{timestamp}]"
+            add_algorithm(
+                'denoise' if '降噪' in model_type else 'super_resolution',
+                algo_key, algo_name, enabled=True
+            )
+
+            self.append_log(f"✓ 模型已集成到：{target_dir}（复制了 {copied_count} 个文件）")
+            self.integrate_model_btn.setEnabled(False)
+
+            QMessageBox.information(self, "成功",
+                f"模型已集成到{'降噪' if '降噪' in model_type else '超分辨率'}算法\n"
+                f"复制了 {copied_count} 个文件\n目录：{target_dir}")
+
+            # 通知主窗口刷新降噪页面的算法列表
+            self._refresh_denoise_algorithm_list()
 
         except Exception as e:
-            QMessageBox.warning(self, "错误", f"集成失败：{str(e)}")
-            QMessageBox.warning(self, "错误", f"集成失败：{str(e)}")
+            import traceback
+            error_detail = traceback.format_exc()
+            QMessageBox.critical(self, "错误", f"集成失败：{str(e)}\n\n{error_detail}")
+            self.append_log(f"✗ 集成失败：{str(e)}")
+
+    def _refresh_denoise_algorithm_list(self):
+        """通知主窗口刷新降噪和超分算法列表。"""
+        try:
+            main_win = self.window()
+            if main_win and hasattr(main_win, 'denoise_widget'):
+                main_win.denoise_widget.update_algorithm_list()
+                main_win.denoise_widget._update_sr_algorithm_list()
+                self.append_log("✓ 算法列表已刷新")
+            else:
+                self.append_log(f"⚠ 无法找到主窗口，窗口类型: {type(main_win).__name__}")
+        except Exception as e:
+            self.append_log(f"⚠ 刷新算法列表失败：{e}")
 
     def append_log(self, message):
         """添加日志"""

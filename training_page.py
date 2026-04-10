@@ -5,6 +5,7 @@
 import sys
 import os
 import json
+import platform
 from datetime import datetime
 import numpy as np
 from pathlib import Path
@@ -184,18 +185,26 @@ class TrainingThread(QThread):
         if torch.cuda.is_available():
             device_name = torch.cuda.get_device_name(0)
             gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3  # GB
-            hardware_info = f"GPU: {device_name} ({gpu_memory:.1f} GB)"
+            cuda_version = torch.version.cuda
+            hardware_info = f"GPU: {device_name} ({gpu_memory:.1f} GB) | CUDA: {cuda_version}"
             # GPU 训练时间估算（基于经验值）
             estimated_time_per_epoch = 5  # 秒
+            device_type = "GPU"
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            hardware_info = "GPU: Apple Silicon (MPS)"
+            estimated_time_per_epoch = 8  # 秒
+            device_type = "MPS"
         else:
-            hardware_info = f"CPU: {torch.get_num_threads()} 线程"
+            cpu_name = platform.processor() if hasattr(platform, 'processor') else "Unknown CPU"
+            hardware_info = f"CPU: {cpu_name} ({torch.get_num_threads()} 线程)"
             # CPU 训练时间估算（基于经验值，约慢 10 倍）
             estimated_time_per_epoch = 50  # 秒
+            device_type = "CPU"
 
         total_samples = self.epochs * self.batch_size
         estimated_total = self.epochs * estimated_time_per_epoch
 
-        return hardware_info, device_name if torch.cuda.is_available() else "CPU", estimated_total
+        return hardware_info, device_type, estimated_total
 
     def run(self):
         if not TORCH_AVAILABLE:
@@ -209,9 +218,17 @@ class TrainingThread(QThread):
 
             # 检测硬件资源
             hardware_info, device_type, estimated_time = self._detect_hardware()
-            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+            # 优先使用 GPU，其次 MPS，最后 CPU
+            if device_type == "GPU":
+                device = torch.device('cuda')
+            elif device_type == "MPS":
+                device = torch.device('mps')
+            else:
+                device = torch.device('cpu')
 
             self.progress.emit(10, f"硬件检测：{hardware_info}")
+            self.progress.emit(12, f"训练设备：{device_type}")
             if estimated_time > 0:
                 mins = estimated_time // 60
                 secs = estimated_time % 60
@@ -839,7 +856,7 @@ class TrainingPage(QWidget):
         self.progress.setValue(value)
         self.status_label.setText(message)
         # 将硬件检测和预计时间信息添加到日志
-        if "硬件检测" in message or "预计训练时间" in message:
+        if "硬件检测" in message or "预计训练时间" in message or "训练设备" in message:
             self.log_text.append(message)
 
     def update_epoch_metrics(self, epoch, metrics):
@@ -916,47 +933,96 @@ class TrainingPage(QWidget):
         try:
             output_dir = self.output_path_edit.toPlainText().strip()
             if not output_dir:
-                QMessageBox.warning(self, "警告", "没有找到输出目录")
+                QMessageBox.warning(self, "警告", "没有找到输出目录\n请先选择训练输出目录")
+                return
+            if not os.path.isdir(output_dir):
+                QMessageBox.warning(self, "警告", f"输出目录不存在：\n{output_dir}")
                 return
 
             # 查找模型文件
             model_dir = os.path.join(output_dir, 'models')
             if not os.path.isdir(model_dir):
-                QMessageBox.warning(self, "警告", "没有找到模型文件目录")
+                # 尝试直接在 output_dir 中查找
+                model_files = [f for f in os.listdir(output_dir) if f.endswith(('.pth', '.onnx'))]
+                if model_files:
+                    model_dir = output_dir
+                else:
+                    QMessageBox.warning(self, "警告",
+                        f"没有找到模型文件\n输出目录：{output_dir}\n请确认训练已完成并生成了模型文件")
+                    return
+
+            # 检查是否有模型文件
+            model_files = [f for f in os.listdir(model_dir) if f.endswith(('.pth', '.onnx', '.json'))]
+            if not model_files:
+                QMessageBox.warning(self, "警告",
+                    f"模型目录中没有找到模型文件\n目录：{model_dir}")
                 return
 
             # 根据模型类型决定目标目录
             model_type = self.model_type_combo.currentText()
             if "降噪" in model_type:
-                target_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise')
+                base_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'denoise')
             else:
-                target_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
+                base_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', 'super_resolution')
 
+            # 创建带时间戳的子目录
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            target_dir = os.path.join(base_dir, timestamp)
             os.makedirs(target_dir, exist_ok=True)
 
             # 复制模型文件
             import shutil
             copied_count = 0
-            for filename in os.listdir(model_dir):
-                if filename.endswith(('.pth', '.onnx', '.json')):
-                    src = os.path.join(model_dir, filename)
-                    dst = os.path.join(target_dir, filename)
-                    shutil.copy2(src, dst)
-                    copied_count += 1
-
-            self.log_text.append(f"✓ 模型已集成到：{target_dir}")
-            self.integrate_model_btn.setEnabled(False)
+            for filename in model_files:
+                src = os.path.join(model_dir, filename)
+                dst = os.path.join(target_dir, filename)
+                shutil.copy2(src, dst)
+                copied_count += 1
 
             # 创建集成标记文件
             marker_path = os.path.join(target_dir, 'model_ready.marker')
             with open(marker_path, 'w', encoding='utf-8') as f:
                 f.write(f"Integrated at {datetime.now().isoformat()}\nModel Type: {model_type}")
 
-            QMessageBox.information(self, "成功", f"模型已集成到{'降噪' if '降噪' in model_type else '超分辨率'}算法\n目录：{target_dir}")
+            # 同步到 JSON 配置（使管理对话框能识别此模型）
+            from algorithm_config import add_algorithm
+            label = 'Denoise' if '降噪' in model_type else 'Super-Resolution'
+            prefix = 'trained_neural_denoise' if '降噪' in model_type else 'trained_sr'
+            algo_key = f"{prefix}_{timestamp}"
+            algo_name = f"Trained Neural {label} [{timestamp}]"
+            add_algorithm(
+                'denoise' if '降噪' in model_type else 'super_resolution',
+                algo_key, algo_name, enabled=True
+            )
+
+            self.log_text.append(f"✓ 模型已集成到：{target_dir}（复制了 {copied_count} 个文件）")
+            self.integrate_model_btn.setEnabled(False)
+
+            QMessageBox.information(self, "成功",
+                f"模型已集成到{'降噪' if '降噪' in model_type else '超分辨率'}算法\n"
+                f"复制了 {copied_count} 个文件\n目录：{target_dir}")
+
+            # 通知主窗口刷新降噪页面的算法列表
+            self._refresh_denoise_algorithm_list()
 
         except Exception as e:
-            QMessageBox.critical(self, "错误", f"集成失败：{str(e)}")
+            import traceback
+            error_detail = traceback.format_exc()
+            QMessageBox.critical(self, "错误", f"集成失败：{str(e)}\n\n{error_detail}")
             self.log_text.append(f"✗ 集成失败：{str(e)}")
+
+    def _refresh_denoise_algorithm_list(self):
+        """通知主窗口刷新降噪和超分算法列表。"""
+        try:
+            main_win = self.window()
+            if main_win and hasattr(main_win, 'denoise_widget'):
+                main_win.denoise_widget.update_algorithm_list()
+                main_win.denoise_widget._update_sr_algorithm_list()
+                self.log_text.append("✓ 算法列表已刷新")
+            else:
+                self.log_text.append(f"⚠ 无法找到主窗口，窗口类型: {type(main_win).__name__}")
+        except Exception as e:
+            self.log_text.append(f"⚠ 刷新算法列表失败：{e}")
 
     def apply_medical_style(self):
         """应用 Medical Minimalism 风格"""

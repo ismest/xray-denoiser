@@ -280,17 +280,43 @@ class AlgorithmEditorDialog(QDialog):
             QMessageBox.critical(self, "错误", f"加载模型失败：{str(e)}")
 
     def _reset_defaults(self):
-        """恢复默认配置。"""
+        """恢复默认配置，并删除所有训练模型文件。"""
+        # 统计将被删除的模型目录数量
+        target_subdir = "denoise" if self.algo_type == "denoise" else "super_resolution"
+        integrated_dir = os.path.join(os.path.dirname(__file__), 'integrated_model', target_subdir)
+        model_dirs = []
+        if os.path.isdir(integrated_dir):
+            for entry in os.listdir(integrated_dir):
+                subdir = os.path.join(integrated_dir, entry)
+                if os.path.isdir(subdir) and os.path.exists(os.path.join(subdir, 'model_ready.marker')):
+                    model_dirs.append(subdir)
+
+        msg = f"确定要恢复{self.tab_name}的默认配置吗？\n\n所有自定义名称和启用状态将被重置。"
+        if model_dirs:
+            msg += f"\n\n同时将删除 {len(model_dirs)} 个训练模型文件夹（操作不可撤销）。"
+
         reply = QMessageBox.question(
-            self, "确认恢复默认",
-            f"确定要恢复{self.tab_name}的默认配置吗？\n\n所有自定义名称和启用状态将被重置。",
+            self, "确认恢复默认", msg,
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
+            # 删除磁盘上的训练模型目录
+            delete_errors = []
+            for d in model_dirs:
+                try:
+                    shutil.rmtree(d)
+                except Exception as e:
+                    delete_errors.append(f"{os.path.basename(d)}: {e}")
+
+            # 重置 JSON 配置
             if reset_to_defaults(self.algo_type):
                 self._load_algorithms()
-                QMessageBox.information(self, "成功", "已恢复默认配置")
+                if delete_errors:
+                    QMessageBox.warning(self, "部分完成",
+                        f"配置已重置，但以下目录删除失败：\n" + "\n".join(delete_errors))
+                else:
+                    QMessageBox.information(self, "成功", "已恢复默认配置，训练模型已删除")
             else:
                 QMessageBox.warning(self, "失败", "恢复默认配置失败")
 
