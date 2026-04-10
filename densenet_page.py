@@ -1,5 +1,5 @@
 """
-DenseNet页面 - 用于噪音提取和数据集构建
+DenseNet页面 - 用于噪音提取、数据集生成与算法训练
 三步流程：1. 噪音提取 2. 数据集生成 3. 算法训练
 """
 
@@ -685,8 +685,8 @@ class DatasetGenerationThread(QThread):
             return (noisy * 255).astype(np.uint8)
 
 
-class PreprocessPage(QWidget):
-    """DenseNet页面 - 噪音提取和数据集构建（两步流程）。"""
+class DenseNetPage(QWidget):
+    """DenseNet页面 - 噪音提取、数据集生成与算法训练（三步流程）。"""
 
     def __init__(self):
         super().__init__()

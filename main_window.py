@@ -14,9 +14,9 @@ from PyQt5.QtGui import QFont, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QSize
 
 # 导入页面模块
-from preprocess_page import PreprocessPage
+from densenet_page import DenseNetPage
 from noise2void_page import Noise2VoidPage
-from denoise_app import DenoiseWidget
+from denoise_sr_page import DenoiseSRWidget
 
 
 # 医疗极简主义设计令牌
@@ -256,9 +256,9 @@ class MainWindow(QMainWindow):
         """)
 
         # 添加页面
-        self.preprocess_page = PreprocessPage()
-        self.preprocess_page.apply_medical_style()
-        self.page_stack.addWidget(self.preprocess_page)
+        self.densenet_page = DenseNetPage()
+        self.densenet_page.apply_medical_style()
+        self.page_stack.addWidget(self.densenet_page)
 
         # Noise2Void 页面
         self.n2v_page = Noise2VoidPage()
@@ -266,7 +266,7 @@ class MainWindow(QMainWindow):
         self.page_stack.addWidget(self.n2v_page)
 
         # 降噪页面
-        self.denoise_widget = DenoiseWidget()
+        self.denoise_widget = DenoiseSRWidget()
         self.denoise_widget.apply_medical_style()
         self.page_stack.addWidget(self.denoise_widget)
 

@@ -1,8 +1,8 @@
 """
-Main GUI application for X-ray image denoising and super-resolution.
-Two-step workflow: Denoise -> Super-Resolution
+降噪与超分页面 - X 射线图像降噪处理与超分辨率重构。
+两步工作流：降噪处理 -> 超分辨率重构
 
-Refactored to support both QMainWindow (standalone) and QWidget (embedded) modes.
+支持 QMainWindow（独立模式）和 QWidget（嵌入模式）。
 """
 
 import sys
@@ -64,8 +64,8 @@ class ProcessingThread(QThread):
             self.finished.emit(False, f"{str(e)}\n\n{error_details}")
 
 
-class DenoiseWidget(QWidget):
-    """Denoising and Super-Resolution widget (can be embedded in main window)."""
+class DenoiseSRWidget(QWidget):
+    """降噪与超分页面组件（可嵌入主窗口）。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1185,8 +1185,8 @@ class DenoiseWidget(QWidget):
 
 
 # For backward compatibility - standalone QMainWindow version
-class DenoiseApp(QMainWindow):
-    """Standalone main window version for backward compatibility."""
+class DenoiseSRApp(QMainWindow):
+    """独立运行模式主窗口（向后兼容）。"""
 
     def __init__(self):
         super().__init__()
@@ -1202,7 +1202,7 @@ class DenoiseApp(QMainWindow):
         layout.setSpacing(16)
         layout.setContentsMargins(16, 16, 16, 16)
 
-        self.denoise_widget = DenoiseWidget(parent=self)
+        self.denoise_widget = DenoiseSRWidget(parent=self)
         layout.addWidget(self.denoise_widget)
 
         self.status_bar = self.statusBar()
@@ -1222,6 +1222,6 @@ except ImportError:
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = DenoiseApp()
+    window = DenoiseSRApp()
     window.show()
     sys.exit(app.exec_())

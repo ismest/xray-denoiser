@@ -15,7 +15,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from main_window import MainWindow
-from denoise_app import DenoiseApp  # For backward compatibility (standalone mode)
+from denoise_sr_page import DenoiseSRApp  # For backward compatibility (standalone mode)
 from PyQt5.QtWidgets import QApplication
 
 
