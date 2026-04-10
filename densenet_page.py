@@ -1050,8 +1050,6 @@ class DenseNetPage(QWidget):
         p = self.noise_params
 
         html = """
-        <h3 style="color: #0ea5e9; margin-bottom: 12px; font-size: 16px;">基于均匀区域法的噪声估计</h3>
-
         <h4 style="color: #0284c7; margin-top: 10px;">计算流程</h4>
         <ol style="margin: 6px 0; padding-left: 20px; font-size: 14px; color: #64748b;">
         <li>按亮度分为暗部/亮部两层，每层选择 2 个均匀区域盒</li>
@@ -1087,8 +1085,6 @@ class DenseNetPage(QWidget):
     def _get_noise_analysis_placeholder(self):
         """获取噪声分析的占位说明（未提取数据时显示）。"""
         return """
-        <h3 style="color: #0ea5e9; margin-bottom: 12px; font-size: 16px;">基于均匀区域法的噪声估计</h3>
-
         <h4 style="color: #0284c7; margin-top: 10px;">计算流程</h4>
         <ol style="margin: 6px 0; padding-left: 20px; font-size: 14px; color: #64748b;">
         <li>按亮度分为暗部/亮部两层，每层选择 2 个均匀区域盒</li>
