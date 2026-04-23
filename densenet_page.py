@@ -818,14 +818,11 @@ class DenseNetPage(QWidget):
     def _create_step1_widget(self):
         """创建步骤 1：噪音提取界面。"""
         widget = QWidget()
-        layout = QHBoxLayout(widget)
-        layout.setSpacing(20)
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(12)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        # 设置最小尺寸防止按钮重叠
-        # 宽度：左侧面板 (400px) + 右侧面板 (500px) + 间距边距 = 约 1000px
-        # 高度：内容高度约 750px + 边距 = 约 800px
-        widget.setMinimumSize(1100, 800)
+        widget.setMinimumSize(1200, 1050)
 
         # 左侧控制面板
         left_panel = QFrame()
@@ -962,11 +959,39 @@ class DenseNetPage(QWidget):
         # 添加弹性空间，将内容推向顶部
         left_layout.addStretch()
 
-        # 右侧：噪声参数显示
-        right_panel = self._create_params_only_panel()
-        right_panel.setMinimumWidth(500)
-        layout.addWidget(left_panel, 1)
-        layout.addWidget(right_panel, 2)
+        # 右上：噪声估计说明 + 噪声参数
+        right_top = self._create_params_only_panel()
+        right_top.setMinimumWidth(500)
+
+        # 上半行：左侧控制 | 右侧信息
+        top_widget = QWidget()
+        top_layout = QHBoxLayout(top_widget)
+        top_layout.setSpacing(20)
+        top_layout.setContentsMargins(0, 0, 0, 0)
+        top_layout.addWidget(left_panel, 1)
+        top_layout.addWidget(right_top, 2)
+
+        # 下方全宽：强度分布图（1 行 4 列）
+        self.histogram_group = QGroupBox("均匀区域窗口强度分布")
+        self.histogram_group.setMinimumHeight(650)
+        hist_layout = QVBoxLayout(self.histogram_group)
+        hist_layout.setSpacing(8)
+        hist_layout.setContentsMargins(12, 12, 12, 12)
+        self.histogram_label = QLabel()
+        self.histogram_label.setAlignment(Qt.AlignCenter)
+        self.histogram_label.setMinimumSize(1200, 590)
+        self.histogram_label.setStyleSheet("""
+            QLabel {
+                background-color: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 8px;
+            }
+        """)
+        hist_layout.addWidget(self.histogram_label)
+
+        layout.addWidget(top_widget, 1)
+        layout.addWidget(self.histogram_group, 0)
 
         return widget
 
@@ -995,29 +1020,7 @@ class DenseNetPage(QWidget):
         main_layout.setSpacing(8)
         main_layout.setContentsMargins(8, 8, 8, 8)
 
-        # 1. 直方图显示（放在上方）
-        self.histogram_group = QGroupBox("均匀区域窗口强度分布")
-        self.histogram_group.setMinimumHeight(500)
-        histogram_layout = QVBoxLayout(self.histogram_group)
-        histogram_layout.setSpacing(8)
-        histogram_layout.setContentsMargins(12, 12, 12, 12)
-
-        # 直方图标签（用于显示 matplotlib 绘制的图像）
-        self.histogram_label = QLabel()
-        self.histogram_label.setAlignment(Qt.AlignCenter)
-        self.histogram_label.setMinimumSize(900, 450)
-        self.histogram_label.setStyleSheet("""
-            QLabel {
-                background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 8px;
-            }
-        """)
-        histogram_layout.addWidget(self.histogram_label)
-        main_layout.addWidget(self.histogram_group)
-
-        # 2. 噪音分析说明（放在中间）
+        # 1. 噪音分析说明
         analysis_group = QGroupBox("基于均匀区域法的噪声估计")
         analysis_group.setMinimumHeight(400)
         analysis_layout = QVBoxLayout(analysis_group)
@@ -1765,8 +1768,10 @@ class DenseNetPage(QWidget):
     def _draw_histograms(self):
         """使用 matplotlib 绘制每个均匀区域窗口的强度分布直方图。
 
-        布局：1 行 2 列，每个子图显示一层（暗部/亮部）
-        实线：实测强度分布；虚线：合成拟合分布（Poisson + AWGN + Gaussian blur）
+        布局：2 行 2 列，共 4 个子图，每图显示同层相邻 2 个盒子：
+          (0,0) 低透射区 1a、1b　(0,1) 低透射区 1c、1d
+          (1,0) 高透射区 2a、2b　(1,1) 高透射区 2c、2d
+        实线：实测强度分布；虚线：高斯拟合曲线
         """
         if not MATPLOTLIB_AVAILABLE:
             self.histogram_label.setText("matplotlib 不可用，无法绘制直方图")
@@ -1783,19 +1788,30 @@ class DenseNetPage(QWidget):
         from matplotlib.lines import Line2D
         from io import BytesIO
 
-        colors = ['#e67e22', '#3498db', '#27ae60', '#9b59b6']  # a=橙, b=蓝, c=绿, d=紫
-        layer_titles = ['低透射区 (活跃区低亮度半)', '高透射区 (活跃区高亮度半)']
+        # 按层区分颜色：低透射区=蓝，高透射区=橙
+        layer_colors = {'1': '#3498db', '2': '#e67e22'}
+        layer_names  = {'1': '低透射区', '2': '高透射区'}
+        pos_labels   = ['a', 'b', 'c', 'd']
 
-        fig, axes = plt.subplots(1, 2, figsize=(13, 5))
-        fig.subplots_adjust(left=0.07, right=0.97, top=0.85, bottom=0.12, wspace=0.32)
+        # 按位置分组：1 行 4 列横排，每图显示同位置的低透射+高透射盒子
+        # 1a+2a、1b+2b、1c+2c、1d+2d
+        pos_groups = [(0, 0), (1, 1), (2, 2), (3, 3)]
 
-        for layer_idx in range(2):
-            ax = axes[layer_idx]
-            layer_boxes = [b for b in box_data_list if b['layer'] == str(layer_idx + 1)]
+        fig, axes = plt.subplots(1, 4, figsize=(20, 7))
+        fig.subplots_adjust(left=0.05, right=0.98, top=0.92, bottom=0.30,
+                            wspace=0.35)
 
-            for box_data in layer_boxes:
-                pos   = box_data.get('pos_in_layer', 0)
-                color = colors[min(pos, len(colors) - 1)]
+        for pos_idx, col in pos_groups:
+            ax = axes[col]
+            # 同位置的两个盒子（层1=低透射，层2=高透射），按层排序
+            group_boxes = sorted(
+                [b for b in box_data_list if b.get('pos_in_layer', 0) == pos_idx],
+                key=lambda b: b['layer']
+            )
+
+            for box_data in group_boxes:
+                layer = box_data['layer']
+                color = layer_colors[layer]
                 label = box_data['label']
                 lam   = box_data.get('box_lambda', 0)
                 sig   = box_data.get('awgn_sigma', 0)
@@ -1806,9 +1822,9 @@ class DenseNetPage(QWidget):
                 if sig_hist and sig_bins:
                     centers = [(sig_bins[i] + sig_bins[i+1]) / 2 for i in range(len(sig_hist))]
                     ax.plot(centers, sig_hist, color=color, linewidth=2.5,
-                            label=f"Box {label}  λ={lam:.1f}  σ={sig:.3f}")
+                            label=f"Box {label} ({layer_names[layer]})  λ={lam:.1f}  σ={sig:.3f}")
 
-                # --- 合成拟合分布（虚线，论文 Fig.2 风格）---
+                # --- 高斯拟合曲线（虚线）---
                 fit_hist = box_data.get('fitted_hist', [])
                 fit_bins = box_data.get('fitted_bins', [])
                 if fit_hist and fit_bins:
@@ -1816,36 +1832,35 @@ class DenseNetPage(QWidget):
                     ax.plot(fcenters, fit_hist, color=color, linewidth=1.5,
                             linestyle='--', alpha=0.75)
 
-            # 图例：实线/虚线各出现一次
+            # 图例
             legend_handles = []
-            for b in layer_boxes:
-                pos   = b.get('pos_in_layer', 0)
-                color = colors[min(pos, len(colors) - 1)]
+            for b in group_boxes:
+                layer = b['layer']
+                color = layer_colors[layer]
                 lam   = b.get('box_lambda', 0)
                 sig   = b.get('awgn_sigma', 0)
                 legend_handles.append(
                     Line2D([0], [0], color=color, lw=2.5,
-                           label=f"Box {b['label']}  λ={lam:.1f}  σ={sig:.3f}")
+                           label=f"Box {b['label']} ({layer_names[layer]})  λ={lam:.1f}  σ={sig:.3f}")
                 )
             legend_handles.append(
                 Line2D([0], [0], color='gray', lw=1.5, linestyle='--',
                        label='Fitted (高斯拟合)')
             )
-            ax.legend(handles=legend_handles, fontsize=9, framealpha=0.9,
-                      loc='upper right')
+            ax.legend(handles=legend_handles, fontsize=8, framealpha=0.9,
+                      loc='upper center', bbox_to_anchor=(0.5, -0.18),
+                      ncol=1, borderaxespad=0)
 
-            # λ 摘要写入标题
-            lambda_strs = [f"Box {b['label']} λ={b.get('box_lambda',0):.1f}"
-                           for b in layer_boxes]
-            ax.set_title(f"{layer_titles[layer_idx]}\n{',  '.join(lambda_strs)}",
-                         fontsize=11, fontweight='bold')
-            ax.set_xlabel('Normalized Intensity', fontsize=10)
-            ax.set_ylabel('Probability', fontsize=10)
+            # 标题
+            pos_letter = pos_labels[pos_idx] if pos_idx < len(pos_labels) else str(pos_idx)
+            ax.set_title(f"位置 {pos_letter}", fontsize=11, fontweight='bold')
+            ax.set_xlabel('Normalized Intensity', fontsize=9)
+            ax.set_ylabel('Probability', fontsize=9)
             ax.grid(True, alpha=0.25, linestyle='--')
 
         # 保存并显示
         buf = BytesIO()
-        fig.savefig(buf, format='png', dpi=120, bbox_inches='tight', facecolor='white')
+        fig.savefig(buf, format='png', dpi=110, bbox_inches='tight', facecolor='white')
         buf.seek(0)
         pixmap = QPixmap()
         pixmap.loadFromData(buf.getvalue(), 'PNG')
