@@ -145,6 +145,20 @@ class NoiseExtractionThread(QThread):
         local_mean = cv2.GaussianBlur(img_gray, (kernel_size, kernel_size), 0)
         local_var = cv2.GaussianBlur((img_gray - local_mean) ** 2, (kernel_size, kernel_size), 0)
 
+        # ========== 步骤 1.5: 检测 X 射线活跃区（beam mask） ==========
+        # 物理依据：IP 板未曝光区域（无 X 射线照射）像素值接近 0，
+        # 这些区域不含泊松光子统计，不能用于噪声估计。
+        # 用 Otsu 阈值将"有 X 射线信号"与"纯背景"分开。
+        img_uint8 = np.clip(img_gray * 255, 0, 255).astype(np.uint8)
+        otsu_thresh, _ = cv2.threshold(img_uint8, 0, 255, cv2.THRESH_OTSU)
+        # 归一化空间下的阈值
+        beam_thresh = float(otsu_thresh) / 255.0
+        # 若 Otsu 阈值过低（背景过暗），至少保留 3% 以上亮度的像素
+        beam_thresh = max(beam_thresh, np.percentile(img_gray, 30))
+        beam_mask = img_gray > beam_thresh
+        beam_coverage = beam_mask.mean()
+        print(f"X 射线活跃区：阈值={beam_thresh:.4f}，覆盖率={beam_coverage:.1%}")
+
         # ========== 步骤 2: 盒子大小与候选区域 ==========
         min_dim = min(h, w)
         box_h = max(30, min(80, int(min_dim * 0.04)))
@@ -154,21 +168,39 @@ class NoiseExtractionThread(QThread):
 
         print(f"图像尺寸：{w}x{h}, 盒子大小：{box_w}x{box_h}, 采样步长：{step_x}x{step_y}")
 
+        # 只收集 80% 以上像素落在 beam_mask 内的候选框
         all_candidates = []
         for i in range(0, h - box_h, step_y):
             for j in range(0, w - box_w, step_x):
-                avg_var = np.mean(local_var[i:i+box_h, j:j+box_w])
+                box_mask_region = beam_mask[i:i+box_h, j:j+box_w]
+                if box_mask_region.mean() < 0.8:
+                    continue  # 跳过主要落在未曝光背景中的框
+                avg_var  = np.mean(local_var[i:i+box_h, j:j+box_w])
                 box_mean = np.mean(img_gray[i:i+box_h, j:j+box_w])
                 all_candidates.append((i, j, avg_var, box_mean))
 
-        # ========== 步骤 3: 按亮度分层，选方差最小的不重叠盒子 ==========
+        print(f"活跃区内候选框数量：{len(all_candidates)}")
+
+        # ========== 步骤 3: 按亮度分层（基于活跃区内候选框） ==========
+        # 物理依据：活跃区内亮 = 高透射率（X 射线穿透均匀物质），
+        #           活跃区内暗 = 低透射率（通过较密物质或束流边缘）
+        if len(all_candidates) < 8:
+            # 活跃区太小，回退到全图候选
+            print("警告：活跃区候选框不足，回退到全图模式")
+            all_candidates = []
+            for i in range(0, h - box_h, step_y):
+                for j in range(0, w - box_w, step_x):
+                    avg_var  = np.mean(local_var[i:i+box_h, j:j+box_w])
+                    box_mean = np.mean(img_gray[i:i+box_h, j:j+box_w])
+                    all_candidates.append((i, j, avg_var, box_mean))
+
         brightness_values = [c[3] for c in all_candidates]
         p50 = np.percentile(brightness_values, 50)
-        print(f"亮度中位数：{p50:.4f}")
+        print(f"活跃区亮度中位数：{p50:.4f}")
 
         dark_regions  = sorted([(cy, cx, v, br) for cy, cx, v, br in all_candidates if br <= p50], key=lambda x: x[2])
         bright_regions = sorted([(cy, cx, v, br) for cy, cx, v, br in all_candidates if br > p50],  key=lambda x: x[2])
-        print(f"候选区域：暗部={len(dark_regions)}, 亮部={len(bright_regions)}")
+        print(f"候选区域：低透射={len(dark_regions)}, 高透射={len(bright_regions)}")
 
         def pick_nonoverlapping(regions, n=4, min_center_dist=None):
             """选 n 个不重叠且空间分散的盒子。
@@ -248,48 +280,67 @@ class NoiseExtractionThread(QThread):
             # 层与位置
             if idx < dark_count:
                 layer_idx_val = 0
-                layer_name    = '暗部'
+                layer_name    = '低透射区'
                 pos_in_layer  = idx
             else:
                 layer_idx_val = 1
-                layer_name    = '亮部'
+                layer_name    = '高透射区'
                 pos_in_layer  = idx - dark_count
             box_label = f"{layer_labels[layer_idx_val]}{sub_labels[pos_in_layer]}"
 
-            # Poisson λ = μ / σ²
-            box_lambda = float(box_mean / box_var) if box_var > 1e-12 else 0.0
-            if 2 < box_lambda < 200:
-                lambda_estimates.append(box_lambda)
-
-            # AWGN σ：从平坦区域（局部方差最小 20%）的残差估计
-            kernel_size_box  = 5
-            local_mean_box   = cv2.GaussianBlur(box, (kernel_size_box, kernel_size_box), 0)
-            local_var_box    = cv2.GaussianBlur((box - local_mean_box) ** 2,
-                                                (kernel_size_box, kernel_size_box), 0)
-            flat_thresh      = np.percentile(local_var_box, 20)
-            flat_mask        = local_var_box < flat_thresh
-            box_awgn_sigma   = 0.0
+            # === 先估计 AWGN σ ===
+            kernel_size_box = 5
+            local_mean_box  = cv2.GaussianBlur(box, (kernel_size_box, kernel_size_box), 0)
+            local_var_box   = cv2.GaussianBlur((box - local_mean_box) ** 2,
+                                               (kernel_size_box, kernel_size_box), 0)
+            flat_thresh     = np.percentile(local_var_box, 20)
+            flat_mask       = local_var_box < flat_thresh
+            box_awgn_sigma  = 0.0
             if np.sum(flat_mask) > 10:
                 noise_std_raw  = float(np.sqrt(np.mean(local_var_box[flat_mask])))
-                box_awgn_sigma = noise_std_raw / img_max  # 转换到归一化空间
+                box_awgn_sigma = noise_std_raw / img_max
                 noise_std_estimates.append(box_awgn_sigma)
+            awgn_var = box_awgn_sigma ** 2
 
-            # ===== 生成合成拟合分布（论文 Fig.2 虚线） =====
-            # 用估计的 λ 和 awgn_sigma 生成 Poisson+AWGN+GaussianBlur 合成分布
-            rng = np.random.default_rng(42 + idx)
-            patch = np.full((200, 200), box_mean, dtype=np.float64)
-            if box_lambda > 0:
-                counts   = rng.poisson(np.clip(patch * box_lambda, 0, None))
-                synthetic = counts.astype(np.float64) / box_lambda
-            else:
-                synthetic = patch.copy()
-            # AWGN
-            awgn_std_fit = max(box_awgn_sigma, 0.005)
-            synthetic += rng.normal(0.0, awgn_std_fit, synthetic.shape)
-            # Gaussian blur σ=1（论文固定值）
-            synthetic = cv2.GaussianBlur(synthetic.astype(np.float32), (0, 0), 1.0).astype(np.float64)
-            fitted_hist, fitted_bins = np.histogram(synthetic.flatten(), bins=50, range=hist_range)
+            # ===== 直接拟合高斯到实测直方图（最小 MSE 确定最优 σ）=====
+            # 比正向模型法更准确：直接用数据决定曲线形状，再反推物理参数
+            from scipy.stats import norm as _norm
+            from scipy.optimize import minimize_scalar
+
+            bin_centers = np.array([(bin_edges[k] + bin_edges[k + 1]) / 2
+                                    for k in range(len(bin_edges) - 1)])
+            bin_width   = float(bin_centers[1] - bin_centers[0]) if len(bin_centers) > 1 else 1.0
+
+            # 初始 σ：用局部方差均值（比全局 box_var 更接近真实噪声，排除信号结构）
+            total_noise_var = float(np.mean(local_var_box)) / (img_max ** 2)
+            init_std        = max(float(np.sqrt(total_noise_var)), 1e-6)
+
+            def _fit_loss(log_std):
+                std = np.exp(log_std)
+                pdf = _norm.pdf(bin_centers, loc=box_mean, scale=std) * bin_width
+                pdf = pdf / (pdf.sum() + 1e-10)
+                return float(np.sum((pdf - hist_signal) ** 2))
+
+            try:
+                _res = minimize_scalar(
+                    _fit_loss,
+                    bounds=(np.log(max(init_std * 0.05, 1e-8)), np.log(init_std * 20)),
+                    method='bounded'
+                )
+                fit_std = float(np.exp(_res.x))
+            except Exception:
+                fit_std = init_std
+
+            # 从 fit_std 反推 Poisson λ（fit_var = μ/λ + σ²_awgn）
+            fit_var     = fit_std ** 2
+            poisson_var = max(1e-10, fit_var - awgn_var)
+            box_lambda  = float(box_mean / poisson_var) if (poisson_var > 1e-12 and box_mean > 1e-6) else 0.0
+            if 2 < box_lambda < 2000:
+                lambda_estimates.append(box_lambda)
+
+            fitted_hist = _norm.pdf(bin_centers, loc=box_mean, scale=fit_std) * bin_width
             fitted_hist = fitted_hist / (fitted_hist.sum() + 1e-10)
+            fitted_bins = bin_edges  # 与实测直方图共用 bin 轴
 
             # 噪声残差分布
             noise_residual  = (box - local_mean_box) / img_max
@@ -1035,11 +1086,12 @@ class DenseNetPage(QWidget):
         html = """
         <h4 style="color: #0284c7; margin-top: 10px;">计算流程</h4>
         <ol style="margin: 6px 0; padding-left: 20px; font-size: 14px; color: #64748b;">
-        <li>按亮度分为暗部/亮部两层，每层选择 2 个均匀区域盒</li>
-        <li>对每个盒子计算强度分布（直方图）和噪声残差</li>
-        <li>利用泊松分布方差/均值关系估计 λ</li>
-        <li>从残差中估计 AWGN σ</li>
-        <li>取中位数聚合得到最终噪声参数</li>
+        <li>Otsu 阈值检测 X 射线活跃区，排除未曝光背景</li>
+        <li>按亮度分为低透射/高透射两层，每层选取方差最小的 4 个不重叠均匀区域盒</li>
+        <li>对每个盒子：从局部方差最平坦区域估计 AWGN σ</li>
+        <li>对每个盒子：将实测强度直方图拟合为高斯曲线（最小化 MSE）</li>
+        <li>由拟合 σ 反推 Poisson λ = μ / (σ²_fit − σ²_awgn)</li>
+        <li>取各盒子估计值的中位数，得到最终噪声参数</li>
         </ol>
         """
 
@@ -1049,8 +1101,8 @@ class DenseNetPage(QWidget):
             <div style="background: #f1f5f9; padding: 8px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid #0ea5e9;">
                 <strong>Box {box['label']}</strong> ({box['layer_name']})<br>
                 <span style="font-size: 14px; color: #64748b;">
-                盒内均值 = {box['box_mean']:.4f} → Poisson λ = {box['box_lambda']:.2f}<br>
-                残差标准差 = {box.get('awgn_sigma', 0):.4f} → AWGN σ = {box.get('awgn_sigma', 0):.4f}
+                盒内均值 μ = {box['box_mean']:.4f}，AWGN σ = {box.get('awgn_sigma', 0):.4f}<br>
+                高斯拟合 → Poisson λ = {box['box_lambda']:.2f}
                 </span>
             </div>
             """
@@ -1070,11 +1122,12 @@ class DenseNetPage(QWidget):
         return """
         <h4 style="color: #0284c7; margin-top: 10px;">计算流程</h4>
         <ol style="margin: 6px 0; padding-left: 20px; font-size: 14px; color: #64748b;">
-        <li>按亮度分为暗部/亮部两层，每层选择 2 个均匀区域盒</li>
-        <li>对每个盒子计算强度分布（直方图）和噪声残差</li>
-        <li>利用泊松分布方差/均值关系估计 λ</li>
-        <li>从残差中估计 AWGN σ</li>
-        <li>取中位数聚合得到最终噪声参数</li>
+        <li>Otsu 阈值检测 X 射线活跃区，排除未曝光背景</li>
+        <li>按亮度分为低透射/高透射两层，每层选取方差最小的 4 个不重叠均匀区域盒</li>
+        <li>对每个盒子：从局部方差最平坦区域估计 AWGN σ</li>
+        <li>对每个盒子：将实测强度直方图拟合为高斯曲线（最小化 MSE）</li>
+        <li>由拟合 σ 反推 Poisson λ = μ / (σ²_fit − σ²_awgn)</li>
+        <li>取各盒子估计值的中位数，得到最终噪声参数</li>
         </ol>
         """
 
@@ -1731,7 +1784,7 @@ class DenseNetPage(QWidget):
         from io import BytesIO
 
         colors = ['#e67e22', '#3498db', '#27ae60', '#9b59b6']  # a=橙, b=蓝, c=绿, d=紫
-        layer_titles = ['暗部 (0–50%)', '亮部 (50–100%)']
+        layer_titles = ['低透射区 (活跃区低亮度半)', '高透射区 (活跃区高亮度半)']
 
         fig, axes = plt.subplots(1, 2, figsize=(13, 5))
         fig.subplots_adjust(left=0.07, right=0.97, top=0.85, bottom=0.12, wspace=0.32)
@@ -1776,7 +1829,7 @@ class DenseNetPage(QWidget):
                 )
             legend_handles.append(
                 Line2D([0], [0], color='gray', lw=1.5, linestyle='--',
-                       label='Fitted (Poisson+AWGN+Blur)')
+                       label='Fitted (高斯拟合)')
             )
             ax.legend(handles=legend_handles, fontsize=9, framealpha=0.9,
                       loc='upper right')
