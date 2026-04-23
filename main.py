@@ -10,6 +10,7 @@ This application provides a multi-page GUI for:
 
 import sys
 import os
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'  # 避免 Intel/LLVM OpenMP 双重加载冲突
 
 # Add the current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

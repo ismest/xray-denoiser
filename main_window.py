@@ -128,7 +128,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v4.0.33')
+        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v4.0.34')
         # 窗口最小尺寸增加 0.5 倍（接近全屏展示）
         # 1600 * 1.5 = 2400, 1100 * 1.5 = 1650
         self.setMinimumSize(2400, 1650)

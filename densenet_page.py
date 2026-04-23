@@ -113,12 +113,16 @@ class NoiseExtractionThread(QThread):
         """估计噪声参数（Poisson + AWGN）- 基于论文 Rev. Sci. Instrum. 95, 063508 (2024) 方法。
 
         使用均匀区域盒（homogeneous region box）方法估计噪声参数：
-        1. 计算全图每个位置的局部方差
-        2. 将候选框按亮度分为暗部/亮部两层，每层选方差最小的 2 个不重叠盒子
+        1. 计算全图局部方差图（用于 fallback 及 AWGN 估计）
+        2. 检测 X 射线活跃区（beam mask）
+        A. 对称轴检测：beam_mask 投影重心 + 折叠相关性评分
+        B. 对象边界分析：连通域分析找各主要区域外边界
+        C. 对称放框：左侧区域放左侧框，右侧区域放右侧框（每区域2框）
+           对称分数 < 0.65 或区域 < 2 时回退到方差最小非重叠选取
         3. 归一化到图像最大值（与论文一致）
         4. 用泊松分布方差/均值关系 λ = μ/σ² 估计 λ
         5. 从平坦区域残差估计 AWGN σ
-        6. 生成合成分布（Poisson+AWGN+Gaussian blur）供直方图拟合对比
+        6. 直接拟合高斯到实测直方图（minimize_scalar MSE）
         """
         # 转换到 float [0, 1]
         if image.dtype == np.uint16:
@@ -238,8 +242,112 @@ class NoiseExtractionThread(QThread):
                             break
             return chosen
 
-        dark_chosen   = pick_nonoverlapping(dark_regions,   n=4)
-        bright_chosen = pick_nonoverlapping(bright_regions, n=4)
+        # ========== 步骤 A: 对称轴检测 ==========
+        # 用 beam_mask 列/行投影的加权重心定位对称轴，
+        # 再折叠投影计算左右相关性作为对称质量分数。
+        proj_col = beam_mask.sum(axis=0).astype(np.float64)
+        proj_row = beam_mask.sum(axis=1).astype(np.float64)
+        sym_x = int(np.average(np.arange(w), weights=proj_col / (proj_col.sum() + 1e-10)))
+        sym_y = int(np.average(np.arange(h), weights=proj_row / (proj_row.sum() + 1e-10)))
+
+        half_w = min(sym_x, w - sym_x)
+        if half_w > 10:
+            l_proj = proj_col[sym_x - half_w: sym_x]
+            r_proj = proj_col[sym_x: sym_x + half_w][::-1]
+            with np.errstate(invalid='ignore'):
+                _corr = np.corrcoef(l_proj, r_proj)[0, 1]
+            sym_score = float(_corr) if np.isfinite(_corr) else 0.0
+            sym_score = max(0.0, sym_score)
+        else:
+            sym_score = 0.0
+        print(f"对称轴：x={sym_x}, y={sym_y}, 对称分数={sym_score:.3f}")
+
+        # ========== 步骤 B: 对象边界分析 ==========
+        # beam_mask 是全局活跃区，相邻对象可能连通。
+        # 改用 beam_mask & (local_var < p55)：
+        #   每个均匀对象内部方差低 → 独立连通域；
+        #   对象边缘方差高 → 自然断开，防止相邻对象合并。
+        _bv = local_var[beam_mask] if beam_mask.sum() > 100 else local_var.ravel()
+        _var_q = float(np.percentile(_bv, 55))
+        _homog = beam_mask & (local_var < _var_q)
+
+        # 形态学核：仅填充内部小空洞，远小于对象间距
+        _ks = max(5, min(box_h // 4, box_w // 4))
+        if _ks % 2 == 0:
+            _ks += 1
+        _kern_s = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (_ks, _ks))
+        _bin_s  = _homog.astype(np.uint8) * 255
+        _cls    = cv2.morphologyEx(_bin_s, cv2.MORPH_CLOSE, _kern_s)
+        _opn    = cv2.morphologyEx(_cls,   cv2.MORPH_OPEN,  _kern_s)
+        _n_lbl, _, _stats, _centroids = cv2.connectedComponentsWithStats(_opn, connectivity=8)
+
+        _min_area = max(box_h * box_w * 2, int(h * w * 0.002))
+        obj_regs = []
+        for _i in range(1, _n_lbl):
+            if _stats[_i, cv2.CC_STAT_AREA] < _min_area:
+                continue
+            _cx_r = float(_centroids[_i][0])
+            _cy_r = float(_centroids[_i][1])
+            _xl   = int(_stats[_i, cv2.CC_STAT_LEFT])
+            _xr   = _xl + int(_stats[_i, cv2.CC_STAT_WIDTH])
+            _yt   = int(_stats[_i, cv2.CC_STAT_TOP])
+            _yb   = _yt + int(_stats[_i, cv2.CC_STAT_HEIGHT])
+            _side = 'left' if _cx_r < sym_x else 'right'
+            obj_regs.append({'cx': _cx_r, 'cy': _cy_r, 'xl': _xl, 'xr': _xr,
+                              'yt': _yt, 'yb': _yb, 'side': _side,
+                              'area': _stats[_i, cv2.CC_STAT_AREA]})
+
+        obj_regs.sort(key=lambda r: r['area'], reverse=True)
+        print(f"检测到 {len(obj_regs)} 个均匀子区域（方差阈值={_var_q:.2e}）")
+
+        # ========== 步骤 C: 按对称性放框 ==========
+        # 每个区域在其"远离对称轴"的一侧放 2 个框（紧靠外边界）；
+        # 左侧区域放左侧框，右侧区域放右侧框，天然形成镜像对称。
+        # 对称分数 < 0.65 或区域 < 2 时回退到方差最小选取。
+        _use_sym = sym_score >= 0.65 and len(obj_regs) >= 2
+
+        if _use_sym:
+            _sym_boxes = []
+            for _reg in obj_regs[:4]:   # 最多取4个主要区域
+                _r_out = (_reg['xr'] - _reg['xl']) / 2.0
+                _r_in  = _r_out * 0.5          # 内圆半径约为外圆的一半（参照 666.png）
+                _cx    = _reg['cx']
+                _by    = max(0, min(int(_reg['cy'] - box_h / 2), h - box_h))
+                if _reg['side'] == 'left':
+                    # a1（外框）：右边缘贴外圆左侧，框在圆外
+                    _bx_out = max(0, int(_cx - _r_out - box_w))
+                    # a2（内框）：右边缘贴内圆左侧，框在环内
+                    _bx_in  = max(0, int(_cx - _r_in  - box_w))
+                    _boxes_x = [_bx_out, _bx_in]
+                else:
+                    # b2（内框）：左边缘贴内圆右侧，框在环内
+                    _bx_in  = max(0, min(int(_cx + _r_in),  w - box_w))
+                    # b1（外框）：左边缘贴外圆右侧，框在圆外
+                    _bx_out = max(0, min(int(_cx + _r_out), w - box_w))
+                    _boxes_x = [_bx_in, _bx_out]
+                for _bx in _boxes_x:
+                    _br = float(np.mean(img_gray[_by:_by + box_h, _bx:_bx + box_w]))
+                    _sym_boxes.append((_by, _bx, 0.0, _br))
+
+            if _sym_boxes:
+                _p50s = np.percentile([_b[3] for _b in _sym_boxes], 50)
+                dark_chosen   = [b for b in _sym_boxes if b[3] <= _p50s]
+                bright_chosen = [b for b in _sym_boxes if b[3] >  _p50s]
+                while len(dark_chosen)   < 4:
+                    dark_chosen.append(dark_chosen[-1] if dark_chosen else _sym_boxes[0])
+                while len(bright_chosen) < 4:
+                    bright_chosen.append(bright_chosen[-1] if bright_chosen else _sym_boxes[-1])
+                dark_chosen   = dark_chosen[:4]
+                bright_chosen = bright_chosen[:4]
+                print(f"对称放框：共 {len(_sym_boxes)} 框，暗={len(dark_chosen)}，亮={len(bright_chosen)}")
+            else:
+                _use_sym = False
+
+        if not _use_sym:
+            print("回退到方差最小非重叠选取")
+            dark_chosen   = pick_nonoverlapping(dark_regions,   n=4)
+            bright_chosen = pick_nonoverlapping(bright_regions, n=4)
+
         selected_boxes = dark_chosen + bright_chosen
         dark_count   = len(dark_chosen)
         bright_count = len(bright_chosen)
