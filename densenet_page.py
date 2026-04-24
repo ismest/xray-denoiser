@@ -269,7 +269,10 @@ class NoiseExtractionThread(QThread):
         #   对象边缘方差高 → 自然断开，防止相邻对象合并。
         _bv = local_var[beam_mask] if beam_mask.sum() > 100 else local_var.ravel()
         _var_q = float(np.percentile(_bv, 55))
-        _homog = beam_mask & (local_var < _var_q)
+        # 加亮度下限：排除暗背景（圆圈间隙），避免相邻圆合并成一个连通域
+        _bv_br = img_gray[beam_mask] if beam_mask.sum() > 100 else img_gray.ravel()
+        _bright_lo = float(np.percentile(_bv_br, 25))
+        _homog = beam_mask & (local_var < _var_q) & (img_gray > _bright_lo)
 
         # 形态学核：仅填充内部小空洞，远小于对象间距
         _ks = max(5, min(box_h // 4, box_w // 4))
@@ -374,12 +377,7 @@ class NoiseExtractionThread(QThread):
                 _p50s = np.percentile([_b[3] for _b in _sym_boxes], 50)
                 dark_chosen   = [b for b in _sym_boxes if b[3] <= _p50s]
                 bright_chosen = [b for b in _sym_boxes if b[3] >  _p50s]
-                while len(dark_chosen)   < 4:
-                    dark_chosen.append(dark_chosen[-1] if dark_chosen else _sym_boxes[0])
-                while len(bright_chosen) < 4:
-                    bright_chosen.append(bright_chosen[-1] if bright_chosen else _sym_boxes[-1])
-                dark_chosen   = dark_chosen[:4]
-                bright_chosen = bright_chosen[:4]
+                # 不再补齐，保留实际检测到的框数量
                 print(f"对称放框：共 {len(_sym_boxes)} 框，暗={len(dark_chosen)}，亮={len(bright_chosen)}")
             else:
                 _use_sym = False
@@ -971,7 +969,7 @@ class DenseNetPage(QWidget):
         layout.setSpacing(12)
         layout.setContentsMargins(20, 20, 20, 20)
 
-        widget.setMinimumSize(1200, 1050)
+        widget.setMinimumSize(1400, 1050)
 
         # 左侧控制面板
         left_panel = QFrame()
@@ -983,7 +981,7 @@ class DenseNetPage(QWidget):
                 border: 1px solid #e2e8f0;
             }
         """)
-        left_panel.setMinimumWidth(350)
+        left_panel.setMinimumWidth(420)
         left_layout = QVBoxLayout(left_panel)
         left_layout.setSpacing(12)
         left_layout.setContentsMargins(14, 14, 14, 14)
@@ -1853,16 +1851,13 @@ class DenseNetPage(QWidget):
         self.extract_btn.setEnabled(True)
 
         if success:
-            QMessageBox.information(self, "成功", message)
             # 加载噪声参数
             self._load_noise_params()
             # 在预览图像上显示区域盒
             self._display_noise_boxes()
             # 启用步骤 2 按钮
             self.generate_btn.setEnabled(True)
-            # 不再自动跳转，让用户手动切换
-        else:
-            QMessageBox.critical(self, "错误", message)
+        # 失败时不弹窗，错误信息已由线程输出到控制台
 
     def _load_noise_params(self):
         """加载提取的噪声参数到可编辑控件。"""
@@ -1931,7 +1926,7 @@ class DenseNetPage(QWidget):
 
         box_data_list = self.noise_params.get('box_data_list', [])
         if not box_data_list:
-            self.histogram_label.setText("暂无盒子数据，请先提取噪声参数")
+            self.histogram_label.clear()
             return
 
         from matplotlib.lines import Line2D
@@ -1940,13 +1935,14 @@ class DenseNetPage(QWidget):
         # 按层区分颜色：低透射区=蓝，高透射区=橙
         layer_colors = {'1': '#3498db', '2': '#e67e22'}
         layer_names  = {'1': '低透射区', '2': '高透射区'}
-        pos_labels   = ['a', 'b', 'c', 'd']
+        # 根据实际位置数量动态建子图
+        n_pos = max(1, len(set(b.get('pos_in_layer', 0) for b in box_data_list)))
+        pos_labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][:n_pos]
+        pos_groups = [(i, i) for i in range(n_pos)]
 
-        # 按位置分组：1 行 4 列横排，每图显示同位置的低透射+高透射盒子
-        # 1a+2a、1b+2b、1c+2c、1d+2d
-        pos_groups = [(0, 0), (1, 1), (2, 2), (3, 3)]
-
-        fig, axes = plt.subplots(1, 4, figsize=(20, 7))
+        fig, axes = plt.subplots(1, n_pos, figsize=(7 * n_pos, 7))
+        if n_pos == 1:
+            axes = [axes]
         fig.subplots_adjust(left=0.05, right=0.98, top=0.92, bottom=0.30,
                             wspace=0.35)
 
