@@ -306,26 +306,67 @@ class NoiseExtractionThread(QThread):
         # 对称分数 < 0.65 或区域 < 2 时回退到方差最小选取。
         _use_sym = sym_score >= 0.65 and len(obj_regs) >= 2
 
+        def _refine_box(bx0, by0, search_r, x_fixed=False):
+            """在初始位置 (bx0, by0) 附近小范围搜索局部方差最小的微调位置。
+            x_fixed=True 时只在 y 方向微调（外框专用，防止漂入圆环内）。"""
+            sx = max(1, step_x // 2)
+            sy = max(1, step_y // 2)
+            best_bx, best_by = bx0, by0
+            best_v = float(np.mean(local_var[by0:by0 + box_h, bx0:bx0 + box_w]))
+            dx_range = [0] if x_fixed else range(-search_r, search_r + 1, sx)
+            for _dy in range(-search_r, search_r + 1, sy):
+                for _dx in dx_range:
+                    _bx_t = max(0, min(bx0 + _dx, w - box_w))
+                    _by_t = max(0, min(by0 + _dy, h - box_h))
+                    _v = float(np.mean(local_var[_by_t:_by_t + box_h, _bx_t:_bx_t + box_w]))
+                    if _v < best_v:
+                        best_v = _v
+                        best_bx, best_by = _bx_t, _by_t
+            return best_bx, best_by
+
+        _search_r = max(box_w // 3, box_h // 3)   # 搜索半径：约 1/3 框尺寸
+
         if _use_sym:
             _sym_boxes = []
             for _reg in obj_regs[:4]:   # 最多取4个主要区域
                 _r_out = (_reg['xr'] - _reg['xl']) / 2.0
-                _r_in  = _r_out * 0.5          # 内圆半径约为外圆的一半（参照 666.png）
+                # 外框用放大的半径（×1.2），补偿均匀区域边缘被裁剪导致的半径低估
+                _r_out_ext = _r_out * 1.2
                 _cx    = _reg['cx']
-                _by    = max(0, min(int(_reg['cy'] - box_h / 2), h - box_h))
+                _by0   = max(0, min(int(_reg['cy'] - box_h / 2), h - box_h))
                 if _reg['side'] == 'left':
                     # a1（外框）：右边缘贴外圆左侧，框在圆外
-                    _bx_out = max(0, int(_cx - _r_out - box_w))
-                    # a2（内框）：右边缘贴内圆左侧，框在环内
-                    _bx_in  = max(0, int(_cx - _r_in  - box_w))
-                    _boxes_x = [_bx_out, _bx_in]
+                    _bx_out = max(0, int(_cx - _r_out_ext - box_w))
                 else:
-                    # b2（内框）：左边缘贴内圆右侧，框在环内
-                    _bx_in  = max(0, min(int(_cx + _r_in),  w - box_w))
                     # b1（外框）：左边缘贴外圆右侧，框在圆外
-                    _bx_out = max(0, min(int(_cx + _r_out), w - box_w))
-                    _boxes_x = [_bx_in, _bx_out]
-                for _bx in _boxes_x:
+                    _bx_out = max(0, min(int(_cx + _r_out_ext), w - box_w))
+                # 内框：2D 亮度扫描——在圆圈包围盒的对应半边同时遍历 x/y，找亮度最高位置
+                _scan_sx = max(1, step_x // 2)
+                _scan_sy = max(1, step_y // 2)
+                _iy_lo = max(0, int(_reg['yt']))
+                _iy_hi = max(_iy_lo, min(h - box_h, int(_reg['yb']) - box_h))
+                if _reg['side'] == 'left':
+                    _scan_xlo = int(_reg['xl'])
+                    _scan_xhi = max(_scan_xlo, int(_cx) - box_w)
+                else:
+                    _scan_xlo = int(_cx)
+                    _scan_xhi = max(_scan_xlo, int(_reg['xr']) - box_w)
+                _best_bx_in, _best_by_in, _best_bright = _scan_xlo, _by0, -1.0
+                for _ty in range(_iy_lo, _iy_hi + 1, _scan_sy):
+                    _ty_c = max(0, min(_ty, h - box_h))
+                    for _tx in range(_scan_xlo, _scan_xhi + 1, _scan_sx):
+                        _tx_c = max(0, min(_tx, w - box_w))
+                        _bv = float(np.mean(img_gray[_ty_c:_ty_c + box_h, _tx_c:_tx_c + box_w]))
+                        if _bv > _best_bright:
+                            _best_bright = _bv
+                            _best_bx_in = _tx_c
+                            _best_by_in = _ty_c
+                _bx_in  = _best_bx_in
+                _by0_in = _best_by_in
+                # 外框从圆圈中心 y 出发做 y 微调；内框从 2D 扫描最优位置出发再做 y 微调
+                _bx_o, _by_o = _refine_box(_bx_out, _by0,    _search_r, x_fixed=True)
+                _bx_i, _by_i = _refine_box(_bx_in,  _by0_in, _search_r, x_fixed=True)
+                for _bx, _by in [(_bx_o, _by_o), (_bx_i, _by_i)]:
                     _br = float(np.mean(img_gray[_by:_by + box_h, _bx:_bx + box_w]))
                     _sym_boxes.append((_by, _bx, 0.0, _br))
 
