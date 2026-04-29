@@ -2149,11 +2149,11 @@ class DenseNetPage(QWidget):
                 x1, y1 = box_data['x1'], box_data['y1']
                 x2, y2 = box_data['x2'], box_data['y2']
                 label = box_data['label']  # 如 "1a", "2b"
-                # 绘制矩形框（黄色，4 像素粗）
-                cv2.rectangle(rgb_img, (x1, y1), (x2, y2), (255, 255, 0), 4)
-                # 添加标签（白色，大字体，粗线条）
+                # 绘制矩形框（红色，4 像素粗）
+                cv2.rectangle(rgb_img, (x1, y1), (x2, y2), (255, 0, 0), 4)
+                # 添加标签（红色，大字体，粗线条）
                 cv2.putText(rgb_img, label, (x1, y1 - 18),
-                           cv2.FONT_HERSHEY_SIMPLEX, 2.4, (255, 255, 255), 4)
+                           cv2.FONT_HERSHEY_SIMPLEX, 2.4, (255, 0, 0), 4)
 
             # 转换为 QImage 显示
             h, w = rgb_img.shape[:2]
