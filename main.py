@@ -26,7 +26,7 @@ def main():
 
     # Use the new multi-page main window
     window = MainWindow()
-    window.show()
+    window.showMaximized()
 
     # Run the application
     sys.exit(app.exec_())

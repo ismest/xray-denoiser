@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QSpinBox, QDoubleSpinBox, QFormLayout, QGroupBox,
                              QFrame, QMessageBox, QTextEdit, QGridLayout,
                              QScrollArea, QSizePolicy, QTabWidget, QSplitter,
-                             QApplication, QLineEdit)
+                             QApplication, QLineEdit, QCheckBox)
 from PyQt5.QtGui import QPixmap, QImage, QIcon
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import cv2
@@ -1081,6 +1081,10 @@ class DenseNetPage(QWidget):
         self.extract_btn.setEnabled(False)
         self.extract_btn.setMinimumHeight(48)
         left_layout.addWidget(self.extract_btn)
+
+        self.no_crop_checkbox = QCheckBox("不裁剪，显示完整图像")
+        self.no_crop_checkbox.setChecked(False)
+        left_layout.addWidget(self.no_crop_checkbox)
 
         # 进度条
         self.step1_progress = QProgressBar()
@@ -2154,6 +2158,20 @@ class DenseNetPage(QWidget):
                 # 添加标签（红色，大字体，粗线条）
                 cv2.putText(rgb_img, label, (x1, y1 - 18),
                            cv2.FONT_HERSHEY_SIMPLEX, 2.4, (255, 0, 0), 4)
+
+            # 若未勾选"不裁剪"，则裁剪到选框包围区域放大显示
+            if not self.no_crop_checkbox.isChecked():
+                img_h, img_w = rgb_img.shape[:2]
+                xs = [b['x1'] for b in box_data_list] + [b['x2'] for b in box_data_list]
+                ys = [b['y1'] for b in box_data_list] + [b['y2'] for b in box_data_list]
+                bw = max(xs) - min(xs)
+                bh = max(ys) - min(ys)
+                pad = max(60, int(max(bw, bh) * 0.15))
+                cx1 = max(0, min(xs) - pad)
+                cy1 = max(0, min(ys) - pad)
+                cx2 = min(img_w, max(xs) + pad)
+                cy2 = min(img_h, max(ys) + pad)
+                rgb_img = rgb_img[cy1:cy2, cx1:cx2]
 
             # 转换为 QImage 显示
             h, w = rgb_img.shape[:2]
