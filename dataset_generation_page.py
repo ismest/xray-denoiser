@@ -281,13 +281,8 @@ class DatasetGenerationPage(QWidget):
         left_layout = QVBoxLayout(left_panel)
         left_layout.setSpacing(16)
 
-        info_label = QLabel("使用步骤 1 提取的噪声参数，生成合成噪声图像与干净图像配对数据集")
-        info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #475569; font-size: 15px; font-weight: 500; padding: 8px;")
-        left_layout.addWidget(info_label)
-
         # 噪声参数（可编辑）
-        params_group = QGroupBox("已提取的噪声参数（可编辑）")
+        params_group = QGroupBox("噪声参数配置")
         params_group.setMinimumHeight(160)
         params_layout = QFormLayout(params_group)
         params_layout.setSpacing(12)
@@ -343,7 +338,6 @@ class DatasetGenerationPage(QWidget):
 
         # 原始数据集导入
         dataset_import_group = QGroupBox("原始数据集导入")
-        dataset_import_group.setMinimumHeight(180)
         import_layout = QVBoxLayout(dataset_import_group)
         import_layout.setSpacing(12)
 
@@ -399,7 +393,6 @@ class DatasetGenerationPage(QWidget):
 
         # 数据集配置
         dataset_group = QGroupBox("数据集配置")
-        dataset_group.setMinimumHeight(200)
         dataset_layout = QFormLayout(dataset_group)
         dataset_layout.setSpacing(12)
         dataset_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -450,14 +443,13 @@ class DatasetGenerationPage(QWidget):
 
         # 生成数据集导出
         output_group = QGroupBox("生成数据集导出")
-        output_group.setMinimumHeight(180)
         output_layout = QVBoxLayout(output_group)
 
         output_dir_layout = QHBoxLayout()
         self.dataset_output_edit = QLineEdit()
         self.dataset_output_edit.setReadOnly(False)
         self.dataset_output_edit.setMinimumHeight(40)
-        self.dataset_output_edit.setPlaceholderText("使用步骤 1 输出目录")
+        self.dataset_output_edit.setPlaceholderText("选择数据集输出目录")
         self.dataset_output_edit.setStyleSheet("""
             QLineEdit {
                 font-size: 15px;
@@ -617,6 +609,14 @@ class DatasetGenerationPage(QWidget):
         preview_images_layout = QHBoxLayout()
         preview_images_layout.setSpacing(10)
 
+        preview_label_style = "font-size: 13px; font-weight: 600; color: #475569; padding: 4px 0;"
+
+        clean_col = QVBoxLayout()
+        clean_col.setSpacing(4)
+        clean_title = QLabel("干净图像")
+        clean_title.setAlignment(Qt.AlignCenter)
+        clean_title.setStyleSheet(preview_label_style)
+        clean_col.addWidget(clean_title)
         self.preview_clean_label = QLabel("暂无预览")
         self.preview_clean_label.setObjectName("previewBox")
         self.preview_clean_label.setStyleSheet("""
@@ -632,8 +632,15 @@ class DatasetGenerationPage(QWidget):
         self.preview_clean_label.setAlignment(Qt.AlignCenter)
         self.preview_clean_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.preview_clean_label.setMinimumSize(300, 300)
-        preview_images_layout.addWidget(self.preview_clean_label)
+        clean_col.addWidget(self.preview_clean_label)
+        preview_images_layout.addLayout(clean_col)
 
+        noisy_col = QVBoxLayout()
+        noisy_col.setSpacing(4)
+        noisy_title = QLabel("含噪图像")
+        noisy_title.setAlignment(Qt.AlignCenter)
+        noisy_title.setStyleSheet(preview_label_style)
+        noisy_col.addWidget(noisy_title)
         self.preview_noisy_label = QLabel("暂无预览")
         self.preview_noisy_label.setObjectName("previewBox")
         self.preview_noisy_label.setStyleSheet("""
@@ -649,7 +656,8 @@ class DatasetGenerationPage(QWidget):
         self.preview_noisy_label.setAlignment(Qt.AlignCenter)
         self.preview_noisy_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.preview_noisy_label.setMinimumSize(300, 300)
-        preview_images_layout.addWidget(self.preview_noisy_label)
+        noisy_col.addWidget(self.preview_noisy_label)
+        preview_images_layout.addLayout(noisy_col)
 
         preview_layout.addLayout(preview_images_layout)
 
@@ -700,7 +708,7 @@ class DatasetGenerationPage(QWidget):
         self.dataset_log_text.setStyleSheet("""
             QTextEdit {
                 font-family: 'Consolas', monospace;
-                font-size: 13px;
+                font-size: 16px;
                 background-color: #f8fafc;
                 border: 1px solid #e2e8f0;
                 border-radius: 8px;
@@ -1079,7 +1087,7 @@ class DatasetGenerationPage(QWidget):
                 text.setStyleSheet("""
                     QTextEdit {
                         font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 13px;
+                        font-size: 16px;
                         background-color: #f8fafc;
                         border: 1px solid #e2e8f0;
                         border-radius: 8px;

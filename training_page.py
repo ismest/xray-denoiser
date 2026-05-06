@@ -12,7 +12,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
                              QLabel, QFileDialog, QProgressBar, QComboBox,
                              QSpinBox, QDoubleSpinBox, QFormLayout, QGroupBox,
-                             QFrame, QMessageBox, QTextEdit, QGridLayout,
+                             QFrame, QMessageBox, QTextEdit, QLineEdit, QGridLayout,
                              QCheckBox, QTabWidget, QScrollArea)
 from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -413,6 +413,19 @@ class TrainingPage(QWidget):
         layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
 
+        # 页面标题 - 与其他页面保持一致
+        title = QLabel("算法训练")
+        title.setStyleSheet("""
+            font-size: 24px;
+            font-weight: 600;
+            color: #1e293b;
+            padding: 14px 18px;
+            border-left: 4px solid #0ea5e9;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+            border-radius: 8px;
+        """)
+        layout.addWidget(title)
+
         # 提示信息
         if not TORCH_AVAILABLE:
             warning = QLabel("⚠ PyTorch 未安装，训练功能不可用。请安装 PyTorch: pip install torch")
@@ -467,10 +480,11 @@ class TrainingPage(QWidget):
         data_layout.setSpacing(8)
         data_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.dataset_path_edit = QTextEdit()
+        self.dataset_path_edit = QLineEdit()
         self.dataset_path_edit.setReadOnly(True)
-        self.dataset_path_edit.setMaximumHeight(40)
+        self.dataset_path_edit.setMinimumHeight(40)
         self.dataset_path_edit.setPlaceholderText("选择预处理生成的数据集目录...")
+        self.dataset_path_edit.setStyleSheet("font-size: 15px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 6px;")
         data_layout.addWidget(self.dataset_path_edit)
 
         browse_btn = QPushButton("选择数据集目录")
@@ -522,10 +536,11 @@ class TrainingPage(QWidget):
         output_layout.setSpacing(8)
         output_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.output_path_edit = QTextEdit()
+        self.output_path_edit = QLineEdit()
         self.output_path_edit.setReadOnly(True)
-        self.output_path_edit.setMaximumHeight(40)
+        self.output_path_edit.setMinimumHeight(40)
         self.output_path_edit.setPlaceholderText("模型保存目录...")
+        self.output_path_edit.setStyleSheet("font-size: 15px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 6px;")
         output_layout.addWidget(self.output_path_edit)
 
         self.browse_output_btn = QPushButton("选择模型输出目录")
@@ -603,7 +618,7 @@ class TrainingPage(QWidget):
         integrate_layout.addLayout(model_type_layout)
 
         # 集成按钮
-        self.integrate_model_btn = QPushButton("添加")
+        self.integrate_model_btn = QPushButton("集成至算法列表")
         self.integrate_model_btn.setObjectName("integrateModelBtn")
         self.integrate_model_btn.setStyleSheet("""
             QPushButton#integrateModelBtn {
@@ -672,7 +687,7 @@ class TrainingPage(QWidget):
         self.status_label.setStyleSheet("color: #64748b; font-size: 15px;")
         progress_layout.addWidget(self.status_label)
 
-        layout.addWidget(progress_group)
+        layout.addWidget(progress_group, 0)
 
         # 日志输出
         log_group = QGroupBox("训练日志")
@@ -692,10 +707,10 @@ class TrainingPage(QWidget):
                 padding: 10px;
             }
         """)
-        self.log_text.setMinimumHeight(250)
+        self.log_text.setMinimumHeight(120)
         log_layout.addWidget(self.log_text)
 
-        layout.addWidget(log_group)
+        layout.addWidget(log_group, 1)
 
         # Loss 曲线图
         chart_group = QGroupBox("训练 Loss 曲线")
@@ -706,7 +721,7 @@ class TrainingPage(QWidget):
         # 创建 matplotlib 图表
         self.loss_figure = Figure(figsize=(10, 8), dpi=100)
         self.loss_canvas = FigureCanvasQTAgg(self.loss_figure)
-        self.loss_canvas.setMinimumHeight(550)
+        self.loss_canvas.setMinimumHeight(280)
         self.loss_canvas.setStyleSheet("background-color: white;")
 
         # 初始化图表
@@ -719,7 +734,7 @@ class TrainingPage(QWidget):
         self.val_loss_line = None
 
         chart_layout.addWidget(self.loss_canvas)
-        layout.addWidget(chart_group)
+        layout.addWidget(chart_group, 3)
 
         return panel
 
@@ -761,8 +776,8 @@ class TrainingPage(QWidget):
 
     def _check_can_train(self):
         """检查是否可以开始训练（数据集和输出目录都有效）。"""
-        dataset_dir = self.dataset_path_edit.toPlainText().strip()
-        output_dir = self.output_path_edit.toPlainText().strip()
+        dataset_dir = self.dataset_path_edit.text().strip()
+        output_dir = self.output_path_edit.text().strip()
 
         # 必须同时满足：数据集有效 + 输出目录已选择
         if dataset_dir and output_dir and self._validate_dataset(dataset_dir):
@@ -782,12 +797,12 @@ class TrainingPage(QWidget):
 
     def start_training(self):
         """开始训练。"""
-        dataset_dir = self.dataset_path_edit.toPlainText().strip()
+        dataset_dir = self.dataset_path_edit.text().strip()
         if not dataset_dir:
             QMessageBox.warning(self, "警告", "请先选择数据集目录")
             return
 
-        output_dir = self.output_path_edit.toPlainText().strip()
+        output_dir = self.output_path_edit.text().strip()
         if not output_dir:
             output_dir = os.path.join(os.path.dirname(__file__), 'trained_models')
 
@@ -931,7 +946,7 @@ class TrainingPage(QWidget):
     def integrate_model(self):
         """集成训练后的模型到对应算法。"""
         try:
-            output_dir = self.output_path_edit.toPlainText().strip()
+            output_dir = self.output_path_edit.text().strip()
             if not output_dir:
                 QMessageBox.warning(self, "警告", "没有找到输出目录\n请先选择训练输出目录")
                 return

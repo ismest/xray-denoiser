@@ -140,7 +140,7 @@ class DenoiseSRWidget(QWidget):
                 border-radius: 8px;
                 background-color: #f8fafc;
                 padding: 10px;
-                font-size: 13px;
+                font-size: 16px;
                 font-family: 'Consolas', 'Courier New', 'Monaco', monospace;
             }
             QProgressBar {
@@ -227,7 +227,7 @@ class DenoiseSRWidget(QWidget):
 
         self.load_btn = QPushButton("加载")
         self.load_btn.clicked.connect(self.load_image)
-        self.load_btn.setMinimumHeight(36)
+        self.load_btn.setMinimumHeight(40)
         file_layout.addWidget(self.load_btn)
 
         # 图像信息
@@ -249,13 +249,13 @@ class DenoiseSRWidget(QWidget):
         algo_layout.setSpacing(8)
 
         self.algorithm_combo = QComboBox()
-        self.algorithm_combo.setMinimumHeight(32)
+        self.algorithm_combo.setMinimumHeight(40)
         algo_layout.addWidget(self.algorithm_combo, 1)
 
         # 算法管理按钮
         self.manage_algo_btn = QPushButton("⚙ 管理")
         self.manage_algo_btn.setObjectName("manageAlgoBtn")
-        self.manage_algo_btn.setMinimumHeight(32)
+        self.manage_algo_btn.setMinimumHeight(40)
         self.manage_algo_btn.setMinimumWidth(70)
         self.manage_algo_btn.clicked.connect(self.open_denoise_algorithm_editor)
         algo_layout.addWidget(self.manage_algo_btn)
@@ -296,13 +296,13 @@ class DenoiseSRWidget(QWidget):
         sr_algo_layout.setSpacing(8)
 
         self.sr_method_combo = QComboBox()
-        self.sr_method_combo.setMinimumHeight(44)
+        self.sr_method_combo.setMinimumHeight(40)
         sr_algo_layout.addWidget(self.sr_method_combo, 1)
 
         # 算法管理按钮
         self.manage_sr_algo_btn = QPushButton("⚙ 管理")
         self.manage_sr_algo_btn.setObjectName("manageAlgoBtn")
-        self.manage_sr_algo_btn.setMinimumHeight(44)
+        self.manage_sr_algo_btn.setMinimumHeight(40)
         self.manage_sr_algo_btn.setMinimumWidth(70)
         self.manage_sr_algo_btn.clicked.connect(self.open_sr_algorithm_editor)
         sr_algo_layout.addWidget(self.manage_sr_algo_btn)
@@ -322,15 +322,7 @@ class DenoiseSRWidget(QWidget):
         self.sr_scale_combo = QComboBox()
         self.sr_scale_combo.addItems(["1.5x", "2.0x", "3.0x", "4.0x"])
         self.sr_scale_combo.setCurrentIndex(1)
-        self.sr_scale_combo.setMinimumHeight(44)
-        self.sr_scale_combo.setStyleSheet("""
-            QComboBox {
-                font-size: 15px;
-                padding: 6px 10px;
-                border: 1px solid #e2e8f0;
-                border-radius: 6px;
-            }
-        """)
+        self.sr_scale_combo.setMinimumHeight(40)
         sr_scale_layout.addWidget(self.sr_scale_combo, 1)
         step2_layout.addLayout(sr_scale_layout)
 
@@ -338,7 +330,7 @@ class DenoiseSRWidget(QWidget):
         self.sr_btn.setObjectName("secondaryBtn")
         self.sr_btn.clicked.connect(self.apply_sr)
         self.sr_btn.setEnabled(False)
-        self.sr_btn.setMinimumHeight(48)
+        self.sr_btn.setMinimumHeight(40)
         step2_layout.addWidget(self.sr_btn)
 
         self.sr_progress = QProgressBar()
@@ -363,7 +355,7 @@ class DenoiseSRWidget(QWidget):
         self.save_denoise_btn.setMinimumHeight(40)
         save_layout.addWidget(self.save_denoise_btn)
 
-        self.save_sr_btn = QPushButton("💾 保存 SR 图")
+        self.save_sr_btn = QPushButton("💾 保存超分图")
         self.save_sr_btn.setObjectName("saveBtn")
         self.save_sr_btn.clicked.connect(lambda: self.save_result(use_sr=True))
         self.save_sr_btn.setEnabled(False)
@@ -567,8 +559,8 @@ class DenoiseSRWidget(QWidget):
         dm_layout.addWidget(QLabel("<b>降噪质量</b>"))
         self.denoise_metrics_text = QTextEdit()
         self.denoise_metrics_text.setReadOnly(True)
-        self.denoise_metrics_text.setMaximumHeight(280)
-        self.denoise_metrics_text.setMinimumHeight(240)
+        self.denoise_metrics_text.setMaximumHeight(160)
+        self.denoise_metrics_text.setMinimumHeight(100)
         self.denoise_metrics_text.setText("降噪后显示 PSNR、SSIM、MSE 指标")
         self.denoise_metrics_text.setStyleSheet("font-size: 16px;")
         dm_layout.addWidget(self.denoise_metrics_text)
@@ -580,8 +572,8 @@ class DenoiseSRWidget(QWidget):
         smr_layout.addWidget(QLabel("<b>超分辨率质量</b>"))
         self.sr_metrics_text = QTextEdit()
         self.sr_metrics_text.setReadOnly(True)
-        self.sr_metrics_text.setMaximumHeight(280)
-        self.sr_metrics_text.setMinimumHeight(240)
+        self.sr_metrics_text.setMaximumHeight(160)
+        self.sr_metrics_text.setMinimumHeight(100)
         self.sr_metrics_text.setText("超分辨率后显示指标")
         self.sr_metrics_text.setStyleSheet("font-size: 16px;")
         smr_layout.addWidget(self.sr_metrics_text)
