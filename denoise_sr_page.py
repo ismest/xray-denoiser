@@ -203,11 +203,11 @@ class DenoiseSRWidget(QWidget):
         left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         left_scroll.setFrameStyle(QFrame.NoFrame)
         left_scroll.setMinimumWidth(280)
-        content_layout.addWidget(left_scroll, 1)
+        content_layout.addWidget(left_scroll, 2)
 
         # Right panel - Image display
         right_panel = self.create_display_panel()
-        content_layout.addWidget(right_panel, 2)
+        content_layout.addWidget(right_panel, 3)
 
         main_layout.addLayout(content_layout)
         self.update_parameter_panel()
@@ -231,11 +231,9 @@ class DenoiseSRWidget(QWidget):
         file_layout.addWidget(self.load_btn)
 
         # 图像信息
-        self.info_text = QTextEdit()
-        self.info_text.setReadOnly(True)
-        self.info_text.setMaximumHeight(90)
-        self.info_text.setMinimumHeight(80)
-        self.info_text.setPlaceholderText("加载图像后显示信息...")
+        self.info_text = QLabel("加载图像后显示信息...")
+        self.info_text.setWordWrap(True)
+        self.info_text.setStyleSheet("color: #475569; font-size: 14px; padding: 6px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;")
         file_layout.addWidget(self.info_text)
 
         layout.addWidget(file_group)
@@ -373,7 +371,7 @@ class DenoiseSRWidget(QWidget):
         widget.setStyleSheet("QFrame { background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }")
         layout = QVBoxLayout(widget)
         layout.setSpacing(8)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setContentsMargins(8, 8, 8, 8)
 
         # NLM parameters
         self.nlm_group = QGroupBox("Non-local Means 参数")
@@ -503,8 +501,8 @@ class DenoiseSRWidget(QWidget):
         panel = QFrame()
         panel.setObjectName("card")
         layout = QVBoxLayout(panel)
-        layout.setSpacing(14)
-        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(10)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         self.image_tabs = QTabWidget()
         self.image_tabs.setStyleSheet("""
@@ -516,7 +514,7 @@ class DenoiseSRWidget(QWidget):
         # Original image tab
         original_tab = QWidget()
         original_layout = QVBoxLayout(original_tab)
-        original_layout.setContentsMargins(12, 12, 12, 12)
+        original_layout.setContentsMargins(6, 6, 6, 6)
         self.original_label = QLabel("未加载图像")
         self.original_label.setObjectName("imageBox")
         self.original_label.setAlignment(Qt.AlignCenter)
@@ -527,7 +525,7 @@ class DenoiseSRWidget(QWidget):
         # Denoised image tab
         denoised_tab = QWidget()
         denoised_layout = QVBoxLayout(denoised_tab)
-        denoised_layout.setContentsMargins(12, 12, 12, 12)
+        denoised_layout.setContentsMargins(6, 6, 6, 6)
         self.denoised_label = QLabel("降噪后显示")
         self.denoised_label.setObjectName("imageBox")
         self.denoised_label.setAlignment(Qt.AlignCenter)
@@ -538,7 +536,7 @@ class DenoiseSRWidget(QWidget):
         # SR image tab
         sr_tab = QWidget()
         sr_layout = QVBoxLayout(sr_tab)
-        sr_layout.setContentsMargins(12, 12, 12, 12)
+        sr_layout.setContentsMargins(6, 6, 6, 6)
         self.sr_label = QLabel("超分辨率后显示")
         self.sr_label.setObjectName("imageBox")
         self.sr_label.setAlignment(Qt.AlignCenter)
@@ -549,40 +547,34 @@ class DenoiseSRWidget(QWidget):
         layout.addWidget(self.image_tabs, 1)
 
         # Metrics section
-        metrics_group = QGroupBox("评估指标")
         metrics_layout = QHBoxLayout()
-        metrics_layout.setSpacing(15)
+        metrics_layout.setSpacing(12)
 
-        denoise_metrics_widget = QWidget()
-        dm_layout = QVBoxLayout(denoise_metrics_widget)
-        dm_layout.setContentsMargins(0, 0, 0, 0)
-        dm_layout.addWidget(QLabel("<b>降噪质量</b>"))
+        denoise_metrics_group = QGroupBox("降噪质量")
+        dn_layout = QVBoxLayout(denoise_metrics_group)
+        dn_layout.setContentsMargins(8, 8, 8, 8)
         self.denoise_metrics_text = QTextEdit()
         self.denoise_metrics_text.setReadOnly(True)
         self.denoise_metrics_text.setMaximumHeight(160)
         self.denoise_metrics_text.setMinimumHeight(100)
         self.denoise_metrics_text.setText("降噪后显示 PSNR、SSIM、MSE 指标")
         self.denoise_metrics_text.setStyleSheet("font-size: 16px;")
-        dm_layout.addWidget(self.denoise_metrics_text)
-        metrics_layout.addWidget(denoise_metrics_widget, 1)
+        dn_layout.addWidget(self.denoise_metrics_text)
+        metrics_layout.addWidget(denoise_metrics_group, 1)
 
-        sr_metrics_widget = QWidget()
-        smr_layout = QVBoxLayout(sr_metrics_widget)
-        smr_layout.setContentsMargins(0, 0, 0, 0)
-        smr_layout.addWidget(QLabel("<b>超分辨率质量</b>"))
+        sr_metrics_group = QGroupBox("超分辨率质量")
+        sr_m_layout = QVBoxLayout(sr_metrics_group)
+        sr_m_layout.setContentsMargins(8, 8, 8, 8)
         self.sr_metrics_text = QTextEdit()
         self.sr_metrics_text.setReadOnly(True)
         self.sr_metrics_text.setMaximumHeight(160)
         self.sr_metrics_text.setMinimumHeight(100)
         self.sr_metrics_text.setText("超分辨率后显示指标")
         self.sr_metrics_text.setStyleSheet("font-size: 16px;")
-        smr_layout.addWidget(self.sr_metrics_text)
-        metrics_layout.addWidget(sr_metrics_widget, 1)
+        sr_m_layout.addWidget(self.sr_metrics_text)
+        metrics_layout.addWidget(sr_metrics_group, 1)
 
-        metrics_layout.setStretch(0, 1)
-        metrics_layout.setStretch(1, 1)
-        metrics_group.setLayout(metrics_layout)
-        layout.addWidget(metrics_group)
+        layout.addLayout(metrics_layout)
 
         return panel
 
