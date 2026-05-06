@@ -1,6 +1,6 @@
 """
 主窗口 - 多页面架构
-包含：DenseNet（含噪音提取、数据集生成、算法训练）、降噪与超分辨率两个页面
+包含：噪音提取、数据集生成、算法训练、降噪与超分辨率四个页面
 Medical Minimalism 风格
 """
 
@@ -14,7 +14,9 @@ from PyQt5.QtGui import QFont, QIcon, QPalette, QColor
 from PyQt5.QtCore import Qt, QSize, QEvent
 
 # 导入页面模块
-from densenet_page import DenseNetPage
+from noise_extraction_page import NoiseExtractionPage
+from dataset_generation_page import DatasetGenerationPage
+from training_page import TrainingPage
 from denoise_sr_page import DenoiseSRWidget
 
 
@@ -127,7 +129,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统 v5.0')
+        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统 v5.1')
         # 窗口最小尺寸增加 0.5 倍（接近全屏展示）
         # 1600 * 1.5 = 2400, 1100 * 1.5 = 1650
         self.setMinimumSize(2400, 1650)
@@ -204,13 +206,23 @@ class MainWindow(QMainWindow):
         # 导航按钮 - 从顶部向上分布
         self.nav_buttons = []
 
-        self.btn_preprocess = NavigationButton("DenseNet")
-        self.btn_preprocess.clicked.connect(lambda: self._switch_page(0))
-        layout.addWidget(self.btn_preprocess)
-        self.nav_buttons.append(self.btn_preprocess)
+        self.btn_noise_extract = NavigationButton("噪音提取")
+        self.btn_noise_extract.clicked.connect(lambda: self._switch_page(0))
+        layout.addWidget(self.btn_noise_extract)
+        self.nav_buttons.append(self.btn_noise_extract)
+
+        self.btn_dataset_gen = NavigationButton("数据集生成")
+        self.btn_dataset_gen.clicked.connect(lambda: self._switch_page(1))
+        layout.addWidget(self.btn_dataset_gen)
+        self.nav_buttons.append(self.btn_dataset_gen)
+
+        self.btn_training = NavigationButton("算法训练")
+        self.btn_training.clicked.connect(lambda: self._switch_page(2))
+        layout.addWidget(self.btn_training)
+        self.nav_buttons.append(self.btn_training)
 
         self.btn_denoise = NavigationButton("降噪与超分")
-        self.btn_denoise.clicked.connect(lambda: self._switch_page(1))
+        self.btn_denoise.clicked.connect(lambda: self._switch_page(3))
         layout.addWidget(self.btn_denoise)
         self.nav_buttons.append(self.btn_denoise)
 
@@ -250,9 +262,17 @@ class MainWindow(QMainWindow):
         """)
 
         # 添加页面
-        self.densenet_page = DenseNetPage()
-        self.densenet_page.apply_medical_style()
-        self.page_stack.addWidget(self.densenet_page)
+        self.noise_extraction_page = NoiseExtractionPage()
+        self.noise_extraction_page.apply_medical_style()
+        self.page_stack.addWidget(self.noise_extraction_page)
+
+        self.dataset_generation_page = DatasetGenerationPage()
+        self.dataset_generation_page.apply_medical_style()
+        self.page_stack.addWidget(self.dataset_generation_page)
+
+        self.training_page = TrainingPage()
+        self.training_page.apply_medical_style()
+        self.page_stack.addWidget(self.training_page)
 
         # 降噪页面
         self.denoise_widget = DenoiseSRWidget()
@@ -272,7 +292,7 @@ class MainWindow(QMainWindow):
             btn.setChecked(i == index)
 
         # 更新状态栏
-        page_names = ['DenseNet（噪音提取、数据集生成、算法训练）', '降噪与超分辨率']
+        page_names = ['噪音提取', '数据集生成', '算法训练', '降噪与超分辨率']
         self.status_bar.showMessage(f'当前页面：{page_names[index]}')
 
     def show_help_guide(self):
@@ -311,7 +331,9 @@ class HelpGuideDialog(QDialog):
 ### 页面结构
 | 页面 | 文件 | 说明 |
 |------|------|------|
-| DenseNet | `densenet_page.py` | 三个标签页：噪音提取 / 数据集生成 / 算法训练 |
+| 噪音提取 | `noise_extraction_page.py` | 从单张 X 光图像提取噪声参数 |
+| 数据集生成 | `dataset_generation_page.py` | 使用噪声参数生成合成配对数据集 |
+| 算法训练 | `training_page.py` | 有监督训练降噪 / 超分模型，导出 ONNX |
 | 降噪与超分 | `denoise_sr_page.py` | 降噪处理 + 超分辨率重构 |
 
 ### 核心模块
@@ -353,15 +375,13 @@ DenseNet
 
 ## 功能模块
 
-### 1. DenseNet
-**用途**: 从单张 X 光图像提取噪声参数，生成训练数据集。
+### 1. 噪音提取
+**用途**: 从单张 X 光图像提取噪声参数。
 
 **操作步骤**:
-1. 点击"噪音提取"标签页
-2. 点击"加载"按钮加载 X 光图像（显示文件名、形状、数据类型、位深度）
-3. 选择提取方法（局部标准差法/均匀区域法）
-4. 点击"开始提取噪声"
-5. 等待提取完成，查看提取的噪声参数
+1. 点击"加载"按钮加载 X 光图像（显示文件名、形状、数据类型、位深度）
+2. 点击"开始提取噪声"（自动使用均匀区域法）
+3. 等待提取完成，查看提取的噪声参数和直方图拟合结果
 
 **生成文件**:
 - `noise_params.json` - 噪声参数配置文件
@@ -371,12 +391,12 @@ DenseNet
 **用途**: 使用噪声参数生成合成噪声图像配对数据集。
 
 **操作步骤**:
-1. 点击"数据集生成"标签页
-2. 导入干净图像数据集（包含 train/clean 和 train/noisy 目录）
+1. 切换到"数据集生成"页面（自动加载已提取的噪声参数）
+2. 导入干净图像数据集（包含原始图像的文件夹）
 3. 配置数据集参数：
    - 总样本数：生成图像对的数量
    - 训练集/测试集/验证集比例
-4. 点击"开始生成数据集"
+4. 点击"生成数据集"
 5. 等待生成完成
 
 **输出目录结构**:
@@ -394,10 +414,10 @@ output/
 ```
 
 ### 3. 算法训练
-**用途**: 训练深度learning 降噪/超分辨率模型。
+**用途**: 训练深度学习降噪/超分辨率模型。
 
 **操作步骤**:
-1. 选择数据集目录（选择预处理生成的数据集）
+1. 选择数据集目录（选择数据集生成页面生成的数据集）
 2. 选择模型输出目录
 3. 配置训练参数：
    - 训练轮数 (Epochs): 推荐 50-100
@@ -472,8 +492,8 @@ integrated_model/
 ## 快捷操作流程
 
 ### 完整训练流程
-1. DenseNet → 噪音提取 → 生成 noise_params.json
-2. DenseNet → 数据集生成 → 生成训练数据集
+1. 噪音提取 → 加载图像 → 开始提取 → 生成 noise_params.json
+2. 数据集生成 → 导入原始图像 → 生成训练数据集
 3. 算法训练 → 选择数据集 → 开始训练 → 添加模型
 4. 降噪与超分 → 加载图像 → 降噪 → 超分 → 保存
 
