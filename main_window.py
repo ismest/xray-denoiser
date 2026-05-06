@@ -235,7 +235,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.help_btn)
 
         # 默认选中第一个
-        self.btn_preprocess.setChecked(True)
+        self.btn_noise_extract.setChecked(True)
 
         return sidebar
 
