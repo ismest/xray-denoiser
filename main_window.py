@@ -1,6 +1,6 @@
 """
 主窗口 - 多页面架构
-包含：DenseNet（含噪音提取、数据集生成、算法训练）、Noise2Void、降噪与超分辨率三个页面
+包含：DenseNet（含噪音提取、数据集生成、算法训练）、降噪与超分辨率两个页面
 Medical Minimalism 风格
 """
 
@@ -15,7 +15,6 @@ from PyQt5.QtCore import Qt, QSize, QEvent
 
 # 导入页面模块
 from densenet_page import DenseNetPage
-from noise2void_page import Noise2VoidPage
 from denoise_sr_page import DenoiseSRWidget
 
 
@@ -128,7 +127,7 @@ class MainWindow(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面。"""
-        self.setWindowTitle(f'X 射线图像降噪与超分辨率重构系统 v4.0.38')
+        self.setWindowTitle('X 射线图像降噪与超分辨率重构系统 v5.0')
         # 窗口最小尺寸增加 0.5 倍（接近全屏展示）
         # 1600 * 1.5 = 2400, 1100 * 1.5 = 1650
         self.setMinimumSize(2400, 1650)
@@ -210,13 +209,8 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.btn_preprocess)
         self.nav_buttons.append(self.btn_preprocess)
 
-        self.btn_n2v = NavigationButton("Noise2Void")
-        self.btn_n2v.clicked.connect(lambda: self._switch_page(1))
-        layout.addWidget(self.btn_n2v)
-        self.nav_buttons.append(self.btn_n2v)
-
         self.btn_denoise = NavigationButton("降噪与超分")
-        self.btn_denoise.clicked.connect(lambda: self._switch_page(2))
+        self.btn_denoise.clicked.connect(lambda: self._switch_page(1))
         layout.addWidget(self.btn_denoise)
         self.nav_buttons.append(self.btn_denoise)
 
@@ -260,11 +254,6 @@ class MainWindow(QMainWindow):
         self.densenet_page.apply_medical_style()
         self.page_stack.addWidget(self.densenet_page)
 
-        # Noise2Void 页面
-        self.n2v_page = Noise2VoidPage()
-        self.n2v_page.apply_medical_style()
-        self.page_stack.addWidget(self.n2v_page)
-
         # 降噪页面
         self.denoise_widget = DenoiseSRWidget()
         self.denoise_widget.apply_medical_style()
@@ -283,7 +272,7 @@ class MainWindow(QMainWindow):
             btn.setChecked(i == index)
 
         # 更新状态栏
-        page_names = ['DenseNet（噪音提取、数据集生成、算法训练）', 'Noise2Void 自监督训练', '降噪与超分辨率']
+        page_names = ['DenseNet（噪音提取、数据集生成、算法训练）', '降噪与超分辨率']
         self.status_bar.showMessage(f'当前页面：{page_names[index]}')
 
     def show_help_guide(self):
@@ -323,7 +312,6 @@ class HelpGuideDialog(QDialog):
 | 页面 | 文件 | 说明 |
 |------|------|------|
 | DenseNet | `densenet_page.py` | 三个标签页：噪音提取 / 数据集生成 / 算法训练 |
-| Noise2Void | `noise2void_page.py` | 自监督训练，单张图像无需干净参考 |
 | 降噪与超分 | `denoise_sr_page.py` | 降噪处理 + 超分辨率重构 |
 
 ### 核心模块
@@ -426,33 +414,7 @@ output/
 - 可点击"添加"按钮集成到降噪或超分算法
 - 在"降噪与超分"页面可使用训练的模型
 
-### 4. Noise2Void 自监督训练
-**用途**: 通过单张噪声图像训练降噪模型，无需成对的噪声/干净图像。
-
-**原理**: 使用"盲点"网络架构，训练时预测每个像素的值时不使用该像素本身，从而实现无需干净图像的自监督去噪训练。
-
-**操作步骤**:
-1. 点击"选择噪声图像"加载单张 X 光噪声图像
-2. 配置训练参数：
-   - 训练轮数 (Epochs): 推荐 30-100
-   - 批次大小 (Batch Size): 推荐 8-32
-   - 块大小 (Patch Size): 推荐 64-128
-   - 学习率：推荐 0.001
-3. 选择模型输出目录
-4. 点击"开始训练"
-5. 训练完成后，可选择集成到降噪算法列表
-
-**优势**:
-- 无需成对的噪声/干净图像
-- 单张图像即可训练
-- 适用于 X 射线等难以获取干净图像的领域
-
-**输出文件**:
-- `noise2void_model.pth` - 训练好的模型权重
-- `n2v_config.json` - 训练配置和元数据
-- `model_ready.marker` - 模型集成标记文件
-
-### 5. 降噪与超分
+### 4. 降噪与超分
 **用途**: 对 X 射线图像进行降噪和超分辨率处理。
 
 **操作步骤**:
@@ -514,12 +476,6 @@ integrated_model/
 2. DenseNet → 数据集生成 → 生成训练数据集
 3. 算法训练 → 选择数据集 → 开始训练 → 添加模型
 4. 降噪与超分 → 加载图像 → 降噪 → 超分 → 保存
-
-### Noise2Void 自监督训练流程
-1. Noise2Void → 加载单张噪声图像
-2. 配置训练参数 → 开始训练
-3. 训练完成 → 集成到降噪算法
-4. 降噪与超分 → 选择 Noise2Void 模型 → 执行降噪
 
 ### 直接使用预训练模型
 1. 降噪与超分 → 加载图像
