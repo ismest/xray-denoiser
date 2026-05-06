@@ -546,17 +546,29 @@ class NoiseExtractionPage(QWidget):
         layout.setSpacing(12)
         layout.setContentsMargins(12, 12, 12, 12)
 
-        title = QLabel("噪音提取")
-        title.setStyleSheet("""
-            font-size: 24px;
-            font-weight: 600;
-            color: #1e293b;
-            padding: 14px 18px;
-            border-left: 4px solid #0ea5e9;
+        # 工作流导航条（替代标题）
+        breadcrumb = QWidget()
+        breadcrumb.setStyleSheet("""
             background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+            border-left: 4px solid #0ea5e9;
             border-radius: 8px;
         """)
-        layout.addWidget(title)
+        bc_layout = QHBoxLayout(breadcrumb)
+        bc_layout.setSpacing(4)
+        bc_layout.setContentsMargins(14, 10, 14, 10)
+        for i, step in enumerate(["噪音提取", "数据集生成", "算法训练", "降噪与超分"]):
+            if i > 0:
+                arr = QLabel("→")
+                arr.setStyleSheet("color: #cbd5e1; font-size: 24px; padding: 0 2px;")
+                bc_layout.addWidget(arr)
+            lbl = QLabel(step)
+            if i == 0:
+                lbl.setStyleSheet("color: #0ea5e9; font-size: 24px; font-weight: 700;")
+            else:
+                lbl.setStyleSheet("color: #94a3b8; font-size: 24px;")
+            bc_layout.addWidget(lbl)
+        bc_layout.addStretch()
+        layout.addWidget(breadcrumb)
 
         content = self._create_content()
         layout.addWidget(content)
