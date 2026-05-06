@@ -565,9 +565,7 @@ class NoiseExtractionPage(QWidget):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setSpacing(12)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        widget.setMinimumSize(1400, 1050)
+        layout.setContentsMargins(12, 12, 12, 12)
 
         # 左侧控制面板
         left_panel = QFrame()
@@ -591,7 +589,7 @@ class NoiseExtractionPage(QWidget):
         load_layout.setContentsMargins(10, 10, 10, 14)
 
         self.source_image_label = QLabel()
-        self.source_image_label.setFixedHeight(440)
+        self.source_image_label.setMinimumHeight(280)
         self.source_image_label.setStyleSheet("""
             QLabel {
                 background-color: #f8fafc;
@@ -708,20 +706,20 @@ class NoiseExtractionPage(QWidget):
 
         top_widget = QWidget()
         top_layout = QHBoxLayout(top_widget)
-        top_layout.setSpacing(20)
+        top_layout.setSpacing(16)
         top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.addWidget(left_panel, 1)
-        top_layout.addWidget(right_top, 2)
+        top_layout.addWidget(left_panel, 2)
+        top_layout.addWidget(right_top, 3)
 
         # 直方图
         self.histogram_group = QGroupBox("均匀区域窗口强度分布")
-        self.histogram_group.setMinimumHeight(650)
+        self.histogram_group.setMinimumHeight(350)
         hist_layout = QVBoxLayout(self.histogram_group)
         hist_layout.setSpacing(8)
         hist_layout.setContentsMargins(12, 12, 12, 12)
         self.histogram_label = QLabel()
         self.histogram_label.setAlignment(Qt.AlignCenter)
-        self.histogram_label.setMinimumSize(1200, 590)
+        self.histogram_label.setMinimumSize(500, 280)
         self.histogram_label.setStyleSheet("""
             QLabel {
                 background-color: #f8fafc;
@@ -733,7 +731,7 @@ class NoiseExtractionPage(QWidget):
         hist_layout.addWidget(self.histogram_label)
 
         layout.addWidget(top_widget, 1)
-        layout.addWidget(self.histogram_group, 0)
+        layout.addWidget(self.histogram_group, 1)
 
         return widget
 
@@ -762,15 +760,14 @@ class NoiseExtractionPage(QWidget):
         main_layout.setContentsMargins(8, 8, 8, 8)
 
         analysis_group = QGroupBox("基于均匀区域法的噪声估计")
-        analysis_group.setMinimumHeight(400)
+        analysis_group.setMinimumHeight(220)
         analysis_layout = QVBoxLayout(analysis_group)
         analysis_layout.setSpacing(10)
         analysis_layout.setContentsMargins(12, 12, 12, 12)
 
         self.analysis_text = QTextEdit()
         self.analysis_text.setReadOnly(True)
-        self.analysis_text.setMaximumHeight(450)
-        self.analysis_text.setMinimumHeight(400)
+        self.analysis_text.setMinimumHeight(200)
         self.analysis_text.setHtml(self._get_noise_analysis_html())
         self.analysis_text.setStyleSheet("""
             QTextEdit {
@@ -788,14 +785,13 @@ class NoiseExtractionPage(QWidget):
         main_layout.addWidget(analysis_group)
 
         params_group = QGroupBox("提取的噪声参数")
-        params_group.setMinimumHeight(280)
+        params_group.setMinimumHeight(140)
         params_layout = QVBoxLayout(params_group)
-        params_layout.setSpacing(4)
-        params_layout.setContentsMargins(4, 4, 4, 4)
+        params_layout.setSpacing(8)
+        params_layout.setContentsMargins(8, 8, 8, 8)
         self.extracted_params_text = QTextEdit()
         self.extracted_params_text.setReadOnly(True)
-        self.extracted_params_text.setMaximumHeight(320)
-        self.extracted_params_text.setMinimumHeight(260)
+        self.extracted_params_text.setMinimumHeight(120)
         self.extracted_params_text.setPlaceholderText("提取噪声参数后显示...")
         self.extracted_params_text.setStyleSheet("""
             QTextEdit {

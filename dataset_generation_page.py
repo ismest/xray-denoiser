@@ -282,7 +282,7 @@ class DatasetGenerationPage(QWidget):
         left_layout.setSpacing(16)
 
         # 噪声参数（可编辑）
-        params_group = QGroupBox("噪声参数配置")
+        params_group = QGroupBox("1. 噪声参数配置")
         params_group.setMinimumHeight(160)
         params_layout = QFormLayout(params_group)
         params_layout.setSpacing(12)
@@ -337,7 +337,7 @@ class DatasetGenerationPage(QWidget):
         left_layout.addWidget(params_group)
 
         # 原始数据集导入
-        dataset_import_group = QGroupBox("原始数据集导入")
+        dataset_import_group = QGroupBox("2. 原始数据集导入")
         import_layout = QVBoxLayout(dataset_import_group)
         import_layout.setSpacing(12)
 
@@ -392,7 +392,7 @@ class DatasetGenerationPage(QWidget):
         left_layout.addWidget(dataset_import_group)
 
         # 数据集配置
-        dataset_group = QGroupBox("数据集配置")
+        dataset_group = QGroupBox("3. 数据集配置")
         dataset_layout = QFormLayout(dataset_group)
         dataset_layout.setSpacing(12)
         dataset_layout.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -442,7 +442,7 @@ class DatasetGenerationPage(QWidget):
         left_layout.addWidget(dataset_group)
 
         # 生成数据集导出
-        output_group = QGroupBox("生成数据集导出")
+        output_group = QGroupBox("4. 生成数据集导出")
         output_layout = QVBoxLayout(output_group)
 
         output_dir_layout = QHBoxLayout()
@@ -485,7 +485,7 @@ class DatasetGenerationPage(QWidget):
         left_layout.addWidget(output_group)
 
         # 状态显示
-        status_group = QGroupBox("数据集生成状态")
+        status_group = QGroupBox("5. 数据集生成状态")
         status_layout = QVBoxLayout(status_group)
 
         self.generation_status_label = QLabel("状态：未开始")
