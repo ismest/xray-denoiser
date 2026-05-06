@@ -245,24 +245,28 @@ class DatasetGenerationPage(QWidget):
 
         # 工作流导航条（替代标题）
         breadcrumb = QWidget()
+        breadcrumb.setObjectName("breadcrumb")
         breadcrumb.setStyleSheet("""
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
-            border-left: 4px solid #0ea5e9;
-            border-radius: 8px;
+            QWidget#breadcrumb {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+                border-left: 4px solid #0ea5e9;
+                border-radius: 8px;
+            }
         """)
         bc_layout = QHBoxLayout(breadcrumb)
-        bc_layout.setSpacing(4)
-        bc_layout.setContentsMargins(14, 10, 14, 10)
+        bc_layout.setSpacing(6)
+        bc_layout.setContentsMargins(18, 12, 18, 12)
         for i, step in enumerate(["噪音提取", "数据集生成", "算法训练", "降噪与超分"]):
             if i > 0:
-                arr = QLabel("→")
-                arr.setStyleSheet("color: #cbd5e1; font-size: 24px; padding: 0 2px;")
+                arr = QLabel("❯")
+                arr.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+                arr.setStyleSheet("color: #64748b; font-size: 20px; padding: 0 6px;")
                 bc_layout.addWidget(arr)
             lbl = QLabel(step)
             if i == 1:
-                lbl.setStyleSheet("color: #0ea5e9; font-size: 24px; font-weight: 700;")
+                lbl.setStyleSheet("color: #0ea5e9; font-size: 18px; font-weight: 700; background: transparent; border: none;")
             else:
-                lbl.setStyleSheet("color: #94a3b8; font-size: 24px;")
+                lbl.setStyleSheet("color: #94a3b8; font-size: 18px; font-weight: 600; background: transparent; border: none;")
             bc_layout.addWidget(lbl)
         bc_layout.addStretch()
         layout.addWidget(breadcrumb)
@@ -453,9 +457,10 @@ class DatasetGenerationPage(QWidget):
 
         left_layout.addWidget(dataset_group)
 
-        # 生成数据集导出
+        # 生成数据集导出（含状态）
         output_group = QGroupBox("4. 生成数据集导出")
         output_layout = QVBoxLayout(output_group)
+        output_layout.setSpacing(10)
 
         output_dir_layout = QHBoxLayout()
         self.dataset_output_edit = QLineEdit()
@@ -492,13 +497,7 @@ class DatasetGenerationPage(QWidget):
         """)
         self.browse_output_btn.clicked.connect(self.browse_output_dir)
         output_dir_layout.addWidget(self.browse_output_btn)
-
         output_layout.addLayout(output_dir_layout)
-        left_layout.addWidget(output_group)
-
-        # 状态显示
-        status_group = QGroupBox("5. 数据集生成状态")
-        status_layout = QVBoxLayout(status_group)
 
         self.generation_status_label = QLabel("状态：未开始")
         self.generation_status_label.setStyleSheet("""
@@ -511,19 +510,9 @@ class DatasetGenerationPage(QWidget):
                 border: 1px solid #e2e8f0;
             }
         """)
-        status_layout.addWidget(self.generation_status_label)
+        output_layout.addWidget(self.generation_status_label)
 
-        self.generation_detail_label = QLabel("请先导入原始数据集并设置参数")
-        self.generation_detail_label.setStyleSheet("""
-            QLabel {
-                color: #94a3b8;
-                font-size: 14px;
-                padding: 8px;
-            }
-        """)
-        status_layout.addWidget(self.generation_detail_label)
-
-        left_layout.addWidget(status_group)
+        left_layout.addWidget(output_group)
 
         # 执行按钮
         self.generate_btn = QPushButton("生成数据集")
@@ -576,8 +565,8 @@ class DatasetGenerationPage(QWidget):
         # 右侧面板
         right_panel = self._create_dataset_info_panel()
         right_panel.setMinimumWidth(500)
-        layout.addWidget(left_panel, 1)
-        layout.addWidget(right_panel, 2)
+        layout.addWidget(left_panel, 2)
+        layout.addWidget(right_panel, 3)
 
         return widget
 
@@ -886,28 +875,24 @@ class DatasetGenerationPage(QWidget):
                 QLabel { color: #64748b; font-size: 15px; padding: 10px;
                          background-color: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
             """)
-            self.generation_detail_label.setText(message)
         elif status == "processing":
             self.generation_status_label.setText("状态：正在生成数据集...")
             self.generation_status_label.setStyleSheet("""
                 QLabel { color: #0284c7; font-size: 15px; font-weight: 600; padding: 10px;
                          background-color: #e0f2fe; border-radius: 6px; border: 1px solid #7dd3fc; }
             """)
-            self.generation_detail_label.setText(message)
         elif status == "success":
             self.generation_status_label.setText("状态：生成完成 ✓")
             self.generation_status_label.setStyleSheet("""
                 QLabel { color: #047857; font-size: 15px; font-weight: 600; padding: 10px;
                          background-color: #d1fae5; border-radius: 6px; border: 1px solid #6ee7b7; }
             """)
-            self.generation_detail_label.setText(message)
         elif status == "error":
             self.generation_status_label.setText("状态：生成失败 ✗")
             self.generation_status_label.setStyleSheet("""
                 QLabel { color: #dc2626; font-size: 15px; font-weight: 600; padding: 10px;
                          background-color: #fee2e2; border-radius: 6px; border: 1px solid #fca5a5; }
             """)
-            self.generation_detail_label.setText(message)
 
     def dataset_generation_finished(self, success, message):
         self.step2_progress.setVisible(False)

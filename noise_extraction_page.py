@@ -548,24 +548,28 @@ class NoiseExtractionPage(QWidget):
 
         # 工作流导航条（替代标题）
         breadcrumb = QWidget()
+        breadcrumb.setObjectName("breadcrumb")
         breadcrumb.setStyleSheet("""
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
-            border-left: 4px solid #0ea5e9;
-            border-radius: 8px;
+            QWidget#breadcrumb {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #f0f9ff, stop:1 transparent);
+                border-left: 4px solid #0ea5e9;
+                border-radius: 8px;
+            }
         """)
         bc_layout = QHBoxLayout(breadcrumb)
-        bc_layout.setSpacing(4)
-        bc_layout.setContentsMargins(14, 10, 14, 10)
+        bc_layout.setSpacing(6)
+        bc_layout.setContentsMargins(18, 12, 18, 12)
         for i, step in enumerate(["噪音提取", "数据集生成", "算法训练", "降噪与超分"]):
             if i > 0:
-                arr = QLabel("→")
-                arr.setStyleSheet("color: #cbd5e1; font-size: 24px; padding: 0 2px;")
+                arr = QLabel("❯")
+                arr.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+                arr.setStyleSheet("color: #64748b; font-size: 20px; padding: 0 6px;")
                 bc_layout.addWidget(arr)
             lbl = QLabel(step)
             if i == 0:
-                lbl.setStyleSheet("color: #0ea5e9; font-size: 24px; font-weight: 700;")
+                lbl.setStyleSheet("color: #0ea5e9; font-size: 18px; font-weight: 700; background: transparent; border: none;")
             else:
-                lbl.setStyleSheet("color: #94a3b8; font-size: 24px;")
+                lbl.setStyleSheet("color: #94a3b8; font-size: 18px; font-weight: 600; background: transparent; border: none;")
             bc_layout.addWidget(lbl)
         bc_layout.addStretch()
         layout.addWidget(breadcrumb)
