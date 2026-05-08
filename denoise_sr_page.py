@@ -100,32 +100,34 @@ class DenoiseSRWidget(QWidget):
             QPushButton:pressed { background-color: #1d4ed8; }
             QPushButton:disabled { background-color: #cbd5e1; color: #94a3b8; }
             QPushButton#primaryBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                 font-size: 16px;
                 font-weight: 600;
                 padding: 16px 28px;
             }
             QPushButton#primaryBtn:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
             }
             QPushButton#primaryBtn:disabled { background: #cbd5e1; }
             QPushButton#secondaryBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8b5cf6, stop:1 #7c3aed);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                 font-size: 16px;
                 font-weight: 600;
                 padding: 16px 28px;
             }
             QPushButton#secondaryBtn:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7c3aed, stop:1 #6d28d9);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
             }
             QPushButton#secondaryBtn:disabled { background: #cbd5e1; }
             QPushButton#saveBtn {
-                background-color: #0891b2;
+                background-color: #f1f5f9;
+                color: #475569;
+                border: 1px solid #cbd5e1;
                 font-weight: 600;
                 font-size: 16px;
             }
-            QPushButton#saveBtn:hover { background-color: #0e7490; }
-            QPushButton#saveBtn:disabled { background-color: #cbd5e1; }
+            QPushButton#saveBtn:hover { background-color: #e2e8f0; border-color: #94a3b8; }
+            QPushButton#saveBtn:disabled { background-color: #f8fafc; color: #cbd5e1; }
             QComboBox {
                 padding: 10px 14px;
                 border: 1px solid #cbd5e1;
@@ -152,7 +154,7 @@ class DenoiseSRWidget(QWidget):
                 font-size: 15px;
             }
             QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
                 border-radius: 7px;
             }
             QLabel#imageBox {
@@ -953,26 +955,27 @@ class DenoiseSRWidget(QWidget):
             elif "保存" in btn.text():
                 btn.setStyleSheet("""
                     QPushButton#saveBtn {
-                        background-color: #0891b2;
-                        color: white;
-                        border: none;
+                        background-color: #f1f5f9;
+                        color: #475569;
+                        border: 1px solid #cbd5e1;
                         padding: 14px 28px;
                         border-radius: 8px;
                         font-weight: 600;
                         font-size: 16px;
                     }
                     QPushButton#saveBtn:hover {
-                        background-color: #0e7490;
+                        background-color: #e2e8f0;
+                        border-color: #94a3b8;
                     }
                     QPushButton#saveBtn:disabled {
-                        background: #cbd5e1;
-                        color: #94a3b8;
+                        background: #f8fafc;
+                        color: #cbd5e1;
                     }
                 """)
             elif "降噪" in btn.text():
                 btn.setStyleSheet("""
                     QPushButton#primaryBtn {
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                         color: white;
                         border: none;
                         padding: 12px 24px;
@@ -981,7 +984,7 @@ class DenoiseSRWidget(QWidget):
                         font-size: 16px;
                     }
                     QPushButton#primaryBtn:hover {
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
                     }
                     QPushButton#primaryBtn:disabled {
                         background: #cbd5e1;
@@ -991,7 +994,7 @@ class DenoiseSRWidget(QWidget):
             elif "超分辨率" in btn.text():
                 btn.setStyleSheet("""
                     QPushButton#secondaryBtn {
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                         color: white;
                         border: none;
                         padding: 16px 32px;
@@ -1000,7 +1003,7 @@ class DenoiseSRWidget(QWidget):
                         font-size: 16px;
                     }
                     QPushButton#secondaryBtn:hover {
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0369a1);
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
                     }
                     QPushButton#secondaryBtn:disabled {
                         background: #cbd5e1;

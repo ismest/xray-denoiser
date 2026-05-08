@@ -568,14 +568,14 @@ class TrainingPage(QWidget):
         self.train_btn.setObjectName("primaryBtn")
         self.train_btn.setStyleSheet("""
             QPushButton#primaryBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #16a34a, stop:1 #059669);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                 font-size: 16px;
                 font-weight: 600;
                 padding: 16px 32px;
                 border-radius: 8px;
             }
             QPushButton#primaryBtn:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #15803d, stop:1 #047857);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
             }
             QPushButton#primaryBtn:disabled {
                 background: #cbd5e1;
@@ -692,7 +692,7 @@ class TrainingPage(QWidget):
                 background-color: #f8fafc;
             }
             QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3b82f6, stop:1 #8b5cf6);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
                 border-radius: 7px;
             }
         """)

@@ -277,17 +277,15 @@ class DatasetGenerationPage(QWidget):
     def _create_content(self):
         widget = QWidget()
         layout = QHBoxLayout(widget)
-        layout.setSpacing(20)
-        layout.setContentsMargins(20, 20, 20, 20)
-
-        widget.setMinimumSize(1000, 700)
+        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         # 左侧控制面板
         left_panel = QFrame()
         left_panel.setObjectName("step2ControlPanel")
         left_panel.setStyleSheet("""
             QFrame#step2ControlPanel {
-                background-color: #f8fafc;
+                background-color: white;
                 border-radius: 12px;
                 border: 1px solid #e2e8f0;
                 padding: 20px;
@@ -554,7 +552,7 @@ class DatasetGenerationPage(QWidget):
                 color: #475569;
             }
             QProgressBar::chunk {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
                 border-radius: 7px;
             }
         """)

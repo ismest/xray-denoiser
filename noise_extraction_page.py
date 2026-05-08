@@ -580,8 +580,8 @@ class NoiseExtractionPage(QWidget):
     def _create_content(self):
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        layout.setSpacing(12)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(16)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         # 左侧控制面板
         left_panel = QFrame()
@@ -670,7 +670,7 @@ class NoiseExtractionPage(QWidget):
         self.extract_btn.setObjectName("primaryBtn")
         self.extract_btn.setStyleSheet("""
             QPushButton#primaryBtn {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                 color: white;
                 font-size: 16px;
                 font-weight: 600;
@@ -678,7 +678,7 @@ class NoiseExtractionPage(QWidget):
                 border-radius: 12px;
             }
             QPushButton#primaryBtn:hover {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0369a1);
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
             }
             QPushButton#primaryBtn:disabled {
                 background: #cbd5e1;
@@ -1212,7 +1212,7 @@ class NoiseExtractionPage(QWidget):
             if panel.objectName() in ["step1ControlPanel"]:
                 panel.setStyleSheet("""
                     QFrame#step1ControlPanel {
-                        background-color: #f8fafc;
+                        background-color: white;
                         border-radius: 12px;
                         border: 1px solid #e2e8f0;
                         padding: 20px;
@@ -1282,7 +1282,7 @@ class NoiseExtractionPage(QWidget):
             elif "开始" in btn.text() or btn.objectName() == "primaryBtn":
                 btn.setStyleSheet("""
                     QPushButton#primaryBtn {
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0ea5e9, stop:1 #0284c7);
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #10b981, stop:1 #059669);
                         color: white;
                         border: none;
                         padding: 16px 32px;
@@ -1291,7 +1291,7 @@ class NoiseExtractionPage(QWidget):
                         font-size: 16px;
                     }
                     QPushButton#primaryBtn:hover {
-                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0284c7, stop:1 #0369a1);
+                        background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #059669, stop:1 #047857);
                     }
                     QPushButton#primaryBtn:disabled {
                         background: #cbd5e1;
@@ -1319,17 +1319,34 @@ class NoiseExtractionPage(QWidget):
 
         for text in self.findChildren(QTextEdit):
             if text.isReadOnly():
-                text.setStyleSheet("""
-                    QTextEdit {
-                        font-family: 'Consolas', 'Courier New', monospace;
-                        font-size: 16px;
-                        background-color: #f8fafc;
-                        border: 1px solid #e2e8f0;
-                        border-radius: 8px;
-                        padding: 10px;
-                        color: #475569;
-                    }
-                    QTextEdit:focus {
-                        border-color: #0ea5e9;
-                    }
-                """)
+                if text is self.analysis_text:
+                    text.setStyleSheet("""
+                        QTextEdit {
+                            font-family: 'Microsoft YaHei', sans-serif;
+                            font-size: 16px;
+                            background-color: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                            padding: 12px;
+                            color: #475569;
+                            line-height: 1.6;
+                        }
+                        QTextEdit:focus {
+                            border-color: #0ea5e9;
+                        }
+                    """)
+                else:
+                    text.setStyleSheet("""
+                        QTextEdit {
+                            font-family: 'Consolas', 'Courier New', monospace;
+                            font-size: 16px;
+                            background-color: #f8fafc;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                            padding: 10px;
+                            color: #475569;
+                        }
+                        QTextEdit:focus {
+                            border-color: #0ea5e9;
+                        }
+                    """)
