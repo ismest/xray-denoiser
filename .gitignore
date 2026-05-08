@@ -43,3 +43,33 @@ Thumbs.db
 
 # Application specific
 *.log
+
+# Phase 1 directory cleanup ignores
+.claude/settings.local.json
+.claude/worktrees/
+.sisyphus/
+
+# Runtime outputs
+outputs/
+noise_profile_output/
+
+# Generated and local data
+data/generated/
+generated_dataset/
+data/raw/
+data/external/
+BSDS300/
+KB+IP板/
+
+# Model artifacts
+models/**/*.pth
+models/**/*.onnx
+models/**/model_ready.marker
+integrated_model/**/*.pth
+integrated_model/**/*.onnx
+integrated_model/**/model_ready.marker
+
+# Root-level sample images
+/*.png
+/*.tif
+/*.tiff
